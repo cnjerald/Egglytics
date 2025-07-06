@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Centered Zoom and Pan Image</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #photo {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            background-color: #f5f5f5;
+            cursor: grab;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #zoom-wrapper {
+            position: absolute;
+            will-change: transform;
+            transform: translate(0px, 0px) scale(1);
+        }
+
+        #zoom-image {
+            user-select: none;
+            pointer-events: none;
+            max-width: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div id="photo">
+    <div id="zoom-wrapper">
+        <img id="zoom-image" src="../static/img/test.jpg" alt="Zoomable Image">
+    </div>
+</div>
+
+<script>
+
+    const container = document.getElementById('photo');
+    const wrapper = document.getElementById('zoom-wrapper');
+    const img = document.getElementById('zoom-image'); 
+
+    let scale = 1;
+    let minScale = 0;
+    let maxScale = 0;
+
+    let translateX = 0;
+    let translateY = 0;
+    let tolerance_reset = 0;
+    // Dynamically load the minimum zoom
+    img.onload = function () {
+        const containerRect = container.getBoundingClientRect();
+        const imgNaturalWidth = img.naturalWidth;
+        const imgNaturalHeight = img.naturalHeight;
+        
+        // Scale
+        const scaleX = containerRect.width / imgNaturalWidth;
+        const scaleY = containerRect.height / imgNaturalHeight;
+
+        minScale = Math.min(scaleX, scaleY);
+        scale = minScale;
+        maxScale = minScale + 1;
+        tolerance_reset = maxScale * 0.1;
+        translateX = 0;
+        translateY = 0;
+        // Update new image.
+        updateTransform();
+    };
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    function updateTransform() {
+        wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+   
+
+
+    // Zoom (centered)
+    container.addEventListener('wheel', function (e) {
+        e.preventDefault();
+
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = scale + delta;
+        console.log({ "Max:": maxScale, "Min:": minScale, "New:": newScale, "TOL": tolerance_reset});
+        
+        if (newScale >= minScale && newScale <= maxScale) {
+            scale = newScale;
+
+            // If fully zoomed out, reset pan to center
+            if (Math.abs(scale - minScale) < tolerance_reset) {
+                translateX = 0;
+                translateY = 0;
+            }
+
+            updateTransform();
+        }
+    });
+
+    // Drag-to-pan
+    container.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        container.style.cursor = 'grabbing';
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+    });
+
+    container.addEventListener('mousemove', function (e) {
+        if (!isDragging) return;
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        updateTransform();
+    });
+    
+    window.addEventListener('mouseup', function () {
+        isDragging = false;
+        container.style.cursor = 'grab';
+    });
+
+    // Pixel coordinate alert on image click
+    img.addEventListener('click', function (e) {
+        const rect = img.getBoundingClientRect();
+
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const scaleX = img.naturalWidth / rect.width;
+        const scaleY = img.naturalHeight / rect.height;
+
+        const pixelX = Math.floor(clickX * scaleX);
+        const pixelY = Math.floor(clickY * scaleY);
+
+        alert(`Clicked pixel: (${pixelX}, ${pixelY})`);
+    });
+</script>
+
+</body>
+</html>

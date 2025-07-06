@@ -3,7 +3,7 @@ from django.http import JsonResponse
 import cv2
 import numpy as np
 
-def home(request): 
+def upload(request): 
     file_names = []
 
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
@@ -23,4 +23,8 @@ def home(request):
         return JsonResponse({'filenames': file_names}) # Ajax return
 
     # GET request fallback
-    return render(request, "base.html", {'included_template': 'test.html'})
+    return render(request, "base.html", {'included_template': 'upload.html'})
+
+
+def edit(request):
+    return render(request, "base.html", {'included_template': 'test2.html'})

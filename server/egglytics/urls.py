@@ -3,6 +3,7 @@ from .import views
 'python manage.py runserver'
 
 urlpatterns = [
-    path("", views.home, name="home")
+    path("", views.upload, name="upload"),
+    path("test/",views.edit,name="edit"),
 ]
 
