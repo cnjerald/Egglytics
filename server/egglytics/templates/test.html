@@ -1,0 +1,47 @@
+{% load static %}
+<script src="{% static 'js/image_upload_handler.js' %}"></script>
+
+<style>
+#drop-area {
+    /* FRONT END DEVS, PACENTER TAPOS DELETE COMMENT TY*/
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    font-family: Arial;
+    color: #666;
+    width:50%;
+}
+
+#drop-area.highlight {
+    /* This is the color when a file is dragged */
+    border-color: #4caf50;  
+    /* This is the default color */
+    background-color: #f0fff0;
+}
+</style>
+
+<!-- Please read -->
+<!-- 
+hidden accpet = Front end limitations of file upload
+multiple tag = allows batch upload
+id = myfile
+ -->
+
+
+<div id="drop-area">
+    <p>Drag & drop a file here, or click to select</p>
+    <p>Max files: 15</p>
+    <p>Max size per file: 20MB</p>
+    <input type="file" id="myfile" hidden accept=".jpg,.jpeg,.png" multiple>
+    <button type="button" onclick="$('#myfile').click()">Select File</button>
+    <div id="progress-container" style="width: 50%; margin-top: 20px; display: none;">
+    <div id="progress-bar" style="height: 20px; width: 0%; background-color: #4caf50;"></div>
+    </div>
+
+</div>
+
+
+<div id="uploaded-image">
+    <p>This is where the uploaded image will be rendered</p>
+</div>
