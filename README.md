@@ -2,7 +2,7 @@
 
 ## For Developers
 ## I. Initial Setup
-1. Create a .env file on server/
+1. Create a .env file on ROOT
 2. In this .env file add this line SECRET_KEY="YOUR_KEY"
    
 ### I. Running the Server
