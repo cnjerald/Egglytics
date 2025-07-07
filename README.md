@@ -1,6 +1,10 @@
 # Egglytics
 
 ## For Developers
+## I. Initial Setup
+1. Create a .env file on server/
+2. In this .env file add this line SECRET_KEY="YOUR_KEY"
+   
 ### I. Running the Server
 1. cd server
 2. python manage.py runserver
