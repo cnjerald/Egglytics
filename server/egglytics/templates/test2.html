@@ -14,7 +14,7 @@
             overflow: hidden;
             position: relative;
             background-color: #f5f5f5;
-            cursor: grab;
+            cursor: crosshair;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,9 +28,15 @@
 
         #zoom-image {
             user-select: none;
-            pointer-events: none;
             max-width: none;
             display: block;
+            -webkit-user-drag: none;
+        }
+        #grid-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
         }
     </style>
 </head>
@@ -38,7 +44,8 @@
 
 <div id="photo">
     <div id="zoom-wrapper">
-        <img id="zoom-image" src="../static/img/test.jpg" alt="Zoomable Image">
+        <img id="image" src="../static/img/calibrator2.jpg" alt="Zoomable Image">
+        <canvas id="grid-canvas"></canvas>
     </div>
 </div>
 
@@ -46,22 +53,42 @@
 
     const container = document.getElementById('photo');
     const wrapper = document.getElementById('zoom-wrapper');
-    const img = document.getElementById('zoom-image'); 
+    const img = document.getElementById('image'); 
+    /* Grids */
+    const filledCells = new Set();
+    const canvas = document.getElementById('grid-canvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 500;
 
+    /* Initial Image Resize */
     let scale = 1;
     let minScale = 0;
     let maxScale = 0;
+    let tolerance_reset = 0;
 
+    /* Translation X and Y*/
     let translateX = 0;
     let translateY = 0;
-    let tolerance_reset = 0;
+    
+    /* Mouse Position */
+    let mouseX = 0;
+    let mouseY = 0;
+
+    /* States */
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
     // Dynamically load the minimum zoom
     img.onload = function () {
         const containerRect = container.getBoundingClientRect();
         const imgNaturalWidth = img.naturalWidth;
         const imgNaturalHeight = img.naturalHeight;
         
-        // Scale
+        // Rescale image
         const scaleX = containerRect.width / imgNaturalWidth;
         const scaleY = containerRect.height / imgNaturalHeight;
 
@@ -69,52 +96,104 @@
         scale = minScale;
         maxScale = minScale + 1;
         tolerance_reset = maxScale * 0.1;
+
+        // Used to pan image
         translateX = 0;
         translateY = 0;
+
+        // Draw grids
+        canvas.width = img.width;
+        canvas.height = img.height;
+        drawGrid();
         // Update new image.
         updateTransform();
     };
 
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
+    // This draws the grids over time image.
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 1;
 
+        // Vertical lines
+        for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+        }
+
+        // Horizontal lines
+        for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+        }
+    }
+
+    // This updates the image based on 
+    // (1) Translation 
+    // (2) Zoom/Scale
     function updateTransform() {
         wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
     }
 
-   
-
-
-    // Zoom (centered)
+    // Zoom Event Listener (Center Mouse Wheel)
     container.addEventListener('wheel', function (e) {
         e.preventDefault();
 
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
         const newScale = scale + delta;
-        console.log({ "Max:": maxScale, "Min:": minScale, "New:": newScale, "TOL": tolerance_reset});
-        
-        if (newScale >= minScale && newScale <= maxScale) {
-            scale = newScale;
 
-            // If fully zoomed out, reset pan to center
-            if (Math.abs(scale - minScale) < tolerance_reset) {
-                translateX = 0;
-                translateY = 0;
-            }
+        if (newScale < minScale || newScale > maxScale) return;
 
-            updateTransform();
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Calculate mouse position relative to image (pre-zoom)
+        const zoomCenterX = (mouseX - translateX) / scale;
+        const zoomCenterY = (mouseY - translateY) / scale;
+
+        // Update scale
+        scale = newScale;
+
+        // Adjust pan to keep zoom centered on mouse
+        translateX = mouseX - zoomCenterX * scale;
+        translateY = mouseY - zoomCenterY * scale;
+
+        // Optionally reset pan if fully zoomed out
+        if (Math.abs(scale - minScale) < tolerance_reset) {
+            translateX = 0;
+            translateY = 0;
         }
+
+        updateTransform();
     });
 
-    // Drag-to-pan
+
+    // Track last mouse position over the image (Useful for finding exact pixel)
+    img.addEventListener('mousemove', function (e) {
+        const rect = img.getBoundingClientRect();
+        lastMouseX = e.clientX - rect.left;
+        lastMouseY = e.clientY - rect.top;
+    });
+
+    // Event listener of middle button hold to pan the image
     container.addEventListener('mousedown', function (e) {
+        if (e.button !== 1) return;
         isDragging = true;
         container.style.cursor = 'grabbing';
         startX = e.clientX - translateX;
         startY = e.clientY - translateY;
     });
-
+    // This is to return the cursor from 'grabbing' state to 'crosshair' state
+    window.addEventListener('mouseup', function () {
+        isDragging = false;
+        container.style.cursor = 'crosshair';
+    });
+    // This updates the translation of the image in case a pan was made.
     container.addEventListener('mousemove', function (e) {
         if (!isDragging) return;
         translateX = e.clientX - startX;
@@ -122,26 +201,68 @@
         updateTransform();
     });
     
-    window.addEventListener('mouseup', function () {
-        isDragging = false;
-        container.style.cursor = 'grab';
+    // Listen for key press (Q)
+    window.addEventListener('keydown', function (e) {
+        if (e.key.toLowerCase() === 'q') {
+            const rect = img.getBoundingClientRect();
+
+            // Use last known position
+            const clickX = lastMouseX;
+            const clickY = lastMouseY;
+
+            const scaleX = img.naturalWidth / rect.width;
+            const scaleY = img.naturalHeight / rect.height;
+
+            const pixelX = Math.floor(clickX * scaleX);
+            const pixelY = Math.floor(clickY * scaleY);
+
+            alert(`Pressed Q at pixel: (${pixelX}, ${pixelY})`);
+        }
     });
 
-    // Pixel coordinate alert on image click
-    img.addEventListener('click', function (e) {
-        const rect = img.getBoundingClientRect();
+    // Press 'w' to shade the hovered grid cell
+    window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'w') {
+            const relativeX = (lastMouseX) / scale;
+            const relativeY = (lastMouseY) / scale;
 
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-
-        const scaleX = img.naturalWidth / rect.width;
-        const scaleY = img.naturalHeight / rect.height;
-
-        const pixelX = Math.floor(clickX * scaleX);
-        const pixelY = Math.floor(clickY * scaleY);
-
-        alert(`Clicked pixel: (${pixelX}, ${pixelY})`);
+            console.log(`Mapped X: ${relativeX}, Y: ${relativeY}`);
+            fillGridCell(relativeX, relativeY);
+        }
     });
+
+
+    // This function fills a grid cell by a shade of white to record it as completed, user can also unfill it.
+    function fillGridCell(x, y) {
+        const col = Math.floor(x / gridSize);
+        const row = Math.floor(y / gridSize);
+        const key = `${col},${row}`;
+
+        const cellX = col * gridSize;
+        const cellY = row * gridSize;
+
+        if (filledCells.has(key)) {
+            // Toggle off
+            filledCells.delete(key);
+            // Clear the cell by redrawing from the image
+            ctx.clearRect(cellX, cellY, gridSize, gridSize);
+            ctx.drawImage(img, cellX, cellY, gridSize, gridSize, cellX, cellY, gridSize, gridSize);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.strokeRect(cellX, cellY, gridSize, gridSize);
+        } else {
+            // Toggle on
+            filledCells.add(key);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // semi-transparent white
+            ctx.fillRect(cellX, cellY, gridSize, gridSize);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.strokeRect(cellX, cellY, gridSize, gridSize);
+        }
+    }
+
+
+
+    
+
 </script>
 
 </body>

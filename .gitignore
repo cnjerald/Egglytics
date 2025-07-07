@@ -14,3 +14,6 @@ media/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Static File
+server/egglytics/static/img
