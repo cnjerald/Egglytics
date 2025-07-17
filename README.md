@@ -19,3 +19,6 @@
 
 ## For Users
 The application is currently in its early development phase and is not yet ready for use.
+
+## To Do List:
+1. Merge model outputs with editor
