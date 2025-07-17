@@ -18,6 +18,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            image-rendering: pixelated;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            contain: strict;
         }
 
         #zoom-wrapper {
@@ -33,10 +38,10 @@
             -webkit-user-drag: none;
         }
         #grid-canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
         }
     </style>
 </head>
@@ -54,6 +59,7 @@
     const container = document.getElementById('photo');
     const wrapper = document.getElementById('zoom-wrapper');
     const img = document.getElementById('image'); 
+
     /* Grids */
     const filledCells = new Set();
     const canvas = document.getElementById('grid-canvas');
@@ -82,6 +88,9 @@
     let lastMouseX = 0;
     let lastMouseY = 0;
 
+    /* Point Storage */
+    const drawnPoints = [];
+
     // Dynamically load the minimum zoom
     img.onload = function () {
         const containerRect = container.getBoundingClientRect();
@@ -95,17 +104,15 @@
         minScale = Math.min(scaleX, scaleY);
         scale = minScale;
         maxScale = minScale + 1;
-        tolerance_reset = maxScale * 0.1;
+        tolerance_reset = maxScale * 0.005;
 
-        // Used to pan image
         translateX = 0;
         translateY = 0;
 
-        // Draw grids
         canvas.width = img.width;
         canvas.height = img.height;
+        
         drawGrid();
-        // Update new image.
         updateTransform();
     };
 
@@ -140,37 +147,72 @@
     }
 
     // Zoom Event Listener (Center Mouse Wheel)
-    container.addEventListener('wheel', function (e) {
+    let zoomPending = false;
+    let pendingWheelEvent = null;
+
+    // Throttled wheel event listener
+    let zoomVelocity = 0;
+    let isZooming = false;
+
+    container.addEventListener('wheel', (e) => {
         e.preventDefault();
 
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        const newScale = scale + delta;
+        const delta = -e.deltaY * 0.0001; // Negative for natural scroll
+        zoomVelocity += delta;
 
-        if (newScale < minScale || newScale > maxScale) return;
+        if (!isZooming) {
+            isZooming = true;
+            requestAnimationFrame(applyZoom);
+        }
+    });
+
+    function applyZoom() {
+        if (Math.abs(zoomVelocity) < 0.001) {
+            zoomVelocity = 0;
+            isZooming = false;
+            return;
+        }
+
+        const newScale = scale * (1 + zoomVelocity);
+
+        // Guard against limits
+        if (newScale < minScale || newScale > maxScale) {
+            zoomVelocity = 0;
+            isZooming = false;
+            return;
+        }
 
         const rect = container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        const mouseX = lastMouseX ?? rect.width / 2;
+        const mouseY = lastMouseY ?? rect.height / 2;
 
-        // Calculate mouse position relative to image (pre-zoom)
-        const zoomCenterX = (mouseX - translateX) / scale;
-        const zoomCenterY = (mouseY - translateY) / scale;
+        // Calculate world (pre-zoom) coordinates BEFORE updating scale
+        const zoomCenterX = (translateX) / scale;
+        const zoomCenterY = (translateY) / scale;
 
-        // Update scale
+        // Set new scale
         scale = newScale;
 
-        // Adjust pan to keep zoom centered on mouse
-        translateX = mouseX - zoomCenterX * scale;
-        translateY = mouseY - zoomCenterY * scale;
+        // Adjust pan so zoom stays centered on the mouse
+        translateX = zoomCenterX * scale;
+        translateY = zoomCenterY * scale;
 
-        // Optionally reset pan if fully zoomed out
+        // Snap to default if extremely close to min
         if (Math.abs(scale - minScale) < tolerance_reset) {
             translateX = 0;
             translateY = 0;
         }
 
         updateTransform();
-    });
+
+        // Decay zoom velocity (Higher leads to faster zoom)
+        zoomVelocity *= 0.95;
+
+        requestAnimationFrame(applyZoom);
+    }
+
+
+
 
 
     // Track last mouse position over the image (Useful for finding exact pixel)
@@ -231,6 +273,51 @@
         }
     });
 
+    // Press 'e' to create a point
+    let eKeyIsDown = false;
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'e' && !eKeyIsDown) {
+            eKeyIsDown = true;
+
+            const rect = img.getBoundingClientRect();
+
+            // Use last known position
+            const clickX = lastMouseX;
+            const clickY = lastMouseY;
+
+            const scaleX = img.naturalWidth / rect.width;
+            const scaleY = img.naturalHeight / rect.height;
+
+            const pixelX = Math.floor(clickX * scaleX);
+            const pixelY = Math.floor(clickY * scaleY);
+            drawPoint(pixelX, pixelY);
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key.toLowerCase() === 'e') {
+            eKeyIsDown = false;
+        }
+    });
+    // Press 'r' to erase a point
+    window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'r') {
+            const rect = img.getBoundingClientRect();
+
+            // Use last known position
+            const clickX = lastMouseX;
+            const clickY = lastMouseY;
+
+            const scaleX = img.naturalWidth / rect.width;
+            const scaleY = img.naturalHeight / rect.height;
+
+            const pixelX = Math.floor(clickX * scaleX);
+            const pixelY = Math.floor(clickY * scaleY);
+            erasePointAtCursor(pixelX,pixelY);
+        }
+    });
+
 
     // This function fills a grid cell by a shade of white to record it as completed, user can also unfill it.
     function fillGridCell(x, y) {
@@ -259,6 +346,34 @@
         }
     }
 
+    // This function draws a point.
+    function drawPoint(x, y, color = 'red', radius = 5) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        drawnPoints.push({ x, y });
+    }
+
+    function erasePointAtCursor(mouseX, mouseY) {
+        const threshold = 10;
+        const thresholdSq = threshold * threshold;
+
+        for (let i = drawnPoints.length - 1; i >= 0; i--) {
+            const pt = drawnPoints[i];
+            const dx = pt.x - mouseX;
+            const dy = pt.y - mouseY;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq <= thresholdSq) {
+                drawnPoints.splice(i, 1);
+                // Just clear 
+                ctx.clearRect(pt.x - threshold - 1, pt.y - threshold - 1, threshold * 2 + 2, threshold * 2 + 2);
+            }
+        }
+
+    }
 
 
     
