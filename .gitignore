@@ -1,0 +1,19 @@
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+.env
+
+# VS Code 
+.vscode/
+
+# Static and media (if generated)
+staticfiles/
+media/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Static File
+server/egglytics/static/img
