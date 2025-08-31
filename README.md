@@ -6,7 +6,8 @@
 2. In this .env file add this line SECRET_KEY="YOUR_KEY"
    
 ### I. Running the Server
-1. cd server
+1. Activate venv
+2. cd server
 2. python manage.py runserver
 3. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
 

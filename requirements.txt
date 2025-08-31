@@ -2,3 +2,4 @@ django
 python-decouple
 opencv-python
 numpy
+requests

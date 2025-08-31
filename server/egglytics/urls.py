@@ -4,6 +4,7 @@ from .import views
 
 urlpatterns = [
     path("", views.upload, name="upload"),
-    path("test/",views.edit,name="edit"),
+    path("edit/",views.edit,name="edit"),
+    path("view/",views.view,name="view"),
 ]
 

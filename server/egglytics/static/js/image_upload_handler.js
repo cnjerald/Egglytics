@@ -3,6 +3,7 @@ $(document).ready(function () {
     const $fileInput = $('#myfile');
     const $previewContainer = $('#uploaded-image');
 
+    // <-- These section handles the effects of the upload -->
     // Drag hover styling
     $dropArea.on('dragenter dragover', function (e) {
         e.preventDefault();
@@ -21,6 +22,7 @@ $(document).ready(function () {
         const files = e.originalEvent.dataTransfer.files;
         handleFiles(files);
     });
+    // <-- SECTION END -->
 
     // File picker
     $fileInput.on('change', function () {
@@ -71,24 +73,15 @@ $(document).ready(function () {
 
         validFiles.forEach(file => {
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    const $img = $('<img>', {
-                        src: e.target.result,
-                        css: {
-                            'max-width': '100%',
-                            'margin-top': '10px'
-                        }
-                    });
-                    $previewContainer.append($img);
-                };
                 reader.readAsDataURL(file);              
                   // Append to FormData using key "myfiles"
                 formData.append('myfiles', file);
+                
         })
 
-        // Send to server
+        // Send to server (Django)
         $.ajax({
-            url: '',  // send to current page (same as your view)
+            url: '',
             type: 'POST',
             data: formData,
             processData: false,
