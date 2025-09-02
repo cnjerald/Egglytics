@@ -1,38 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
+    {% load static %}
     <title>Centered Zoom and Pan Image</title>
     <text> Q - DEBUG PIXEL LOC || W - MARK DONE/UNDONE || E - CREATE DOT || R - REMOVE DOT</text>
     <br>
     <container class="toolbar">
         <button type="button" class="tools-button" title="Eraser">
-            <img src="../static/img/eraser.png" alt="Erase" class="button-photo">
+            <img src="{% static 'img/eraser.png' %}" alt="Erase" class="button-photo">
         </button>
         <div class="toolbara">
         <!-- Dropdown toggle -->
         <button type="button" class="tools-button" id="edit-toggle" title="Annotate">
-            <img src="../static/img/edit.png" alt="Edit" class="button-photo">
+            <img src="{% static 'img/edit.png' %}" alt="Edit" class="button-photo">
         </button>
 
         <!-- Dropdown content (hidden by default) -->
         <div class="dropdown" id="edit-dropdown">
             <button type="button" class="tools-button" id="point-btn">
-            <img src="../static/img/dot.png" alt="point" class="button-photo">
+            <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
             </button>
             <button type="button" class="tools-button" id="rect-btn"">
-            <img src="../static/img/bounding-box.png" alt="bounding-box" class="button-photo">
+            <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
             </button>
             <button type="button" class="tools-button">
-            <img src="../static/img/polygon.png" alt="polygon" class="button-photo">
+            <img src="{% static 'img/polygon.png' %}" alt="polygon" class="button-photo">
             </button>
         </div>
         </div>
         <button type="button" class="tools-button" title="Undo" id="undo-btn">
-            <img src="../static/img/undo.png" alt="undo" class="button-photo">
+            <img src="{% static 'img/undo.png' %}" alt="undo" class="button-photo">
         </button>
         <button type="button" class="tools-button" title="Redo">
             <!-- Flipping the undo button turns it into a redo button-->
-            <img src="../static/img/undo.png" alt="redo" class="button-photo" style="transform: rotateY(180deg);" > 
+            <img src="{% static 'img/undo.png' %}" alt="redo" class="button-photo" style="transform: rotateY(180deg);">
         </button>
 
         <div>
@@ -42,9 +43,6 @@
 
     </container>
 
-
-
-    
     <style>
         body {
             margin: 0;
@@ -58,7 +56,7 @@
             max-height: 100%;         /* Prevent overflow */
             overflow: hidden;
             position: relative;
-            background-color: red;
+            background-color: white;
             cursor: crosshair;
             display: flex;
             justify-content: center;
@@ -141,17 +139,18 @@
 
     </style>
 </head>
+
 <body>
     <div id="photo">
         <div id="zoom-wrapper">
-            <img id="image" src="../static/img/test.jpg" alt="Zoomable Image">
+            <img id="image" src="{% static 'uploads/' %}{{ image_name }}" alt="Zoomable Image">
             <canvas id="grid-canvas"></canvas>
             <canvas id="dot-canvas"></canvas>
         </div>
     </div>
 
-<!-- <div id="points-data" data-points='{{ points_json|safe }}'></div> -->
-{% load static %}
+<div id="points-data" data-points='{{ points_json|safe }}'></div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="{% static 'js/image_editor_handler.js' %}"></script>
 <script>

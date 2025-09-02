@@ -38,8 +38,8 @@ $(document).ready(function () {
     /* Point Storage */
     const drawnPoints = [];
 
-    //const tmp = document.getElementById('points-data');
-    //const points = JSON.parse(tmp.dataset.points);
+    const pointsData = document.getElementById("points-data");
+    const points = JSON.parse(pointsData.dataset.points || "[]");
 
     /* Rescale image */
     const containerRect = container.getBoundingClientRect();
@@ -67,7 +67,7 @@ $(document).ready(function () {
     // Apply scales, resize, and transformations
     updateTransform();
     // Draw initial points
-    //drawPoints(points);
+    drawPoints(points);
 
 
 
@@ -84,7 +84,8 @@ $(document).ready(function () {
     // This function draws the points in the canvas
     function drawPoints(points){
         points.forEach(p => {
-            drawPoint(parseInt(p[0]), parseInt(p[1]));
+            console.log("Drawing Point!",p.x,p.y)
+            drawPoint(p.x, p.y);
         });
     }
 

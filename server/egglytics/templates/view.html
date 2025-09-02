@@ -74,90 +74,50 @@
                     color: white;
                     cursor: pointer;
                 }
+                .button-photo {
+                    max-width: 100%;   /* don't exceed parent column width */
+                    max-height: 60vh;  /* don't exceed 60% of viewport height */
+                    object-fit: contain; /* scale down while keeping aspect ratio */
+                    border-radius: 6px;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
 
         </style>
     </head>
     <body>
-        <div class="info-card">
-            <h5>ID: Sample ID</h5>
-            <h5>Date: MM/DD/YY</h5>
-            <h5>Total Images: 15</h5>
-            <h5>Total Eggs: 1,000</h5>
-            <h5>Processing Status: Pending</h5>
+        {% for batch in batches %}
+        <div class="info-card" data-batch-id="{{ batch.id }}">
+            <h5>NAME: {{ batch.batch_name }}</h5>
+            <h5>Date: {{ batch.date_updated|date:"m/d/Y" }}</h5>
+            <h5>Total Images: {{ batch.total_images }}</h5>
+            <h5>Total Eggs: {{ batch.total_eggs }}</h5>
+            <h5>Processing Status: {% if batch.total_eggs > 0 %} Done {% else %} Pending {% endif %}</h5>
         </div>
-
-        <div class="info-card">
-            <h5>ID: Sample ID</h5>
-            <h5>Date: MM/DD/YY</h5>
-            <h5>Total Images: 30</h5>
-            <h5>Total Eggs: 2,500</h5>
-            <h5>Processing Status: Processing</h5>
-        </div>
-
-        <div class="info-card">
-            <h5>ID: Sample ID</h5>
-            <h5>Date: MM/DD/YY</h5>
-            <h5>Total Images: 12</h5>
-            <h5>Total Eggs: 800</h5>
-            <h5>Processing Status: Finished</h5>
-        </div>
+        {% endfor %}
         
         <!-- Popup Modal -->
         <div class="popup" id="popup">
             <div class="popup-content">
-                <h3 id="popup-text">Hello</h3>
+                <!-- Title / Header -->
+                <h3 id="popup-text">Details</h3>
 
                 <div class="popup-holder">
+                    <!-- Left side can be static or used for thumbnails -->
                     <div class="half">
-                        <img src="../static/img/undo.png" alt="undo" class="button-photo">
+                        <img id="popup-image" src="" alt="Image Preview" class="button-photo">
                     </div>
-                    <div class="half text-side">
-                        <h5>Entry 1</h5>
-                        <h5>Entry 2</h5>
-                        <h5>Entry 3</h5>
-                        <h5>Entry 4</h5>
-                        <h5>Entry 5</h5>
-                        <h5>Entry 6</h5>
-                        <h5>Entry 7</h5>
-                        <h5>Entry 8</h5>
-                        <h5>Entry 9</h5>
-                        <h5>Entry 10</h5>
-                        <h5>Entry 1</h5>
-                        <h5>Entry 2</h5>
-                        <h5>Entry 3</h5>
-                        <h5>Entry 4</h5>
-                        <h5>Entry 5</h5>
-                        <h5>Entry 6</h5>
-                        <h5>Entry 7</h5>
-                        <h5>Entry 8</h5>
-                        <h5>Entry 9</h5>
-                        <h5>Entry 10</h5>
-                        <h5>Entry 1</h5>
-                        <h5>Entry 2</h5>
-                        <h5>Entry 3</h5>
-                        <h5>Entry 4</h5>
-                        <h5>Entry 5</h5>
-                        <h5>Entry 6</h5>
-                        <h5>Entry 7</h5>
-                        <h5>Entry 8</h5>
-                        <h5>Entry 9</h5>
-                        <h5>Entry 10</h5>
-                        <h5>Entry 1</h5>
-                        <h5>Entry 2</h5>
-                        <h5>Entry 3</h5>
-                        <h5>Entry 4</h5>
-                        <h5>Entry 5</h5>
-                        <h5>Entry 6</h5>
-                        <h5>Entry 7</h5>
-                        <h5>Entry 8</h5>
-                        <h5>Entry 9</h5>
-                        <h5>Entry 10</h5>
+
+                    <!-- Right side: dynamic content goes here -->
+                    <div class="half text-side" id="popup-details">
+                        <!-- Will be filled by JS -->
+                        <p>Loading...</p>
                     </div>
                 </div>
 
                 <button class="close-btn" onclick="closePopup()">Close</button>
             </div>
         </div>
+
     </body>
     <script>
         const cards = document.querySelectorAll('.info-card');
@@ -185,20 +145,45 @@
 
 
         // Add click events to cards
-        cards.forEach((card, index) => {
-            card.addEventListener('click', () => {
-                openPopup(`Hello from card ${index + 1}`);
+        cards.forEach((card) => {
+            card.addEventListener("click", () => {
+                const batchId = card.getAttribute("data-batch-id");
 
-                // Example AJAX request
-                fetch('/your-endpoint', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ card: index + 1 })
-                })
-                .then(response => response.json())
-                .then(data => console.log('Server response:', data))
-                .catch(err => console.error('Error:', err));
+                // Show popup immediately (loading state)
+                popupText.textContent = "Loading images...";
+                popup.style.display = "flex";
+
+                fetch(`/batch/${batchId}/images/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Replace popup content with real image details
+                        let detailsHTML = "";
+                        const img = data[0]; // show first image for now
+                        document.getElementById("popup-image").src = `../static/uploads/${img.image_name}`;
+                        data.forEach(img => {
+                            detailsHTML += `
+                                <div>
+                                    <h5>Image: ${img.image_name}</h5>
+                                    <p>Eggs: ${img.total_eggs}</p>
+                                    <p>Hatched: ${img.total_hatched}</p>
+                                    <p>Type: ${img.img_type}</p>
+                                    <button class="edit-btn" onclick="window.location.href='/edit/${img.image_id}'">
+                                        Edit
+                                    </button>
+                                </div>
+                                <hr/>
+                            `;
+                        });
+
+                        popupText.textContent = "Image Details"; // header
+                        document.querySelector(".text-side").innerHTML = detailsHTML;
+                    })
+                    .catch(err => {
+                        popupText.textContent = "Error loading images";
+                        console.error(err);
+                    });
             });
         });
+
     </script>
 </html>

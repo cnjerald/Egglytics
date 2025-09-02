@@ -2,15 +2,14 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-import json
-import cv2
 import numpy as np
 import base64
 import requests
-import tempfile
 import os
-from .models import ImageEntry  # Delete in the future, not using SQLite on deployment...
 import json
+from datetime import datetime
+from django.utils import timezone
+from .models import BatchDetails,ImageDetails, AnnotationPoints
 
 
 
@@ -18,93 +17,133 @@ import json
 # sending the image to the flask server and receiving the results from the flask server.
 # This also updates the SQLite
 def upload(request): 
-
-    owner = request.user if request.user.is_authenticated else None
-    print("The owner is!",owner)
-
-    temp_dir = os.path.join(settings.BASE_DIR, 'temp_uploads')
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_storage = FileSystemStorage(location=temp_dir)
-    temp_files = request.session.get('temp_files', [])
-
-    file_names = []
-
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
+        header = datetime.now().strftime("%Y%m%d_%H%M%S")
+        owner = request.user.username if request.user.is_authenticated else 'incognito'
+        batch_name = f"{header}_{owner}"
+        date = timezone.now()
+
+        total_images = len(request.FILES.getlist('myfiles'))
+        total_eggs = 0   # you’ll calculate this later
+        total_hatched = 0
+
+        # Create a batch row in db
+        batch = BatchDetails.objects.create(
+            batch_name=batch_name,
+            owner=owner,
+            total_images=total_images,
+            total_eggs=total_eggs,
+            total_hatched=total_hatched,
+            date_updated=date
+        )
+
+        # Retrieve all uploaded images
         files = request.FILES.getlist('myfiles')
-        index = 0
-        
         # For each image
-        for f in files:
+        for i, f in enumerate(files, start=0):
+            file_name = f"{header}_{i}.jpg"
 
-            # Save images to temp folder
-            # Save to temp folder
-            filename = temp_storage.save(f.name, f)
-            file_path = temp_storage.path(filename)
-            temp_files.append(file_path)
-
-            # Insert into SQLite
-            ImageEntry.objects.create(filename=f.name, annotations="")
-
-            # Upload images to Flask server for inference
+            # Uploading files for inference
+            # Convert to base64
             file_bytes = f.read()
             encoded = base64.b64encode(file_bytes).decode('utf-8')
             payload = {'image': encoded, 'filename': f.name}
-
             try:
+                # Send it to the compute server
                 response = requests.post('http://localhost:5000/upload_base64', json=payload)
-                data = response .json()  # Convert JSON response to Python dict
-                points = data.get("points")  # This is the annotation data
+                data = response.json()  
 
-                filename = f.name
+                points = data.get("points")          # annotation data list
+                image_b64 = data.get("final_image")  # final image as base64
 
-                # Update the record in DB
-                ImageEntry.objects.filter(filename=filename).update(annotations=points)
+                #Save ImageDetails in DB
+                image_record = ImageDetails.objects.create(
+                    batch=batch,                     # link to your BatchDetails object
+                    image_name=f"image_{i}.jpg",     # give it a filename or UUID
+                    total_eggs=0,                    # update later from model if needed
+                    total_hatched=0,                 # update later from model if needed
+                    img_type="MICRO",                # HARDCODED ATM
+                    allow_collection=True
+                )
 
+                #Decode base64 and save locally (This will be saved in an S3 bucket in the future)
+                if image_b64:
+                    img_data = base64.b64decode(image_b64)
+                    file_name = f"{image_record.image_name}"
+                    upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
+                    os.makedirs(upload_dir, exist_ok=True)           # ensure directory exists
+                    file_path = os.path.join(upload_dir, file_name)  # static/uploads/<filename>
 
+                    with open(file_path, "wb") as f:
+                        f.write(img_data)
+
+                #Save point annotations linked to image to the annotation_point db
+                if points:
+                    for p in points:
+                        AnnotationPoints.objects.create(
+                            image=image_record,
+                            x=p[0],
+                            y=p[1],
+                            is_original=True
+                        )
 
             except Exception as e:
-                print(f"Error sending to Flask for {f.name}: {e}")
+                print("Error while processing image:", e)
 
 
-        return JsonResponse({'filenames': file_names}) # Ajax return
+        return JsonResponse({'filenames': "GOOD!"}) # Ajax return to website if needed
 
     # GET request fallback
     return render(request, "base.html", {'included_template': 'upload.html'})
 
 
 
-# This is a brute force implementation to retrive the annotations of the first upload (ID=1) and
+# This is the server side for the scripts
 # Sends it to the editor HTML.
-def edit(request):
-    # Fetch entry by ID (change this if you want dynamic IDs from query params)
-    entry_id = 1
-    #entry = get_object_or_404(ImageEntry, id=entry_id)
+def edit(request, image_id):
+    # Get image entry
+    image = get_object_or_404(ImageDetails, image_id=image_id)
 
-    # Parse annotations safely
-    #points = entry.annotations
-    #print(points)
-    '''
-    if isinstance(points, str):
-        try:
-            points = json.loads(points)
-        except json.JSONDecodeError:
-            points = []
-    '''
+    # Get related annotation points
+    annotations = AnnotationPoints.objects.filter(image=image).values(
+        "point_id", "x", "y"
+    )
+
     return render(
         request,
         "base.html",
         {
-            'included_template': 'editor.html',
-            #'points_json': json.dumps(points)  # Send points to HTML
+            "included_template": "editor.html",
+            "image_name": image.image_name,                # filename for <img>
+            "points_json": json.dumps(list(annotations))   # list of dicts for JS
         }
     )
 
+
 # This is where user can see what was uploaded..
-def view(requests):
+from django.shortcuts import render
+from .models import BatchDetails, ImageDetails
+
+def view(request):
+    # Just show igcognito batches atm (Brute forced.)
+    batches = BatchDetails.objects.filter(owner="incognito")
+
+    # Might remove this..
+    batches = batches.prefetch_related("imagedetails_set")
+
     return render(
-        requests,
-        "base.html",{
-            'included_template' : 'view.html'
+        request,
+        "base.html",
+        {
+            "included_template": "view.html",
+            "batches": batches,
         }
     )
+
+def batch_images(request, batch_id):
+    images = ImageDetails.objects.filter(batch_id=batch_id).values(
+        "image_id","image_name", "total_eggs", "img_type"
+    )
+    return JsonResponse(list(images), safe=False)
+
 
