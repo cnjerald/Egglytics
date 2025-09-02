@@ -3,7 +3,14 @@
 ## For Developers
 ## I. Initial Setup
 1. Create a .env file on ROOT
-2. In this .env file add this line SECRET_KEY="YOUR_KEY"
+2. In this .env file add these line
+
+SECRET_KEY="YOUR_KEY"
+DB_NAME='YOUR_DB_NAME'
+DB_USER='USERNAME'
+DB_PASSWORD='PASSWORD'
+DB_HOST='localhost'
+DB_PORT='5432'
    
 ### I. Running the Server
 1. Activate venv
