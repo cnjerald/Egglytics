@@ -55,12 +55,13 @@ def upload(request):
 
                 points = data.get("points")          # annotation data list
                 image_b64 = data.get("final_image")  # final image as base64
+                total_eggs = data.get("egg_count")
 
                 #Save ImageDetails in DB
                 image_record = ImageDetails.objects.create(
                     batch=batch,                     # link to your BatchDetails object
                     image_name=f"image_{i}.jpg",     # give it a filename or UUID
-                    total_eggs=0,                    # update later from model if needed
+                    total_eggs=total_eggs,                    # update later from model if needed
                     total_hatched=0,                 # update later from model if needed
                     img_type="MICRO",                # HARDCODED ATM
                     allow_collection=True
@@ -110,12 +111,14 @@ def edit(request, image_id):
     )
 
     return render(
+        
         request,
         "base.html",
         {
             "included_template": "editor.html",
             "image_name": image.image_name,                # filename for <img>
-            "points_json": json.dumps(list(annotations))   # list of dicts for JS
+            "points_json": json.dumps(list(annotations)),   # list of dicts for JS
+            "total_eggs": json.dumps(image.total_eggs)
         }
     )
 

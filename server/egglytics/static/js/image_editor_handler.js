@@ -1,4 +1,5 @@
 $(document).ready(function () {
+
     const container = document.getElementById('photo');
     const wrapper = document.getElementById('zoom-wrapper');
     const img = document.getElementById("image");
@@ -37,9 +38,6 @@ $(document).ready(function () {
 
     /* Point Storage */
     const drawnPoints = [];
-
-    const pointsData = document.getElementById("points-data");
-    const points = JSON.parse(pointsData.dataset.points || "[]");
 
     /* Rescale image */
     const containerRect = container.getBoundingClientRect();
@@ -84,7 +82,7 @@ $(document).ready(function () {
     // This function draws the points in the canvas
     function drawPoints(points){
         points.forEach(p => {
-            console.log("Drawing Point!",p.x,p.y)
+            //console.log("Drawing Point!",p.x,p.y)
             drawPoint(p.x, p.y);
         });
     }
@@ -93,7 +91,7 @@ $(document).ready(function () {
     function drawGrid() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 10;
 
         // Vertical lines
         for (let x = 0; x <= canvas.width; x += gridSize) {
@@ -142,8 +140,12 @@ $(document).ready(function () {
         // This is the brake of the zoom
         if (Math.abs(zoomVelocity) < 0.001) {
             zoomVelocity = 0;
-            isZooming = false;
-            console.log("BRAKE!");
+
+            setTimeout(() => {
+                isZooming = false;
+                console.log("BRAKE!");
+            }, 100); // delay in .1 seconds, preventing action drift
+
             return;
         }
 
@@ -168,7 +170,7 @@ $(document).ready(function () {
         updateTransform();
 
         // Decay zoom velocity (Higher value leads to weaker brakes)
-        zoomVelocity *= 0.91;
+        zoomVelocity *= 0.95;
 
         requestAnimationFrame(applyZoom);
     }
@@ -232,11 +234,9 @@ $(document).ready(function () {
 
     // Press 'w' to shade the hovered grid cell
     window.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'w') {
+        if (e.key.toLowerCase() === 'w' && !isZooming && !isDragging) {
             const relativeX = (lastMouseX) / scale;
             const relativeY = (lastMouseY) / scale;
-
-            console.log(`Mapped X: ${relativeX}, Y: ${relativeY}`);
             fillGridCell(relativeX, relativeY);
         }
     });
@@ -420,23 +420,20 @@ $(document).ready(function () {
             // Toggle off
             filledCells.delete(key);
             // Clear the cell by redrawing from the image
-            ctx.clearRect(cellX, cellY, gridSize, gridSize);
-            ctx.drawImage(img, cellX, cellY, gridSize, gridSize, cellX, cellY, gridSize, gridSize);
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.strokeRect(cellX, cellY, gridSize, gridSize);
+            ctx.clearRect(cellX+5, cellY+5, gridSize-10, gridSize-10);
+
         } else {
             // Toggle on
             filledCells.add(key);
             //ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White
             ctx.fillStyle = 'rgba(0, 255, 0, 0.4)'; // Greenish
-            ctx.fillRect(cellX, cellY, gridSize, gridSize);
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.strokeRect(cellX, cellY, gridSize, gridSize);
+            ctx.fillRect(cellX+5, cellY+5, gridSize-10, gridSize-10);
+
         }
     }
 
     // This function draws a point.
-    function drawPoint(x, y, color = 'green', radius = 5) {
+    function drawPoint(x, y, color = 'green', radius = 5, isResized = false) {
         if(!isDragging && !isZooming){
             dtx.beginPath();
             dtx.arc(x, y, radius, 0, 2 * Math.PI);
@@ -444,9 +441,10 @@ $(document).ready(function () {
             dtx.fill();
             
             // Store the point with all its visual properties
-            drawnPoints.push({ x, y, color, radius });
-
-            undoQueue.push({x,y,'annotation':'point'});
+            if(!isResized){
+                drawnPoints.push({ x, y, color, radius });
+                undoQueue.push({x,y,'annotation':'point'});
+            }
         }
     }
 
@@ -654,9 +652,9 @@ $(document).ready(function () {
         dot_canvas.height = img.height;
 
         updateTransform();
-        // points.forEach(p => {
-        //     drawPoint(parseInt(p[0]), parseInt(p[1]));
-        // });
+        drawnPoints.forEach(p => {
+            drawPoint(p.x, p.y, p.color, p.radius, isResized = true);
+        });
     }
 
     // Recalculate when window resizes
@@ -674,21 +672,19 @@ $(document).ready(function () {
 
 
     // Section related to menu...
-    const pointBtn = document.getElementById("point-btn");
-    const rectBtn = document.getElementById("rect-btn");
     const undoBtn = document.getElementById("undo-btn");
 
-    pointBtn.addEventListener("click", (e) => {
+    $("#point-btn").on("click", function (e) {
         isPointAnnotate = true;
         isRectAnnotate = false;
-        dropdown.style.display = "none";
-    })
+        $("#edit-dropdown").toggle();
+    });
 
-    rectBtn.addEventListener("click",(e)=>{
+    $("#rect-btn").on("click", function (e) {
         isRectAnnotate = true;
         isPointAnnotate = false;
-        dropdown.style.display = "none";
-    })
+        $("#edit-dropdown").toggle();
+    });
 
 
     undoBtn.addEventListener("click", (e) => {

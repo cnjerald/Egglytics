@@ -1,5 +1,121 @@
 <!DOCTYPE html>
 <html>
+
+<style>
+    body {
+        margin: 0;
+        overflow:hidden;
+    }
+    /* This needs a fix, not perfectly fit into the page, esp if the picture is larger than the canvas*/
+    #photo {
+        width: 100vw;              /* Use 90% of viewport width */
+        height: 100vh;             /* Use 90% of viewport height */
+        max-width: 100%;          /* Prevent overflow */
+        max-height: 100%;         /* Prevent overflow */
+        overflow: hidden;
+        position: relative;
+        background-color: white;
+        cursor: crosshair;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        image-rendering: pixelated;
+        will-change: transform;
+        transform: translate3d(0, 0, 0);
+        backface-visibility: hidden;
+        contain: strict;
+        margin: 0 auto;           /* Center the container */
+    }
+
+    #zoom-wrapper {
+        position: absolute;
+        will-change: transform;
+        transform: translate(0px, 0px) scale(1);
+    }
+
+    #zoom-image {
+        user-select: none;
+        max-width: none;
+        display: block;
+        -webkit-user-drag: none;
+    }
+    #grid-canvas, #dot-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
+    }
+    .tools-button {
+        height: 5vh;
+        width: 5vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: 12px;               /* rounded corners */
+        background-color: #f3f4f6;         /* soft gray */
+        color: #333;                       /* icon/text color */
+        cursor: pointer;                   /* show hand cursor */
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);  /* subtle shadow */
+        transition: 
+            background-color 0.2s ease,
+            transform 0.15s ease,
+            box-shadow 0.2s ease;          /* smooth animations */
+    }
+
+    .tools-button:hover {
+        background-color: #e0e7ff;         /* soft highlight on hover */
+        transform: translateY(-2px);       /* lift effect */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .tools-button:active {
+        background-color: #c7d2fe;         /* deeper press color */
+        transform: translateY(0);          /* reset lift */
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .tools-button-selected{
+        pointer-events: none;      /* Makes it unclickable */
+        opacity: 0.6;              /* Makes it look dimmed */
+        background-color: #ccc;    /* Grayed-out background */
+        color: #666;               /* Duller text color */
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Gives it a pressed-in look */
+        cursor: not-allowed;
+    }
+    .button-photo {
+        height: 70%;
+        width: 70%;
+        object-fit: contain;
+    }
+    .toolbar{
+        display:flex;
+    }
+    .toolbara {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown {
+    display: none;              /* hidden by default */
+    position: absolute;
+    top: 100%;                  /* place below the edit button */
+    left: 0;
+    background: white;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 10;
+    }
+
+    .dropdown .tools-button {
+    display: block;             /* stack vertically */
+    margin: 3px 0;
+    }
+</style>
+
 <head>
     {% load static %}
     <title>Centered Zoom and Pan Image</title>
@@ -20,7 +136,7 @@
             <button type="button" class="tools-button" id="point-btn">
             <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
             </button>
-            <button type="button" class="tools-button" id="rect-btn"">
+            <button type="button" class="tools-button" id="rect-btn">
             <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
             </button>
             <button type="button" class="tools-button">
@@ -43,101 +159,7 @@
 
     </container>
 
-    <style>
-        body {
-            margin: 0;
-            overflow:hidden;
-        }
-        /* This needs a fix, not perfectly fit into the page, esp if the picture is larger than the canvas*/
-        #photo {
-            width: 100vw;              /* Use 90% of viewport width */
-            height: 100vh;             /* Use 90% of viewport height */
-            max-width: 100%;          /* Prevent overflow */
-            max-height: 100%;         /* Prevent overflow */
-            overflow: hidden;
-            position: relative;
-            background-color: white;
-            cursor: crosshair;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            image-rendering: pixelated;
-            will-change: transform;
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            contain: strict;
-            margin: 0 auto;           /* Center the container */
-        }
-
-        #zoom-wrapper {
-            position: absolute;
-            will-change: transform;
-            transform: translate(0px, 0px) scale(1);
-        }
-
-        #zoom-image {
-            user-select: none;
-            max-width: none;
-            display: block;
-            -webkit-user-drag: none;
-        }
-        #grid-canvas, #dot-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
-        }
-        .tools-button {
-            height: 5vh;
-            width: 5vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            border: none;
-            background-color: #eee;
-        }
-        .tools-button-selected{
-            pointer-events: none;      /* Makes it unclickable */
-            opacity: 0.6;              /* Makes it look dimmed */
-            background-color: #ccc;    /* Grayed-out background */
-            color: #666;               /* Duller text color */
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Gives it a pressed-in look */
-            cursor: not-allowed;
-        }
-        .button-photo {
-            height: 70%;
-            width: 70%;
-            object-fit: contain;
-        }
-        .toolbar{
-            display:flex;
-        }
-        .toolbara {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown {
-        display: none;              /* hidden by default */
-        position: absolute;
-        top: 100%;                  /* place below the edit button */
-        left: 0;
-        background: white;
-        padding: 5px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 10;
-        }
-
-        .dropdown .tools-button {
-        display: block;             /* stack vertically */
-        margin: 3px 0;
-        }
-
-
-    </style>
+    
 </head>
 
 <body>
@@ -145,30 +167,37 @@
         <div id="zoom-wrapper">
             <img id="image" src="{% static 'uploads/' %}{{ image_name }}" alt="Zoomable Image">
             <canvas id="grid-canvas"></canvas>
-            <canvas id="dot-canvas"></canvas>
+            <canvas id="dot-canvas"></canvas>  
         </div>
     </div>
 
-<div id="points-data" data-points='{{ points_json|safe }}'></div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="{% static 'js/image_editor_handler.js' %}"></script>
 <script>
-    const toggleBtn = document.getElementById("edit-toggle");
-    const dropdown = document.getElementById("edit-dropdown");
 
-    // Toggle when clicking the button
-    toggleBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // prevent this click from bubbling to document
-        dropdown.style.display = (dropdown.style.display === "block") ? "none" : "block";
+
+
+    // NO there is no SYNTAX error here and NO you can not put this on image_editor_handler.js
+    // eslint-disable-next-line
+    const points = {{ points_json|safe }};
+    // eslint-disable-next-line
+    const total_egg_count = {{ total_eggs }};
+    console.log(total_egg_count);
+
+    $("#edit-toggle").on("click", function (e) {
+        e.stopPropagation();
+        $("#edit-dropdown").toggle();
     });
 
     // Close when clicking outside
-    document.addEventListener("click", (e) => {
-        if (!toggleBtn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = "none";
+    $(document).on("click", function (e) {
+        if (!$(e.target).closest("#edit-toggle, #edit-dropdown").length) {
+            $("#edit-dropdown").hide(); // <-- use .hide() instead of .toggle()
         }
     });
+
+
 </script>
 </body>
 </html>

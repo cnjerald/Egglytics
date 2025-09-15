@@ -2,6 +2,8 @@ $(document).ready(function () {
     const $dropArea = $('#drop-area');
     const $fileInput = $('#myfile');
     const $previewContainer = $('#uploaded-image');
+    let fileArray = [];
+    let index_holder = null;
 
     // <-- These section handles the effects of the upload -->
     // Drag hover styling
@@ -34,69 +36,174 @@ $(document).ready(function () {
         // Maximum file count
         const MAX_FILES = 15;
         // Maximum file size
-        const MAX_SIZE_PER_FILE = 20 * 1024 * 1024;
+        const MAX_SIZE_PER_FILE = 200 * 1024 * 1024;
 
         // SECTION =========== CHECKS THE UPLOAD =========== 
-        
-        const fileArray = Array.from(files);
-
-        // Check if the total uploaded files exceeds max files.
-        // In this case, just cancel file upload as it can be confusing to the user if I just upload N files ignoring others.
-        if (fileArray.length > MAX_FILES) {
-            alert(`You can only upload up to ${MAX_FILES} images.`);
-            return;
+        // Check file count
+        if (fileArray.length + files.length <= MAX_FILES) {
+            // Filter out files that are too big
+            const validFiles = Array.from(files).filter(file => 
+                file.size <= MAX_SIZE_PER_FILE);
+            
+            // Add to array
+            fileArray = fileArray.concat(validFiles);
+        } else {
+            alert("DEBUG: TOO MANY FILES!");
         }
-
-        // Check and append files that are:
-        // (1) JPEG or PNG
-        // (2) Is below the maximum file size  
-        const validFiles = fileArray.filter(file => {
-            if (!file.type.startsWith('image/')) {
-                alert(`File "${file.name}" is not a valid image.`);
-                return false;
-            }
-            if (file.size > MAX_SIZE_PER_FILE) {
-                alert(`File "${file.name}" exceeds 1MB size limit.`);
-                return false;
-            }
-            return true;
-        });
 
         // Error handling for a rare case.
-        if (validFiles.length === 0) {
-            print("Case: Empty upload");
+        if (fileArray.length === 0) {
+            console.log("Case: Empty upload");
+            return;
+        }
+        // SECTION CREATE A FILE VIEW TABLE
+        // select the container
+
+        // SECTION =========== POPULATE TABLE ===========
+        const tbody = document.querySelector("#upload-table tbody");
+        tbody.innerHTML = ""; // Clear old rows if needed
+
+        fileArray.forEach((file, index) => {
+            const row = document.createElement("tr");
+            row.dataset.id = index + 1;
+
+            // Preview image
+            const imgCell = document.createElement("td");
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            img.alt = "preview";
+            img.width = 60;
+            imgCell.appendChild(img);
+
+            // File name
+            const nameCell = document.createElement("td");
+            nameCell.textContent = file.name;
+
+            // File size (pretty format)
+            const sizeCell = document.createElement("td");
+            sizeCell.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
+
+            // Micro/Macro radio buttons
+            const modeCell = document.createElement("td");
+            modeCell.innerHTML = `
+                <label>
+                <input type="radio" name="mode${index}" value="micro" checked> Micro
+                </label>
+                <label>
+                <input type="radio" name="mode${index}" value="macro"> Macro
+                </label>
+            `;
+
+            // Sharing toggle
+            const shareCell = document.createElement("td");
+            shareCell.innerHTML = `
+                <label class="switch">
+                <input type="checkbox" class="share-toggle" name="share${index}">
+                <span class="slider round"></span>
+                </label>
+            `;
+
+            // Edit button
+            const editCell = document.createElement("td");
+            const editBtn = document.createElement("button");
+
+            editBtn.type = "button";
+            editBtn.className = "demo-btn success"; // add classes
+            editBtn.textContent = "Open Cropper with Sample Image"; // button label
+            editBtn.setAttribute("onclick", "openCropperWithSample()"); // set onclick attribute
+
+            editCell.appendChild(editBtn);
+
+            editBtn.onclick = () => {
+                index_holder = index;
+                console.log(index);
+                openCropperWithImage(img.src, index);
+            };
+
+            // Append all cells to row
+            row.appendChild(imgCell);
+            row.appendChild(nameCell);
+            row.appendChild(sizeCell);
+            row.appendChild(modeCell);
+            row.appendChild(shareCell);
+            row.appendChild(editCell);
+
+            // Add row to table
+            tbody.appendChild(row);
+        });
+    }
+
+    $("#saveBtn").on("click",function(e){
+        console.log(index_holder);
+        performSave(index_holder);
+    })
+
+    function performSave(index) {
+        const img = document.getElementById('cropImage');
+        if (!img) {
+            console.error("Crop image not found!");
             return;
         }
 
-        // SECTION ===========  JS SENDS THE IMAGE TO THE SERVER =========== 
+        if (index == null) {
+            console.error("No index set for saving!");
+            return;
+        }
+
+        // Convert back to File
+        const newFile = dataURLtoFile(img.src, fileArray[index].name);
+
+        // Replace in array
+        fileArray[index] = newFile;
+
+        // Update table row directly
+        const row = document.querySelector(`#upload-table tbody tr[data-id="${index + 1}"]`);
+        if (row) {
+            // Update preview image
+            const previewImg = row.querySelector("td img");
+            previewImg.src = URL.createObjectURL(newFile);
+
+            // Update file size cell (3rd column, index 2)
+            const sizeCell = row.querySelectorAll("td")[2];
+            sizeCell.textContent = (newFile.size / (1024 * 1024)).toFixed(2) + " MB";
+        }
+    }
+
+
+    
+    $("#upload-btn").on("click", function (e) {
+        e.preventDefault();
+
+        alert("HELLO WORLD!");
         const formData = new FormData();
 
-        validFiles.forEach(file => {
+        fileArray.forEach(file => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);              
                   // Append to FormData using key "myfiles"
                 formData.append('myfiles', file);
-                
         })
 
-        // Send to server (Django)
         $.ajax({
-            url: '',
-            type: 'POST',
+            url: "/",
+            type: "POST",
             data: formData,
             processData: false,
             contentType: false,
             headers: {
-                'X-CSRFToken': getCSRFToken()
+                "X-CSRFToken": getCSRFToken()
             },
             success: function (response) {
-                console.log('Uploaded files:', response.filenames);
+                console.log("Uploaded files:", response.filenames);
+                handleFiles(files); // refresh table preview
             },
             error: function (xhr, status, error) {
-                console.error('Upload failed:', error);
+                console.error("Upload failed:", error);
             }
         });
-    }
+    });
+
+
 
     function getCSRFToken() {
         const name = 'csrftoken';
