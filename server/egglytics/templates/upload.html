@@ -578,6 +578,12 @@ id = myfile
                     break;
             }
         });
+        
+        // 🔹 Update the highlight overlay box
+        overlay.style.top = crop.top + "%";
+        overlay.style.left = crop.left + "%";
+        overlay.style.right = crop.right + "%";
+        overlay.style.bottom = crop.bottom + "%";
     }
 
     function resetBars() {

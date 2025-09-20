@@ -24,7 +24,7 @@ def upload(request):
         date = timezone.now()
 
         total_images = len(request.FILES.getlist('myfiles'))
-        total_eggs = 0   # you’ll calculate this later
+        total_eggs = 0 
         total_hatched = 0
 
         # Create a batch row in db
@@ -34,7 +34,8 @@ def upload(request):
             total_images=total_images,
             total_eggs=total_eggs,
             total_hatched=total_hatched,
-            date_updated=date
+            date_updated=date,
+            is_complete=False
         )
 
         # Retrieve all uploaded images
@@ -49,23 +50,28 @@ def upload(request):
             encoded = base64.b64encode(file_bytes).decode('utf-8')
             payload = {'image': encoded, 'filename': f.name}
             try:
+                image_record = ImageDetails.objects.create(
+                    batch = batch,
+                    image_name=f"image_{i}.jpg",     # uhh filename test
+                    total_eggs= 0,           # Set initial value
+                    total_hatched= 0,        # Set initial value
+                    img_type="MICRO",        # HARDCODED ATM
+                    allow_collection= True,    # Hardcoded ATM
+                    is_processed = False
+                )
                 # Send it to the compute server
                 response = requests.post('http://localhost:5000/upload_base64', json=payload)
                 data = response.json()  
 
                 points = data.get("points")          # annotation data list
                 image_b64 = data.get("final_image")  # final image as base64
-                total_eggs = data.get("egg_count")
+                temp_eggs = data.get("egg_count")
 
                 #Save ImageDetails in DB
-                image_record = ImageDetails.objects.create(
-                    batch=batch,                     # link to your BatchDetails object
-                    image_name=f"image_{i}.jpg",     # give it a filename or UUID
-                    total_eggs=total_eggs,                    # update later from model if needed
-                    total_hatched=0,                 # update later from model if needed
-                    img_type="MICRO",                # HARDCODED ATM
-                    allow_collection=True
-                )
+                total_eggs += temp_eggs
+                image_record.total_eggs = temp_eggs
+                image_record.is_processed = True
+                image_record.save()
 
                 #Decode base64 and save locally (This will be saved in an S3 bucket in the future)
                 if image_b64:
@@ -87,9 +93,14 @@ def upload(request):
                             y=p[1],
                             is_original=True
                         )
-
             except Exception as e:
                 print("Error while processing image:", e)
+        # After finishing the loop update the status of the batch.
+        batch.total_eggs = total_eggs
+        batch.total_hatched = total_hatched
+        batch.is_complete = True
+        batch.save()
+
 
 
         return JsonResponse({'filenames': "GOOD!"}) # Ajax return to website if needed
@@ -118,7 +129,8 @@ def edit(request, image_id):
             "included_template": "editor.html",
             "image_name": image.image_name,                # filename for <img>
             "points_json": json.dumps(list(annotations)),   # list of dicts for JS
-            "total_eggs": json.dumps(image.total_eggs)
+            "total_eggs": json.dumps(image.total_eggs),
+            "img_id" : json.dumps(image_id) 
         }
     )
 
@@ -149,4 +161,57 @@ def batch_images(request, batch_id):
     )
     return JsonResponse(list(images), safe=False)
 
+def add_egg_to_db(request, image_id):
+    if request.method == "POST":
+        try:
+            
+            data = json.loads(request.body.decode("utf-8"))
+            print("DEBUG POST DATA:", data)  # 👈 see what came in
+            x = data.get("x")
+            y = data.get("y")
 
+            point = AnnotationPoints.objects.create(
+                image_id=image_id,
+                x=x,
+                y=y,
+                is_original=False
+            )
+
+            return JsonResponse({
+                "STATUS" : "HI"
+            })
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid method"}, status=405)
+
+
+def remove_egg_from_db(request, image_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            print("DEBUG POST DATA:", data)
+
+            x = data.get("x")
+            y = data.get("y")
+
+            # Try to get the point
+            point = AnnotationPoints.objects.filter(image_id = image_id, x=x, y=y).first()
+
+            if not point:
+                return JsonResponse({"STATUS": "Point not found"}, status=404)
+
+            if point.is_original:
+                # mark as deleted instead of removing
+                point.isDeleted = True
+                point.save()
+                return JsonResponse({"STATUS": "Marked as deleted"})
+            else:
+                # actually remove the row
+                AnnotationPoints.objects.filter(x=x, y=y).delete()
+                return JsonResponse({"STATUS": "Deleted"})
+
+        except Exception as e:
+            return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
+
+    return JsonResponse({"STATUS": "Invalid request"}, status=400)

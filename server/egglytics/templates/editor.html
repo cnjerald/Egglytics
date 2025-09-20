@@ -19,26 +19,18 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        margin: 0 auto;           /* Center the container */
         image-rendering: pixelated;
         will-change: transform;
-        transform: translate3d(0, 0, 0);
-        backface-visibility: hidden;
-        contain: strict;
-        margin: 0 auto;           /* Center the container */
+        contain:strict;
     }
 
     #zoom-wrapper {
         position: absolute;
         will-change: transform;
-        transform: translate(0px, 0px) scale(1);
     }
 
-    #zoom-image {
-        user-select: none;
-        max-width: none;
-        display: block;
-        -webkit-user-drag: none;
-    }
+
     #grid-canvas, #dot-canvas {
         position: absolute;
         top: 0;
@@ -179,10 +171,11 @@
 
 
     // NO there is no SYNTAX error here and NO you can not put this on image_editor_handler.js
-    // eslint-disable-next-line
+
     const points = {{ points_json|safe }};
-    // eslint-disable-next-line
     const total_egg_count = {{ total_eggs }};
+    const image_id = {{img_id}};
+
     console.log(total_egg_count);
 
     $("#edit-toggle").on("click", function (e) {

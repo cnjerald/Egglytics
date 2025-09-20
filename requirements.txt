@@ -3,3 +3,4 @@ python-decouple
 opencv-python
 numpy
 requests
+psycopg2

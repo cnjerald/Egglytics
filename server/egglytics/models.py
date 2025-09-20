@@ -9,6 +9,7 @@ class BatchDetails(models.Model):
     total_images = models.IntegerField()
     total_eggs = models.IntegerField()
     total_hatched = models.IntegerField()
+    is_complete = models.BooleanField()
 
     class Meta:
         db_table = "batch_details"   # TABLE NAME.
@@ -32,6 +33,7 @@ class ImageDetails(models.Model):
     ]
     img_type = models.CharField(max_length=10, choices=IMG_TYPE_CHOICES)
     allow_collection = models.BooleanField(default=True)
+    is_processed = models.BooleanField()
 
     class Meta:
         db_table = "image_details"  # TABLE NAME.

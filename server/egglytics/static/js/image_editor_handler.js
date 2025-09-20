@@ -35,9 +35,19 @@ $(document).ready(function () {
     let startY = 0;
     let lastMouseX = 0;
     let lastMouseY = 0;
+    
+
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    let lastImageX = 0, lastImageY = 0;   // pointer in image pixel coords (natural image space)
 
     /* Point Storage */
     const drawnPoints = [];
+    const drawnRects = [];
+
+    // Keep unsent points in memory (can also use localStorage for persistence)
+    let unsentPoints = JSON.parse(localStorage.getItem("unsentPoints") || "[]");
 
     /* Rescale image */
     const containerRect = container.getBoundingClientRect();
@@ -83,9 +93,10 @@ $(document).ready(function () {
     function drawPoints(points){
         points.forEach(p => {
             //console.log("Drawing Point!",p.x,p.y)
-            drawPoint(p.x, p.y);
+            drawPoint(p.x, p.y, 'green', 5, false, true);
         });
     }
+
 
     // This function draws the grids over time image.
     function drawGrid() {
@@ -117,70 +128,88 @@ $(document).ready(function () {
         wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
     }
 
-    /* This part handles the zoom logic */
+    let lastWheelEvent = null;
+
     container.addEventListener('wheel', (e) => {
-        e.preventDefault(); // prevent scroll of window
-        // This checks maximum zoom out
-        if(scale >= minScale){
-            const delta = -e.deltaY * 0.0001; 
+        e.preventDefault();
+        lastWheelEvent = e;  // ✅ save event for later use
+
+        if (scale >= minScale) {
+            const delta = -e.deltaY * 0.0001;
             zoomVelocity += delta;
-            console.log("ZOOM VEL" + zoomVelocity);
 
             isZooming = true;
             requestAnimationFrame(applyZoom);
-
-        } else{
-            // This solves potential scenario where controls suddenly gets stuck.
+        } else {
             scale = minScale;
         }
-
     }, { passive: false });
 
     function applyZoom() {
-        // This is the brake of the zoom
         if (Math.abs(zoomVelocity) < 0.001) {
             zoomVelocity = 0;
+            isZooming = false;
 
-            setTimeout(() => {
-                isZooming = false;
-                console.log("BRAKE!");
-            }, 100); // delay in .1 seconds, preventing action drift
+            // ✅ Do pixel computation only after brake
+            if (lastWheelEvent) {
+                const rect = img.getBoundingClientRect();
+                const mouseX = lastWheelEvent.clientX - rect.left;
+                const mouseY = lastWheelEvent.clientY - rect.top;
 
+                let px = (mouseX) / scale;
+                let py = (mouseY) / scale;
+
+                if (!isNaN(px) && !isNaN(py)) {
+                    lastMouseX = Math.max(0, Math.min(img.naturalWidth, px));
+                    lastMouseY = Math.max(0, Math.min(img.naturalHeight, py));
+
+                    // console.log(
+                    //     "Image Pixel ZOOM:",
+                    //     Math.floor(lastMouseX),
+                    //     Math.floor(lastMouseY)
+                    // );
+                }
+            }
             return;
         }
 
-        // Calculate world (pre-zoom) coordinates BEFORE updating scale
         const newScale = scale * (1 + zoomVelocity);
-        const zoomCenterX = (translateX) / scale;
-        const zoomCenterY = (translateY) / scale;
 
-        // Set new scale
-        scale = Math.max(newScale,minScale);
-        
-        // Adjust pan so zoom stays centered on where the image is placed at.
+        const zoomCenterX = translateX / scale;
+        const zoomCenterY = translateY / scale;
+
+        scale = newScale;
+
         translateX = zoomCenterX * scale;
         translateY = zoomCenterY * scale;
 
-        // Snap to default if extremely close to min
-        if (Math.abs(scale - minScale) < tolerance_reset) {
-            translateX = 0;
-            translateY = 0;
-        }
-
         updateTransform();
-
-        // Decay zoom velocity (Higher value leads to weaker brakes)
         zoomVelocity *= 0.95;
-
         requestAnimationFrame(applyZoom);
     }
 
-    // Track last mouse position over the image (Useful for finding exact pixel)
+
+    // Track last mouse position in actual image pixel coordinates
     img.addEventListener('mousemove', function (e) {
+
         const rect = img.getBoundingClientRect();
-        lastMouseX = e.clientX - rect.left;
-        lastMouseY = e.clientY - rect.top;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Convert to actual image pixels
+        lastMouseX = mouseX / scale;
+        lastMouseY = mouseY / scale;
+
+        lastMouseX = Math.max(0, Math.min(img.naturalWidth, lastMouseX));
+        lastMouseY = Math.max(0, Math.min(img.naturalHeight, lastMouseY));
+
+
+        // // Debug
+        // console.log("Image Pixel:", Math.floor(lastMouseX), Math.floor(lastMouseY));
     });
+
+    
+
 
     // This disable annoying popup when right clicking on the image
     container.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -241,7 +270,6 @@ $(document).ready(function () {
         }
     });
 
-    // Press 'e' to create a point
     let edges = [];
     let previewRect = null; // Store preview rectangle element
 
@@ -306,20 +334,7 @@ $(document).ready(function () {
         if (e.key.toLowerCase() === 'e' && !eKeyIsDown) {
             if(isRectAnnotate){
                 eKeyIsDown = true;
-
-                const rect = img.getBoundingClientRect();
-
-                // Use last known position
-                const clickX = lastMouseX;
-                const clickY = lastMouseY;
-
-                const scaleX = img.naturalWidth / rect.width;
-                const scaleY = img.naturalHeight / rect.height;
-
-                const pixelX = Math.floor(clickX * scaleX);
-                const pixelY = Math.floor(clickY * scaleY);
-                
-                edges.push([pixelX, pixelY]);
+                edges.push([Math.floor(lastMouseX), Math.floor(lastMouseY)]);
                 
                 if(edges.length === 1) {
                     // First point - start showing preview
@@ -331,23 +346,11 @@ $(document).ready(function () {
                     edges = [];
                 }
 
-            } else if(isPointAnnotate){
-
-                eKeyIsDown = true;
-
-                const rect = img.getBoundingClientRect();
-
-                // Use last known position
-                const clickX = lastMouseX;
-                const clickY = lastMouseY;
-
-                const scaleX = img.naturalWidth / rect.width;
-                const scaleY = img.naturalHeight / rect.height;
-
-                const pixelX = Math.floor(clickX * scaleX);
-                const pixelY = Math.floor(clickY * scaleY);
-                drawPoint(pixelX, pixelY);
-            }
+            } else if(isPointAnnotate){                  
+                eKeyIsDown = true;                 
+                console.log("DRAWING AT:",Math.floor(lastMouseX),Math.floor(lastMouseY));                 
+                drawPoint(Math.floor(lastMouseX), Math.floor(lastMouseY),'red');
+            }     
         }
     });
 
@@ -373,36 +376,15 @@ $(document).ready(function () {
     // Press 'r' to erase a point
     window.addEventListener('keydown', (e) => {
         if (e.key.toLowerCase() === 'r') {
-            const rect = img.getBoundingClientRect();
-
-            // Use last known position
-            const clickX = lastMouseX;
-            const clickY = lastMouseY;
-
-            const scaleX = img.naturalWidth / rect.width;
-            const scaleY = img.naturalHeight / rect.height;
-
-            const pixelX = Math.floor(clickX * scaleX);
-            const pixelY = Math.floor(clickY * scaleY);
-            erasePointAtCursor(pixelX,pixelY);
+            erasePointAtCursor(Math.floor(lastMouseX), Math.floor(lastMouseY));
         }
     });
 
         // Press 'k' to erase a rect
     window.addEventListener('keydown', (e) => {
         if (e.key.toLowerCase() === 'k') {
-            const rect = img.getBoundingClientRect();
 
-            // Use last known position
-            const clickX = lastMouseX;
-            const clickY = lastMouseY;
-
-            const scaleX = img.naturalWidth / rect.width;
-            const scaleY = img.naturalHeight / rect.height;
-
-            const pixelX = Math.floor(clickX * scaleX);
-            const pixelY = Math.floor(clickY * scaleY);
-            removeRectOptimized(pixelX,pixelY);
+            removeRectOptimized(Math.floor(lastMouseX), Math.floor(lastMouseY));
         }
     });
 
@@ -433,17 +415,28 @@ $(document).ready(function () {
     }
 
     // This function draws a point.
-    function drawPoint(x, y, color = 'green', radius = 5, isResized = false) {
-        if(!isDragging && !isZooming){
-            dtx.beginPath();
-            dtx.arc(x, y, radius, 0, 2 * Math.PI);
-            dtx.fillStyle = color;
-            dtx.fill();
-            
+
+    // This function draws a point.
+    function drawPoint(x, y, color = 'green', radius = 5, isResized = false, isInitial = false) {
+        if(!isDragging){
+
+            try{
+                dtx.beginPath();
+                dtx.arc(x, y, radius, 0, 2 * Math.PI);
+                dtx.fillStyle = color;
+                dtx.fill();
+            } catch{
+                console.log(e,"err");
+            }
+
             // Store the point with all its visual properties
             if(!isResized){
                 drawnPoints.push({ x, y, color, radius });
                 undoQueue.push({x,y,'annotation':'point'});
+            }
+
+            if (!isInitial) {
+                sendPoint(image_id,x,y)
             }
         }
     }
@@ -572,62 +565,106 @@ $(document).ready(function () {
     }
 
 
+    let ghostPoints = [];
+    let unsentRemovals = []; // holds points that failed deletion
+
     function erasePointAtCursor(mouseX, mouseY) {
         const threshold = 10;
         const thresholdSq = threshold * threshold;
-        let removedPoints = [];
-        let affectedArea = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-        
-        // Find and remove points, tracking the affected area
-        for (let i = drawnPoints.length - 1; i >= 0; i--) {
+        let closestIndex = -1;
+        let closestDistSq = Infinity;
+
+        // Find the closest point within the threshold
+        for (let i = 0; i < drawnPoints.length; i++) {
             const pt = drawnPoints[i];
             const dx = pt.x - mouseX;
             const dy = pt.y - mouseY;
             const distSq = dx * dx + dy * dy;
-            
-            if (distSq <= thresholdSq) {
-                removedPoints.push(pt);
-                drawnPoints.splice(i, 1);
-                
-                // Expand affected area
-                const pointRadius = pt.radius || 5;
-                affectedArea.minX = Math.min(affectedArea.minX, pt.x - pointRadius);
-                affectedArea.minY = Math.min(affectedArea.minY, pt.y - pointRadius);
-                affectedArea.maxX = Math.max(affectedArea.maxX, pt.x + pointRadius);
-                affectedArea.maxY = Math.max(affectedArea.maxY, pt.y + pointRadius);
+
+            if (distSq <= thresholdSq && distSq < closestDistSq) {
+                closestDistSq = distSq;
+                closestIndex = i;
             }
         }
-        
-        // Only redraw if points were removed
-        if (removedPoints.length > 0) {
-            // Add some padding to the clear area
+
+        // If we found one, remove and redraw
+        if (closestIndex !== -1) {
+            const pt = drawnPoints.splice(closestIndex, 1)[0];
+            console.log("Removed point at:", image_id, pt);
+            remove_egg_from_db(image_id, pt.x, pt.y);
+
+            // Save as ghost point
+            ghostPoints.push(pt);
+            console.log(pt);
+            console.log(ghostPoints);
+
+            // Clear a small area around the removed point
+            const pointRadius = pt.radius || 5;
             const padding = 2;
-            const clearWidth = affectedArea.maxX - affectedArea.minX + padding * 2;
-            const clearHeight = affectedArea.maxY - affectedArea.minY + padding * 2;
-            
-            // Clear the affected area
+            const clearSize = (pointRadius + padding) * 2;
+
             dtx.clearRect(
-                affectedArea.minX - padding, 
-                affectedArea.minY - padding, 
-                clearWidth, 
-                clearHeight
+                pt.x - pointRadius - padding,
+                pt.y - pointRadius - padding,
+                clearSize,
+                clearSize
             );
-            
-            // Redraw any remaining points that overlap with the cleared area
+
+            // Redraw normal points overlapping the cleared area
             for (const point of drawnPoints) {
-                const pointRadius = point.radius || 5;
-                if (point.x + pointRadius >= affectedArea.minX - padding &&
-                    point.x - pointRadius <= affectedArea.maxX + padding &&
-                    point.y + pointRadius >= affectedArea.minY - padding &&
-                    point.y - pointRadius <= affectedArea.maxY + padding) {
-                    
+                const r = point.radius || 5;
+                if (
+                    point.x + r >= pt.x - pointRadius - padding &&
+                    point.x - r <= pt.x + pointRadius + padding &&
+                    point.y + r >= pt.y - pointRadius - padding &&
+                    point.y - r <= pt.y + pointRadius + padding
+                ) {
                     dtx.beginPath();
-                    dtx.arc(point.x, point.y, point.radius, 0, 2 * Math.PI);
+                    dtx.arc(point.x, point.y, r, 0, 2 * Math.PI);
                     dtx.fillStyle = point.color;
                     dtx.fill();
                 }
             }
+
+            // Redraw ghost points overlapping the cleared area
+            for (const gpt of ghostPoints) {
+                const gr = gpt.radius || 5;
+                if (
+                    gpt.x + gr >= pt.x - pointRadius - padding &&
+                    gpt.x - gr <= pt.x + pointRadius + padding &&
+                    gpt.y + gr >= pt.y - pointRadius - padding &&
+                    gpt.y - gr <= pt.y + pointRadius + padding
+                ) {
+                    dtx.save();
+                    dtx.globalAlpha = 0.4; // ghost transparency
+                    dtx.beginPath();
+                    dtx.arc(gpt.x, gpt.y, gr, 0, 2 * Math.PI);
+                    dtx.fillStyle = gpt.color;
+                    dtx.fill();
+                    dtx.restore();
+                }
+            }
+
+            redrawAllRects();
         }
+    }
+
+
+
+    // Function to redraw all canvas elements (points, lines, etc.)
+    function redrawCanvas() {
+        // Clear the canvas
+        dtx.clearRect(0, 0, dtx.width, dtx.height);
+        
+        // Redraw all points with their current colors
+        drawnPoints.forEach(point => {
+            dtx.beginPath();
+            dtx.arc(point.x, point.y, point.radius, 0, 2 * Math.PI);
+            dtx.fillStyle = point.color;
+            dtx.fill();
+        });
+        
+        // Redraw rectangles and other elements
         redrawAllRects();
     }
 
@@ -653,7 +690,7 @@ $(document).ready(function () {
 
         updateTransform();
         drawnPoints.forEach(p => {
-            drawPoint(p.x, p.y, p.color, p.radius, isResized = true);
+            drawPoint(p.x, p.y, 'green', 5, false, true);
         });
     }
 
@@ -702,5 +739,226 @@ $(document).ready(function () {
         }
     });
 
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = $.trim(cookies[i]);
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return '';
+    }
+
+
+    async function sendPoint(image_id, x, y, radius = 5, color = 'red') {
+        try {
+            const response = await fetch(`/add_egg_to_db/${image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x, y })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Server says:", data.message || data.STATUS);
+            
+            // SUCCESS: Find the point in drawnPoints and update it to green
+            const pointIndex = drawnPoints.findIndex(point => 
+                Math.abs(point.x - x) < 2 && Math.abs(point.y - y) < 2 && point.color === color
+            );
+            
+            if (pointIndex !== -1) {
+                drawnPoints[pointIndex].color = 'green';
+                redrawCanvas(); // Redraw the entire canvas with updated colors
+            }
+
+        } catch (err) {
+            console.error("Server offline, storing point locally:", err);
+
+            unsentPoints.push({ image_id, x, y, radius, color });
+            localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+        }
+    }
+
+    // --- Remove egg request ---
+    async function remove_egg_from_db(image_id, x, y, radius = 5, color = 'red', transparency = 0.5) {
+        const point = { image_id, x, y, radius, color, transparency };
+
+        try {
+            const response = await fetch(`/remove_egg_from_db/${image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x, y })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Server says:", data.message || data.STATUS);
+
+            // SUCCESS: Remove ghost point
+            removeGhostPoint(x, y, image_id);
+            return true; // Return success
+
+        } catch (err) {
+            console.warn("Deletion failed, keeping ghost point:", err);
+
+            // ⏸️ Keep ghost + add to retry queue (ONLY if not already retrying)
+            if (!isRetrying) {
+                unsentRemovals.push(point);
+                localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));
+            }
+            return false; // Return failure
+        }
+    }
+
+    setInterval(async () => {
+        if (unsentPoints.length > 0) {
+            console.log("Retrying unsent points...");
+
+            const stillUnsent = [];
+
+            for (let point of unsentPoints) {
+                if (
+                    point &&
+                    typeof point.x === "number" && !isNaN(point.x) &&
+                    typeof point.y === "number" && !isNaN(point.y)
+                ) {
+                    try {
+                        await sendPoint(point.image_id, point.x, point.y, point.radius, point.color);
+                        // Point will turn green inside sendPoint if successful
+                    } catch {
+                        stillUnsent.push(point); // keep if still failing
+                    }
+                } else {
+                    console.warn("Skipping invalid point:", point);
+                }
+            }
+
+            unsentPoints = stillUnsent;
+            localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+        }
+    }, 5000);
+
+
+    // --- Separate function for removing ghost points ---
+    function removeGhostPoint(x, y, image_id) {
+        ghostPoints.forEach(gpt => {
+            console.log("DEBUG before filter:", gpt.x, gpt.y);
+        });
+
+        let removedGhost = null;
+
+
+        // Filter out the matching ghost
+        ghostPoints = ghostPoints.filter(gpt => {
+            if (gpt.x === x && gpt.y === y) {
+                removedGhost = gpt; // keep a reference
+                return false;       // drop it from the array
+            }
+            return true; // keep all others
+        });
+
+        // If we actually removed one, clear its area
+        if (removedGhost) {
+            const pointRadius = removedGhost.radius || 5;
+            const padding = 2;
+            const clearSize = (pointRadius + padding) * 2;
+
+            dtx.clearRect(
+                removedGhost.x - pointRadius - padding,
+                removedGhost.y - pointRadius - padding,
+                clearSize,
+                clearSize
+            );
+
+            console.log("Cleared ghost at:", removedGhost.x, removedGhost.y);
+            redrawCanvas();
+        }
+
+
+
+        console.log("DEBUG! AFTER FILTER", ghostPoints);
+    }
+
+    // --- Separate retry function (doesn't call main remove function) ---
+    async function retryRemoveEgg(point) {
+        try {
+            const response = await fetch(`/remove_egg_from_db/${point.image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x: point.x, y: point.y })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Retry success:", data.message || data.STATUS);
+
+            // SUCCESS: Remove ghost point
+            removeGhostPoint(point.x, point.y, point.image_id);
+            return true;
+
+        } catch (err) {
+            console.warn("Retry failed:", err);
+            return false;
+        }
+    }
+
+    // --- Flag to prevent circular calls ---
+    let isRetrying = false;
+
+    // --- Retry loop for failed deletions ---
+    setInterval(async () => {
+        if (unsentRemovals.length > 0) {
+            console.log("Retrying unsent removals...", unsentRemovals.length);
+            isRetrying = true; // Set flag
+
+            const stillUnsent = [];
+
+            for (let point of unsentRemovals) {
+                if (
+                    point &&
+                    typeof point.x === "number" && !isNaN(point.x) &&
+                    typeof point.y === "number" && !isNaN(point.y)
+                ) {
+                    const success = await retryRemoveEgg(point);
+                    
+                    if (!success) {
+                        stillUnsent.push(point); // Keep for next retry
+                    } else {
+                        console.log("Retry success, removed:", point.x, point.y);
+                    }
+                } else {
+                    console.warn("Skipping invalid point:", point);
+                }
+            }
+
+            unsentRemovals = stillUnsent;
+            localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));
+            
+            isRetrying = false; // Clear flag
+        }
+    }, 5000);
+
+        
 
 })
