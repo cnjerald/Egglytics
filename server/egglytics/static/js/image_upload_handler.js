@@ -174,7 +174,7 @@ $(document).ready(function () {
     $("#upload-btn").on("click", function (e) {
         e.preventDefault();
 
-        alert("HELLO WORLD!");
+        
         const formData = new FormData();
 
         fileArray.forEach(file => {
@@ -195,7 +195,8 @@ $(document).ready(function () {
             },
             success: function (response) {
                 console.log("Uploaded files:", response.filenames);
-                handleFiles(files); // refresh table preview
+                // Redirect after successful upload
+                window.location.href = "/view";
             },
             error: function (xhr, status, error) {
                 console.error("Upload failed:", error);

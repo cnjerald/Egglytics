@@ -10,102 +10,112 @@ import json
 from datetime import datetime
 from django.utils import timezone
 from .models import BatchDetails,ImageDetails, AnnotationPoints
+import threading
 
+# This is the threadded portion of the compute
+def process_images(batch, files_data, header):
+    total_eggs = 0
+    total_hatched = 0
+    # For earch file in the JSON array
+    for i, file_dict in enumerate(files_data, start=0):
+        try:
+            file_name = f"{header}_{i}.jpg"
+            encoded = file_dict["data"]
+            original_name = file_dict["name"]
 
+            payload = {'image': encoded, 'filename': original_name}
+            # Create image_record in db.
+            image_record = ImageDetails.objects.create(
+                batch=batch,
+                image_name=f"image_{i}.jpg",
+                total_eggs=0,
+                total_hatched=0,
+                img_type="MICRO",
+                allow_collection=True,
+                is_processed=False
+            )
+            # Send to compute server
+            response = requests.post('http://localhost:5000/upload_base64', json=payload)
+            # Await results
+            data = response.json()
+            points = data.get("points")
+            image_b64 = data.get("final_image")
+            temp_eggs = data.get("egg_count", 0)
 
-# This is the upload feature backend, it handles creating a cache of the image, 
-# sending the image to the flask server and receiving the results from the flask server.
-# This also updates the SQLite
-def upload(request): 
+            total_eggs += temp_eggs
+            image_record.total_eggs = temp_eggs
+            image_record.is_processed = True
+            image_record.save()
+            # Save the images locally
+            # But WHY only now? because the model changes the images, and instead of saving two images
+            # Only saved the one where model inference was conducted.
+            if image_b64:
+                img_data = base64.b64decode(image_b64)
+                upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
+                os.makedirs(upload_dir, exist_ok=True)
+                file_path = os.path.join(upload_dir, image_record.image_name)
+                with open(file_path, "wb") as f_out:
+                    f_out.write(img_data)
+            # Push point coordinates on the DB
+            if points:
+                for p in points:
+                    AnnotationPoints.objects.create(
+                        image=image_record,
+                        x=p[0],
+                        y=p[1],
+                        is_original=True
+                    )
+        except Exception as e:
+            print("Error while processing image:", e)
+
+    batch.total_eggs = total_eggs
+    batch.total_hatched = total_hatched
+    batch.is_complete = True
+    batch.save()
+
+# This is where the image is initially send after clicking the submit button in the upload.html.
+# It basically saves the image on the backend, then fires a redirect to the user to the view page once saved.
+# To do this, it creates a separate thread on compute such that the user does not need to wait for the images
+# To be processed, only uploaded to the server.
+def upload(request):
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
+        # Get the current time now, creating a unique key
         header = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # By now this is set to incognito
         owner = request.user.username if request.user.is_authenticated else 'incognito'
+        # This just concats a unique key
         batch_name = f"{header}_{owner}"
         date = timezone.now()
 
+        # This is the total images
         total_images = len(request.FILES.getlist('myfiles'))
-        total_eggs = 0 
-        total_hatched = 0
 
-        # Create a batch row in db
+        # Create a batch entry on the DB
         batch = BatchDetails.objects.create(
             batch_name=batch_name,
             owner=owner,
             total_images=total_images,
-            total_eggs=total_eggs,
-            total_hatched=total_hatched,
+            total_eggs=0,
+            total_hatched=0,
             date_updated=date,
             is_complete=False
         )
 
-        # Retrieve all uploaded images
-        files = request.FILES.getlist('myfiles')
-        # For each image
-        for i, f in enumerate(files, start=0):
-            file_name = f"{header}_{i}.jpg"
-
-            # Uploading files for inference
-            # Convert to base64
+        # Read files into memory BEFORE starting thread (No images are saved at this point, only on memory)
+        files_data = []
+        for f in request.FILES.getlist('myfiles'):
             file_bytes = f.read()
-            encoded = base64.b64encode(file_bytes).decode('utf-8')
-            payload = {'image': encoded, 'filename': f.name}
-            try:
-                image_record = ImageDetails.objects.create(
-                    batch = batch,
-                    image_name=f"image_{i}.jpg",     # uhh filename test
-                    total_eggs= 0,           # Set initial value
-                    total_hatched= 0,        # Set initial value
-                    img_type="MICRO",        # HARDCODED ATM
-                    allow_collection= True,    # Hardcoded ATM
-                    is_processed = False
-                )
-                # Send it to the compute server
-                response = requests.post('http://localhost:5000/upload_base64', json=payload)
-                data = response.json()  
+            # Encode to base64 to send it to the compute server
+            encoded = base64.b64encode(file_bytes).decode("utf-8")
+            # Append json to array
+            files_data.append({"name": f.name, "data": encoded})
 
-                points = data.get("points")          # annotation data list
-                image_b64 = data.get("final_image")  # final image as base64
-                temp_eggs = data.get("egg_count")
+        # Throw to thread and forget
+        t = threading.Thread(target=process_images, args=(batch, files_data, header))
+        t.start()
+        # Send that upload was completed to the user, while thread is running.
+        return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
 
-                #Save ImageDetails in DB
-                total_eggs += temp_eggs
-                image_record.total_eggs = temp_eggs
-                image_record.is_processed = True
-                image_record.save()
-
-                #Decode base64 and save locally (This will be saved in an S3 bucket in the future)
-                if image_b64:
-                    img_data = base64.b64decode(image_b64)
-                    file_name = f"{image_record.image_name}"
-                    upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
-                    os.makedirs(upload_dir, exist_ok=True)           # ensure directory exists
-                    file_path = os.path.join(upload_dir, file_name)  # static/uploads/<filename>
-
-                    with open(file_path, "wb") as f:
-                        f.write(img_data)
-
-                #Save point annotations linked to image to the annotation_point db
-                if points:
-                    for p in points:
-                        AnnotationPoints.objects.create(
-                            image=image_record,
-                            x=p[0],
-                            y=p[1],
-                            is_original=True
-                        )
-            except Exception as e:
-                print("Error while processing image:", e)
-        # After finishing the loop update the status of the batch.
-        batch.total_eggs = total_eggs
-        batch.total_hatched = total_hatched
-        batch.is_complete = True
-        batch.save()
-
-
-
-        return JsonResponse({'filenames': "GOOD!"}) # Ajax return to website if needed
-
-    # GET request fallback
     return render(request, "base.html", {'included_template': 'upload.html'})
 
 
