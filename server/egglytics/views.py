@@ -19,7 +19,7 @@ def process_images(batch, files_data, header):
     # For earch file in the JSON array
     for i, file_dict in enumerate(files_data, start=0):
         try:
-            file_name = f"{header}_{i}.jpg"
+            file_name = f"{header}_{i}"
             encoded = file_dict["data"]
             original_name = file_dict["name"]
 
@@ -27,7 +27,7 @@ def process_images(batch, files_data, header):
             # Create image_record in db.
             image_record = ImageDetails.objects.create(
                 batch=batch,
-                image_name=f"image_{i}.jpg",
+                image_name=f"image_{file_name}.jpg",
                 total_eggs=0,
                 total_hatched=0,
                 img_type="MICRO",
@@ -57,6 +57,7 @@ def process_images(batch, files_data, header):
                 with open(file_path, "wb") as f_out:
                     f_out.write(img_data)
             # Push point coordinates on the DB
+            print("[DEBUGGER!] TOTAL POINTS ", len(points))
             if points:
                 for p in points:
                     AnnotationPoints.objects.create(
@@ -111,7 +112,7 @@ def upload(request):
             files_data.append({"name": f.name, "data": encoded})
 
         # Throw to thread and forget
-        t = threading.Thread(target=process_images, args=(batch, files_data, header))
+        t = threading.Thread(target=process_images, args=(batch, files_data, batch_name))
         t.start()
         # Send that upload was completed to the user, while thread is running.
         return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
@@ -127,7 +128,7 @@ def edit(request, image_id):
     image = get_object_or_404(ImageDetails, image_id=image_id)
 
     # Get related annotation points
-    annotations = AnnotationPoints.objects.filter(image=image).values(
+    annotations = AnnotationPoints.objects.filter(image=image, is_deleted = False).values(
         "point_id", "x", "y"
     )
 
@@ -150,11 +151,12 @@ from django.shortcuts import render
 from .models import BatchDetails, ImageDetails
 
 def view(request):
-    # Just show igcognito batches atm (Brute forced.)
-    batches = BatchDetails.objects.filter(owner="incognito")
-
-    # Might remove this..
-    batches = batches.prefetch_related("imagedetails_set")
+    # Get incognito batches, sorted by date_updated descending
+    batches = (
+        BatchDetails.objects.filter(owner="incognito")
+        .prefetch_related("imagedetails_set")
+        .order_by("-date_updated")
+    )
 
     return render(
         request,
@@ -164,6 +166,7 @@ def view(request):
             "batches": batches,
         }
     )
+
 
 def batch_images(request, batch_id):
     images = ImageDetails.objects.filter(batch_id=batch_id).values(
@@ -213,12 +216,13 @@ def remove_egg_from_db(request, image_id):
 
             if point.is_original:
                 # mark as deleted instead of removing
-                point.isDeleted = True
+                print("[DEBUG]: CASE 1")
+                point.is_deleted = True
                 point.save()
-                return JsonResponse({"STATUS": "Marked as deleted"})
+                return JsonResponse({"STATUS": "Deleted"})
             else:
                 # actually remove the row
-                AnnotationPoints.objects.filter(x=x, y=y).delete()
+                AnnotationPoints.objects.filter(image_id=image_id, x=x, y=y).delete()
                 return JsonResponse({"STATUS": "Deleted"})
 
         except Exception as e:

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
         <title>Sample Info</title>
         <style>
             .info-card {
@@ -91,10 +93,17 @@
             <h5>Date: {{ batch.date_updated|date:"m/d/Y" }}</h5>
             <h5>Total Images: {{ batch.total_images }}</h5>
             <h5>Total Eggs: {{ batch.total_eggs }}</h5>
-            <h5>Processing Status: {% if batch.total_eggs > 0 %} Done {% else %} Pending {% endif %}</h5>
+            <h5>
+                Processing Status:
+                {% if batch.total_eggs > 0 %}
+                    <i class="fas fa-check-circle" style="color: green;"></i> <!-- done -->
+                {% else %}
+                    <i class="fas fa-spinner fa-spin" style="color: orange;"></i> <!-- loading -->
+                {% endif %}
+            </h5>
         </div>
         {% endfor %}
-        
+                
         <!-- Popup Modal -->
         <div class="popup" id="popup">
             <div class="popup-content">

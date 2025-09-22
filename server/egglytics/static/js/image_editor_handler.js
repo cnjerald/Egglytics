@@ -43,7 +43,7 @@ $(document).ready(function () {
     let lastImageX = 0, lastImageY = 0;   // pointer in image pixel coords (natural image space)
 
     /* Point Storage */
-    const drawnPoints = [];
+    const drawnPoints = []; // NOTE TO SELF (JERALD) CONVERT THIS TO SET TO PREVENT DUPLICATES!
     const drawnRects = [];
 
     // Keep unsent points in memory (can also use localStorage for persistence)
@@ -91,10 +91,12 @@ $(document).ready(function () {
 
     // This function draws the points in the canvas
     function drawPoints(points){
+        console.log(points.length);
         points.forEach(p => {
             //console.log("Drawing Point!",p.x,p.y)
             drawPoint(p.x, p.y, 'green', 5, false, true);
         });
+        console.log(drawnPoints.length);
     }
 
 
@@ -133,6 +135,9 @@ $(document).ready(function () {
     container.addEventListener('wheel', (e) => {
         e.preventDefault();
         lastWheelEvent = e;  // ✅ save event for later use
+        isDragging = false;
+        container.style.cursor = 'n-resize';
+
 
         if (scale >= minScale) {
             const delta = -e.deltaY * 0.0001;
@@ -158,6 +163,7 @@ $(document).ready(function () {
 
                 let px = (mouseX) / scale;
                 let py = (mouseY) / scale;
+                container.style.cursor = 'crosshair';
 
                 if (!isNaN(px) && !isNaN(py)) {
                     lastMouseX = Math.max(0, Math.min(img.naturalWidth, px));
@@ -222,8 +228,6 @@ $(document).ready(function () {
         }
 
         isDragging = true;
-        // Setting this to 0 eliminates the drifting bug.
-        zoomVelocity = 0;
         container.style.cursor = 'grabbing';
         startX = e.clientX - translateX;
         startY = e.clientY - translateY;
@@ -264,9 +268,7 @@ $(document).ready(function () {
     // Press 'w' to shade the hovered grid cell
     window.addEventListener('keydown', (e) => {
         if (e.key.toLowerCase() === 'w' && !isZooming && !isDragging) {
-            const relativeX = (lastMouseX) / scale;
-            const relativeY = (lastMouseY) / scale;
-            fillGridCell(relativeX, relativeY);
+            fillGridCell(Math.floor(lastMouseX), Math.floor(lastMouseY));
         }
     });
 
@@ -689,9 +691,7 @@ $(document).ready(function () {
         dot_canvas.height = img.height;
 
         updateTransform();
-        drawnPoints.forEach(p => {
-            drawPoint(p.x, p.y, 'green', 5, false, true);
-        });
+        redrawCanvas();
     }
 
     // Recalculate when window resizes
@@ -702,8 +702,11 @@ $(document).ready(function () {
 
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-            updateTransform(); // redraw immediately
             requestAnimationFrame(() => {}); // force a warm frame
+            updateTransform(); // redraw immediately
+            console.log("Redrawing canvas!");
+            redrawCanvas();
+            
         }
     });
 

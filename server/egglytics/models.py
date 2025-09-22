@@ -48,6 +48,7 @@ class AnnotationPoints(models.Model):
     x = models.IntegerField()
     y = models.IntegerField()
     is_original = models.BooleanField(default=True)   # model’s first output
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         db_table = "annotation_points"
