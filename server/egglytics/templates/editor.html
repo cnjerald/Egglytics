@@ -112,6 +112,7 @@
     {% load static %}
     <title>Centered Zoom and Pan Image</title>
     <text> Q - DEBUG PIXEL LOC || W - MARK DONE/UNDONE || E - CREATE DOT || R - REMOVE DOT</text>
+    <h1 id="egg_count"> Total Eggs: 0 </h1>
     <br>
     <container class="toolbar">
         <button type="button" class="tools-button" title="Eraser">
@@ -168,15 +169,14 @@
 <script src="{% static 'js/image_editor_handler.js' %}"></script>
 <script>
 
-
-
     // NO there is no SYNTAX error here and NO you can not put this on image_editor_handler.js
 
     const points = {{ points_json|safe }};
-    const total_egg_count = {{ total_eggs }};
+    let total_egg_count = {{ total_eggs }};
     const image_id = {{img_id}};
 
-    console.log(total_egg_count);
+    console.log("Total:egg debug: ", total_egg_count);
+    $("#egg_count").text("Total Eggs: " + total_egg_count);
 
     $("#edit-toggle").on("click", function (e) {
         e.stopPropagation();

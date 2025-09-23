@@ -17,7 +17,6 @@ $(document).ready(function () {
     let scale = 1;
     let minScale = 0;
     let maxScale = 0;
-    let tolerance_reset = 0;
     let zoomVelocity = 0;
 
     /* Translation X and Y*/
@@ -31,23 +30,18 @@ $(document).ready(function () {
 
     let isRectAnnotate = false;
     let isPointAnnotate = true;
+    let lastWheelEvent = null;
     let startX = 0;
     let startY = 0;
     let lastMouseX = 0;
     let lastMouseY = 0;
     
-
-    let mouseX = 0;
-    let mouseY = 0;
-    
-    let lastImageX = 0, lastImageY = 0;   // pointer in image pixel coords (natural image space)
-
     /* Point Storage */
     const drawnPoints = []; // NOTE TO SELF (JERALD) CONVERT THIS TO SET TO PREVENT DUPLICATES!
     const drawnRects = [];
 
     // Keep unsent points in memory (can also use localStorage for persistence)
-    let unsentPoints = JSON.parse(localStorage.getItem("unsentPoints") || "[]");
+    let unsentPoints = [];
 
     /* Rescale image */
     const containerRect = container.getBoundingClientRect();
@@ -72,10 +66,25 @@ $(document).ready(function () {
     let undoQueue = [];
     let redoQueue = [];
 
+    // Used by rect
+    let edges = [];
+    let previewRect = null; // Store preview rectangle element
+
+    // Used by threads
+    let ghostPoints = [];
+    let unsentRemovals = []; // holds points that failed deletion
+
+    // --- Flag to prevent circular calls ---
+    let isRetryingSend = false;
+    let isRetrying = false;
+
+
     // Apply scales, resize, and transformations
     updateTransform();
     // Draw initial points
     drawPoints(points);
+
+
 
 
 
@@ -129,8 +138,6 @@ $(document).ready(function () {
     function updateTransform() {
         wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
     }
-
-    let lastWheelEvent = null;
 
     container.addEventListener('wheel', (e) => {
         e.preventDefault();
@@ -215,8 +222,6 @@ $(document).ready(function () {
     });
 
     
-
-
     // This disable annoying popup when right clicking on the image
     container.addEventListener("contextmenu", (e) => e.preventDefault());
     // Event listener of middle button hold to pan the image
@@ -249,19 +254,7 @@ $(document).ready(function () {
     // Listen for key press (Q)
     window.addEventListener('keydown', function (e) {
         if (e.key.toLowerCase() === 'q') {
-            const rect = img.getBoundingClientRect();
-
-            // Use last known position
-            const clickX = lastMouseX;
-            const clickY = lastMouseY;
-
-            const scaleX = img.naturalWidth / rect.width;
-            const scaleY = img.naturalHeight / rect.height;
-
-            const pixelX = Math.floor(clickX * scaleX);
-            const pixelY = Math.floor(clickY * scaleY);
-
-            alert(`Pressed Q at pixel: (${pixelX}, ${pixelY})`);
+            alert(`Coordinates: ${Math.floor(lastMouseX)}, ${Math.floor(lastMouseY)}`);
         }
     });
 
@@ -272,8 +265,7 @@ $(document).ready(function () {
         }
     });
 
-    let edges = [];
-    let previewRect = null; // Store preview rectangle element
+
 
     // Function to create and update preview rectangle
     function updatePreviewRect(startX, startY, endX, endY) {
@@ -332,7 +324,6 @@ $(document).ready(function () {
     document.addEventListener('mousemove', handleMouseMovePreview);
 
     window.addEventListener('keydown', (e) => {
-        requestAnimationFrame(applyZoom);
         if (e.key.toLowerCase() === 'e' && !eKeyIsDown) {
             if(isRectAnnotate){
                 eKeyIsDown = true;
@@ -417,29 +408,33 @@ $(document).ready(function () {
     }
 
     // This function draws a point.
-
-    // This function draws a point.
     function drawPoint(x, y, color = 'green', radius = 5, isResized = false, isInitial = false) {
-        if(!isDragging){
-
-            try{
-                dtx.beginPath();
-                dtx.arc(x, y, radius, 0, 2 * Math.PI);
-                dtx.fillStyle = color;
-                dtx.fill();
-            } catch{
-                console.log(e,"err");
-            }
-
-            // Store the point with all its visual properties
-            if(!isResized){
+        if(!isDragging && !isZooming){
+            if (!drawnPoints.some(p => p.x === x && p.y === y)) {
                 drawnPoints.push({ x, y, color, radius });
-                undoQueue.push({x,y,'annotation':'point'});
+                if (!isInitial) {
+                // send to server
+                    sendPoint(image_id,x,y)
+                }
+                try{
+                    dtx.beginPath();
+                    dtx.arc(x, y, radius, 0, 2 * Math.PI);
+                    dtx.fillStyle = color;
+                    dtx.fill();
+
+                    dtx.lineWidth = 2;            // border thickness
+                    dtx.strokeStyle = 'black';    // border color
+                    dtx.stroke();
+
+                } catch{
+                    console.log(e,"err");
+                }
+            } else{
+                // Condition if duplicate points
             }
 
-            if (!isInitial) {
-                sendPoint(image_id,x,y)
-            }
+            undoQueue.push({x,y,'annotation':'point'});
+
         }
     }
 
@@ -565,10 +560,6 @@ $(document).ready(function () {
         
         return nearLeft || nearRight || nearTop || nearBottom;
     }
-
-
-    let ghostPoints = [];
-    let unsentRemovals = []; // holds points that failed deletion
 
     function erasePointAtCursor(mouseX, mouseY) {
         const threshold = 10;
@@ -755,8 +746,10 @@ $(document).ready(function () {
     }
 
 
+    // --- Main sendPoint function ---
     async function sendPoint(image_id, x, y, radius = 5, color = 'red') {
         try {
+            // Try to establish connection to server..
             const response = await fetch(`/add_egg_to_db/${image_id}/`, {
                 method: "POST",
                 headers: {
@@ -766,30 +759,106 @@ $(document).ready(function () {
                 body: JSON.stringify({ x, y })
             });
 
+            // If no connection is established
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            // Else if connection is established.
+            const data = await response.json();
+            console.log("Server says:", data.message || data.STATUS);
+            total_egg_count++;
+            $("#egg_count").text("Total Eggs: " + total_egg_count);
+
+            
+            // SUCCESS: Find the point in drawnPoints and update it to green
+            updatePointToGreen(x, y, color);
+            return true; // Return success
+
+        } catch (err) {
+            console.error("Server offline, storing point locally:", err);
+
+            // ⏸️ Only add to unsent queue if we're NOT already retrying
+            if (!isRetryingSend) {
+                unsentPoints.push({ image_id, x, y, radius, color });
+                localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+            }
+            return false; // Return failure
+        }
+    }
+
+    // --- Separate function to update point color ---
+    function updatePointToGreen(x, y, color) {
+        const pointIndex = drawnPoints.findIndex(point => 
+            Math.abs(point.x - x) < 2 && Math.abs(point.y - y) < 2 && point.color === color
+        );
+        
+        if (pointIndex !== -1) {
+            drawnPoints[pointIndex].color = 'green';
+            redrawCanvas(); // Redraw the entire canvas with updated colors
+        }
+    }
+
+    // --- Separate retry function (doesn't call main sendPoint) ---
+    async function retrySendPoint(point) {
+        try {
+            const response = await fetch(`/add_egg_to_db/${point.image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x: point.x, y: point.y })
+            });
+
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log("Server says:", data.message || data.STATUS);
-            
-            // SUCCESS: Find the point in drawnPoints and update it to green
-            const pointIndex = drawnPoints.findIndex(point => 
-                Math.abs(point.x - x) < 2 && Math.abs(point.y - y) < 2 && point.color === color
-            );
-            
-            if (pointIndex !== -1) {
-                drawnPoints[pointIndex].color = 'green';
-                redrawCanvas(); // Redraw the entire canvas with updated colors
-            }
+            console.log("Retry success:", data.message || data.STATUS);
+            // SUCCESS: Update point to green
+            updatePointToGreen(point.x, point.y, point.color);
+            return true;
 
         } catch (err) {
-            console.error("Server offline, storing point locally:", err);
-
-            unsentPoints.push({ image_id, x, y, radius, color });
-            localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+            console.warn("Retry failed:", err);
+            return false;
         }
     }
+
+    // --- Retry loop for unsent points ---
+    setInterval(async () => {
+        if (unsentPoints.length > 0) {
+            console.log("Retrying unsent points...", unsentPoints.length);
+            isRetryingSend = true; // Set flag to prevent circular calls
+
+            const stillUnsent = [];
+
+            for (let point of unsentPoints) {
+                if (
+                    point &&
+                    typeof point.x === "number" && !isNaN(point.x) &&
+                    typeof point.y === "number" && !isNaN(point.y)
+                ) {
+                    const success = await retrySendPoint(point);
+                    
+                    if (!success) {
+                        stillUnsent.push(point); // Keep for next retry
+                    } else {
+                        console.log("Retry success, sent:", point.x, point.y);
+                    }
+                } else {
+                    console.warn("Skipping invalid point:", point);
+                }
+            }
+
+            unsentPoints = stillUnsent;
+            localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+            
+            isRetryingSend = false; // Clear flag
+        }
+    }, 5000);
 
     // --- Remove egg request ---
     async function remove_egg_from_db(image_id, x, y, radius = 5, color = 'red', transparency = 0.5) {
@@ -811,6 +880,8 @@ $(document).ready(function () {
 
             const data = await response.json();
             console.log("Server says:", data.message || data.STATUS);
+            total_egg_count--;
+            $("#egg_count").text("Total Eggs: " + total_egg_count);
 
             // SUCCESS: Remove ghost point
             removeGhostPoint(x, y, image_id);
@@ -828,33 +899,7 @@ $(document).ready(function () {
         }
     }
 
-    setInterval(async () => {
-        if (unsentPoints.length > 0) {
-            console.log("Retrying unsent points...");
-
-            const stillUnsent = [];
-
-            for (let point of unsentPoints) {
-                if (
-                    point &&
-                    typeof point.x === "number" && !isNaN(point.x) &&
-                    typeof point.y === "number" && !isNaN(point.y)
-                ) {
-                    try {
-                        await sendPoint(point.image_id, point.x, point.y, point.radius, point.color);
-                        // Point will turn green inside sendPoint if successful
-                    } catch {
-                        stillUnsent.push(point); // keep if still failing
-                    }
-                } else {
-                    console.warn("Skipping invalid point:", point);
-                }
-            }
-
-            unsentPoints = stillUnsent;
-            localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
-        }
-    }, 5000);
+  
 
 
     // --- Separate function for removing ghost points ---
@@ -926,8 +971,7 @@ $(document).ready(function () {
         }
     }
 
-    // --- Flag to prevent circular calls ---
-    let isRetrying = false;
+
 
     // --- Retry loop for failed deletions ---
     setInterval(async () => {

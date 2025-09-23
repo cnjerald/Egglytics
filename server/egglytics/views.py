@@ -183,6 +183,13 @@ def add_egg_to_db(request, image_id):
             x = data.get("x")
             y = data.get("y")
 
+            # Fetch the image entry
+            image = get_object_or_404(ImageDetails, image_id=image_id)
+
+            # Increment total eggs
+            image.total_eggs = (image.total_eggs or 0) + 1
+            image.save()
+
             point = AnnotationPoints.objects.create(
                 image_id=image_id,
                 x=x,
@@ -214,6 +221,13 @@ def remove_egg_from_db(request, image_id):
             if not point:
                 return JsonResponse({"STATUS": "Point not found"}, status=404)
 
+            # Fetch the image entry
+            image = get_object_or_404(ImageDetails, image_id=image_id)
+
+            # Increment total eggs
+            image.total_eggs = (image.total_eggs or 0) - 1
+            image.save()
+
             if point.is_original:
                 # mark as deleted instead of removing
                 print("[DEBUG]: CASE 1")
@@ -224,6 +238,7 @@ def remove_egg_from_db(request, image_id):
                 # actually remove the row
                 AnnotationPoints.objects.filter(image_id=image_id, x=x, y=y).delete()
                 return JsonResponse({"STATUS": "Deleted"})
+            
 
         except Exception as e:
             return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
