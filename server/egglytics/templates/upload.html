@@ -1,403 +1,125 @@
 {% load static %}
-<script src="{% static 'js/image_upload_handler.js' %}"></script>
-<link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-<style>
+<link href="{% static 'css/upload.css' %}" rel="stylesheet" />
 
-#parent-container {
-  display: flex;
-  flex-direction: column;  /* This makes the content go down instead of side by side*/
-  justify-content: flex-start;
-  align-items: center;
-  background-color: #4caf50;
-
-  height: 90vh; /* Consume 90% of the screen (A bit of allowance for the header and potential footer) */
-  box-sizing: border-box;
-}
-
-#drop-area {
-    border: 2px dashed #ccc;
-    border-radius: 10px;
-    padding: 30px;
-    font-family: Arial;
-    color: #666;
-    margin: 1%;
-    min-width: 50vw;
-    min-height: 25vh;
-
-    /* Center content */
-    display: flex;
-    flex-direction: column;  
-    justify-content: center; 
-    align-items: center;  
-    text-align: center;
-}
-
-#drop-area p{
-  padding: 0%;
-  margin: 1%;
-}
-
-
-#drop-area.highlight {
-    /* This is the color when a file is dragged */
-    border-color: #4caf50;  
-    /* This is the default color */
-    background-color: #f0fff0;
-}
-
-#view-area {
-  background-color: #2196F3;
-  width: 50vw;
-  height: 50vh;
-  overflow-y: auto;   /* scroll when content exceeds */
-  overflow-x: hidden;
-  box-sizing: border-box;
-}
-
-#entry-container{
-  display: flex;
-}
-
-.view-photo{
-  width:15%;
-  height: 15%;
-}
-
-/* This toggled switch an edited version of https://www.w3schools.com/howto/tryit.asp?filename=tryhow_css_switch*/
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 34px;
-}
-
-.switch input { 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: #2196F3;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
-}
-
-input:checked + .slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
-}
-/* Rounded sliders */
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  text-align: center;
-  font-family: Arial, sans-serif;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-th, td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-}
-
-th {
-  background: #f4f4f4;
-  font-weight: bold;
-}
-
-tr:hover {
-  background: #f9f9f9;
-}
-
-label {
-  margin: 0 8px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-}
-
-.modal-content {
-    background: white;
-    margin: 2% auto;
-    padding: 0;
-    width: 95%;
-    max-width: 1200px;
-    height: auto;
-    max-height: 90vh;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.modal-header {
-    padding: 20px 30px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-title {
-    margin: 0;
-    color: #333;
-    font-size: 24px;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #aaa;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.3s;
-}
-
-.close-btn:hover {
-    background: #e9ecef;
-    color: #333;
-}
-
-.modal-body {
-    padding: 30px;
-    flex: 1;
-    overflow-y: auto;
-    text-align: center;
-}
-
-.cropper-section {
-    margin: 20px 0;
-}
-
-.image-container {
-    position: relative;
-    display: inline-block;
-    margin: 20px 0;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    overflow: hidden;
-    max-width: 100%;
-}
-
-.crop-image {
-    display: block;
-    max-width: 100%;
-    max-height: 60vh;
-    width: auto;
-    height: auto;
-}
-
-.crop-bars {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-}
-
-.bar {
-    position: absolute;
-    background: #007bff;
-    cursor: grab;
-    pointer-events: all;
-    opacity: 0.8;
-    transition: all 0.2s ease;
-    z-index: 10;
-}
-
-.bar:hover {
-    background: #0056b3;
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.bar.active {
-    cursor: grabbing;
-    background: #0056b3;
-    opacity: 1;
-    transform: scale(1.2);
-}
-
-.bar-top, .bar-bottom {
-    height: 5px;
-    left: 0;
-    right: 0;
-    border-radius: 4px;
-}
-
-.bar-left, .bar-right {
-    width: 5px;
-    top: 0;
-    bottom: 0;
-    border-radius: 4px;
-}
-
-.bar-top { top: 20%; }
-.bar-bottom { bottom: 20%; }
-.bar-left { left: 20%; }
-.bar-right { right: 20%; }
-
-.crop-overlay {
-    position: absolute;
-    border: 2px solid #007bff;
-    background: rgba(0, 123, 255, 0.15);
-    pointer-events: none;
-    top: 20%;
-    right: 20%;
-    bottom: 20%;
-    left: 20%;
-}
-
-.info-panel {
-    margin: 20px 0;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    font-family: monospace;
-    border: 1px solid #e9ecef;
-}
-
-.modal-footer {
-    padding: 20px 30px;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-</style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
 
 <!-- Please read -->
 <!-- 
 hidden accpet = Front end limitations of file upload
 multiple tag = allows batch upload
 id = myfile
- -->
+-->
 
 <div id="parent-container">
-    <!-- Modal -->
-    <div id="cropModal" class="modal">
-      <div class="modal-content">
-          <div class="modal-header">
-              <h2 class="modal-title">Image Cropper</h2>
-              <button class="close-btn" onclick="closeCropper()">&times;</button>
-          </div>
-          
-          <div class="modal-body">
-              <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                  <div class="no-image-text">
-                      <strong>Click here to upload an image</strong><br>
-                      or use the "Load Sample" button below
-                  </div>
-              </div>
-
-              <div class="cropper-section" id="cropperSection" style="display: none;">
-                  <div class="image-container" id="imageContainer">
-                      <img id="cropImage" class="crop-image" alt="Image to crop">
-                      <div class="crop-bars">
-                          <div class="bar bar-top" data-type="top" title="Drag to adjust top edge"></div>
-                          <div class="bar bar-bottom" data-type="bottom" title="Drag to adjust bottom edge"></div>
-                          <div class="bar bar-left" data-type="left" title="Drag to adjust left edge"></div>
-                          <div class="bar bar-right" data-type="right" title="Drag to adjust right edge"></div>
-                          <div class="crop-overlay" id="cropOverlay"></div>
-                      </div>
-                  </div>
-              </div>
-
-          </div>
-
-          <div class="modal-footer">
-              <button class="btn btn-secondary" onclick="resetBars()" id="resetBtn" style="display: none;">Reset Bars</button>
-              <button class="btn btn-secondary" onclick="resetImage()" id="resetPhotoBtn" style="display: none;">Reset Photo</button>
-              <button class="btn btn-primary" onclick="performCrop()" id="cropBtn" style="display: none;">Crop Image</button>
-              <button class="btn btn-primary" id="saveBtn" style="display: none;">Save Image</button>
-          </div>
+  <!-- Modal -->
+  <div id="cropModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Image Cropper</h2>
+        <button class="close-btn" onclick="closeCropper()">&times;</button>
       </div>
+
+      <div class="modal-body">
+        <div
+          class="upload-area"
+          id="uploadArea"
+          onclick="document.getElementById('fileInput').click()"
+        >
+          <div class="no-image-text">
+            <strong>Click here to upload an image</strong><br />
+            or use the "Load Sample" button below
+          </div>
+        </div>
+
+        <div class="cropper-section" id="cropperSection" style="display: none">
+          <div class="image-container" id="imageContainer">
+            <img id="cropImage" class="crop-image" alt="Image to crop" />
+            <div class="crop-bars">
+              <div
+                class="bar bar-top"
+                data-type="top"
+                title="Drag to adjust top edge"
+              ></div>
+              <div
+                class="bar bar-bottom"
+                data-type="bottom"
+                title="Drag to adjust bottom edge"
+              ></div>
+              <div
+                class="bar bar-left"
+                data-type="left"
+                title="Drag to adjust left edge"
+              ></div>
+              <div
+                class="bar bar-right"
+                data-type="right"
+                title="Drag to adjust right edge"
+              ></div>
+              <div class="crop-overlay" id="cropOverlay"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-secondary"
+          onclick="resetBars()"
+          id="resetBtn"
+          style="display: none"
+        >
+          Reset Bars
+        </button>
+        <button
+          class="btn btn-secondary"
+          onclick="resetImage()"
+          id="resetPhotoBtn"
+          style="display: none"
+        >
+          Reset Photo
+        </button>
+        <button
+          class="btn btn-primary"
+          onclick="performCrop()"
+          id="cropBtn"
+          style="display: none"
+        >
+          Crop Image
+        </button>
+        <button class="btn btn-primary" id="saveBtn" style="display: none">
+          Save Image
+        </button>
+      </div>
+    </div>
   </div>
 
   <div id="drop-area">
-      <p>Drag & drop a file here, or click to select</p>
-      <p>Max files: 15</p>
-      <p>Max size per file: 20MB</p>
-      <input type="file" id="myfile" hidden accept=".jpg,.jpeg,.png" multiple>
-      <button type="button" onclick="$('#myfile').click()">Select File</button>
+    <p>Drag & drop a file here, or click to select</p>
+    <p>Max files: 15</p>
+    <p>Max size per file: 20MB</p>
+    <input type="file" id="myfile" hidden accept=".jpg,.jpeg,.png" multiple />
+    <button type="button" onclick="$('#myfile').click()">Select File</button>
 
-      <div id="progress-container" style="width: 50%; margin-top: 20px; display: none;">
-      <div id="progress-bar" style="height: 20px; width: 0%; background-color: #4caf50;"></div>
-      </div>
+    <div
+      id="progress-container"
+      style="width: 50%; margin-top: 20px; display: none"
+    >
+      <div
+        id="progress-bar"
+        style="height: 20px; width: 0%; background-color: #4caf50"
+      ></div>
+    </div>
   </div>
 
-<div id="view-area">
-  <div id="entry-container">
+  <div id="view-area">
+    <div id="entry-container">
       <table id="upload-table">
         <thead>
           <tr>
             <th>Image</th>
             <th>Name</th>
             <th>Size</th>
-            <th>
-              Micro / Macro <br>
+            <th>Micro / Macro <br />
               <label>
                 <input type="radio" name="global-mode" value="micro"> Micro
               </label>
@@ -405,248 +127,28 @@ id = myfile
                 <input type="radio" name="global-mode" value="macro"> Macro
               </label>
             </th>
-            <th>
-              Data Sharing <br>
+            <th>Data Sharing <br />
               <label class="switch">
                 <input type="checkbox" id="global-share">
                 <span class="slider round"></span>
               </label>
             </th>
-            <th>
-              Edit
-            </th>
+            <th>Edit</th>
           </tr>
         </thead>
-        <tbody>
-          
-        </tbody>
-    </table>
+        <tbody></tbody>
+      </table>
+    </div>
 
-
+    <div class="submit-btn-container">
+      <button type="button" id="upload-btn" onclick="">Submit</button>
+    </div>
   </div>
 
-  <div>
-    <button type="button" id="upload-btn" onclick=""> Submit </button>
-  </div>
-
+  <!-- Hidden form just to inject CSRF cookie -->
+  <form style="display: none">{% csrf_token %}</form>
 </div>
 
-
-<script>
-    let crop = { top: 20, bottom: 20, left: 20, right: 20 };
-    let index = null;
-    let dragging = null;
-    let container = null;
-    const modal = document.getElementById("cropModal");
-    let original_image = null;
-    
-    function openCropperWithImage(imageSrc,index) {
-        index = index;
-        modal.style.display = "block";
-        original_image = imageSrc;
-        // small delay to ensure modal is visible before loading
-        setTimeout(() => loadImage(imageSrc), 100);
-    }
-
-    function loadImage(imageSrc) {
-        const img = document.getElementById('cropImage');
-        img.src = imageSrc;
-
-        img.onload = function () {
-            showCropper();
-        };
-    }
-
-    function resetImage(){
-        const img = document.getElementById('cropImage');
-        // Replace the original image with the original one
-        img.src = original_image;
-        
-        // Reset crop values to show full cropped image
-        crop = { top: 20, bottom: 20, left: 20, right: 20 };
-        updateDisplay();
-    }
-
-    function closeCropper() {
-        modal.style.display = "none";
-        resetInterface();
-    }
-
-    function resetInterface() {
-        document.getElementById('uploadArea').style.display = 'block';
-        document.getElementById('cropperSection').style.display = 'none';
-        document.getElementById('resetBtn').style.display = 'none';
-        document.getElementById('resetPhotoBtn').style.display = 'none';
-        document.getElementById('cropBtn').style.display = 'none';
-        document.getElementById('saveBtn').style.display = 'none';
-        crop = { top: 20, bottom: 20, left: 20, right: 20 };
-    }
-
-    function showCropper() {
-        document.getElementById('uploadArea').style.display = 'none';
-        document.getElementById('cropperSection').style.display = 'block';
-        document.getElementById('resetBtn').style.display = 'inline-block';
-        document.getElementById('resetPhotoBtn').style.display = 'inline-block';
-        document.getElementById('cropBtn').style.display = 'inline-block';
-        document.getElementById('saveBtn').style.display = 'inline-block';
-        setupCropper();
-    }
-
-    function dataURLtoFile(dataUrl, filename) {
-        const arr = dataUrl.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new File([u8arr], filename, { type: mime });
-    }
-
-
-    function setupCropper() {
-        container = document.getElementById('imageContainer');
-        const bars = container.querySelectorAll('.bar');
-        
-        bars.forEach(bar => {
-            bar.onmousedown = startDrag;
-        });
-
-        document.onmousemove = drag;
-        document.onmouseup = stopDrag;
-    
-    }
-
-    function startDrag(e) {
-        dragging = e.target.dataset.type;
-        e.target.classList.add('active');
-        e.preventDefault();
-    }
-
-    function drag(e) {
-        if (!dragging || !container) return;
-
-        const rect = container.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-        switch (dragging) {
-            case 'top':
-                crop.top = Math.max(0, Math.min(100 - crop.bottom - 5, y));
-                break;
-            case 'bottom':
-                crop.bottom = Math.max(0, Math.min(100 - crop.top - 5, 100 - y));
-                break;
-            case 'left':
-                crop.left = Math.max(0, Math.min(100 - crop.right - 5, x));
-                break;
-            case 'right':
-                crop.right = Math.max(0, Math.min(100 - crop.left - 5, 100 - x));
-                break;
-        }
-
-        updateDisplay();
-    }
-
-    function stopDrag() {
-        if (dragging) {
-            const activeBar = container.querySelector('.bar.active');
-            if (activeBar) activeBar.classList.remove('active');
-            dragging = null;
-        }
-    }
-
-    function updateDisplay() {
-        const bars = container.querySelectorAll('.bar');
-        const overlay = document.getElementById('cropOverlay');
-
-        bars.forEach(bar => {
-            const type = bar.dataset.type;
-            switch (type) {
-                case 'top':
-                    bar.style.top = crop.top + '%';
-                    break;
-                case 'bottom':
-                    bar.style.bottom = crop.bottom + '%';
-                    break;
-                case 'left':
-                    bar.style.left = crop.left + '%';
-                    break;
-                case 'right':
-                    bar.style.right = crop.right + '%';
-                    break;
-            }
-        });
-        
-        // 🔹 Update the highlight overlay box
-        overlay.style.top = crop.top + "%";
-        overlay.style.left = crop.left + "%";
-        overlay.style.right = crop.right + "%";
-        overlay.style.bottom = crop.bottom + "%";
-    }
-
-    function resetBars() {
-        crop = { top: 20, bottom: 20, left: 20, right: 20 };
-        updateDisplay();
-    }
-
-    function performCrop() {
-        const img = document.getElementById('cropImage');
-
-        // Create an off-screen canvas instead of using a <canvas> element
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-
-        const cropX = (crop.left / 100) * w;
-        const cropY = (crop.top / 100) * h;
-        const cropW = w - ((crop.left + crop.right) / 100) * w;
-        const cropH = h - ((crop.top + crop.bottom) / 100) * h;
-
-        canvas.width = cropW;
-        canvas.height = cropH;
-
-        // Draw cropped area
-        ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-        // Replace the original image with cropped result
-        img.src = canvas.toDataURL();
-
-        crop = { top: 20, bottom: 20, left: 20, right: 20 };
-        updateDisplay();
-    }
-
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('cropModal');
-        if (event.target === modal) {
-            closeCropper();
-        }
-    }
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            const modal = document.getElementById('cropModal');
-            if (modal.style.display === 'block') {
-                closeCropper();
-            }
-        }
-    });
-</script>
-
-
-
-
-  
-
-
-
-<!-- Hidden form just to inject CSRF cookie -->
-<form style="display:none;">
-    {% csrf_token %}
-</form>
+<script src="{% static 'js/image_upload_handler.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="{% static 'js/upload_crop_handler.js' %}"></script>

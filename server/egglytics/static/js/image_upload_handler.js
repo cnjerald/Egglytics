@@ -5,6 +5,22 @@ $(document).ready(function () {
     let fileArray = [];
     let index_holder = null;
 
+    function updateSubmitButtonVisibility() {
+        //console.log("DEBUG: updateSubmitButtonVisibility() called. Files:", document.querySelector('#upload-table tbody').children.length);
+
+        const tableBody = document.querySelector('#upload-table tbody');
+        const submitButton = document.getElementById('upload-btn');
+        
+        if (!tableBody || !submitButton) return;
+
+        // Show button if there is at least one row, otherwise hide it
+        if (tableBody.children.length > 0) {
+            submitButton.style.display = 'inline-block'; 
+        } else {
+            submitButton.style.display = 'none';
+        }
+    }
+
     // <-- These section handles the effects of the upload -->
     // Drag hover styling
     $dropArea.on('dragenter dragover', function (e) {
@@ -54,6 +70,7 @@ $(document).ready(function () {
         // Error handling for a rare case.
         if (fileArray.length === 0) {
             console.log("Case: Empty upload");
+            updateSubmitButtonVisibility();
             return;
         }
         // SECTION CREATE A FILE VIEW TABLE
@@ -131,6 +148,7 @@ $(document).ready(function () {
             // Add row to table
             tbody.appendChild(row);
         });
+        updateSubmitButtonVisibility();
     }
 
     $("#saveBtn").on("click",function(e){
@@ -195,6 +213,11 @@ $(document).ready(function () {
             },
             success: function (response) {
                 console.log("Uploaded files:", response.filenames);
+
+                fileArray = []; 
+                document.querySelector("#upload-table tbody").innerHTML = "";
+                updateSubmitButtonVisibility()
+
                 // Redirect after successful upload
                 window.location.href = "/view";
             },
@@ -217,4 +240,5 @@ $(document).ready(function () {
         }
         return '';
     }
+    updateSubmitButtonVisibility();
 });
