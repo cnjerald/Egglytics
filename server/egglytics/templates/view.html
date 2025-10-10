@@ -87,6 +87,17 @@
         </style>
     </head>
     <body>
+
+    <div id="notif-container" style="
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 9999;
+    "></div>    
+
         {% for batch in batches %}
         <div class="info-card" data-batch-id="{{ batch.id }}">
             <h5>NAME: {{ batch.batch_name }}</h5>
@@ -195,4 +206,79 @@
         });
 
     </script>
+<script>
+    const notifiedBatches = new Set(JSON.parse(localStorage.getItem('notifiedBatches') || '[]'));
+    let initialized = false;
+
+    function saveNotifiedBatches() {
+        localStorage.setItem('notifiedBatches', JSON.stringify(Array.from(notifiedBatches)));
+    }
+
+    function showNotification(message) {
+        const container = document.getElementById('notif-container');
+        const notif = document.createElement('div');
+        notif.textContent = message;
+        notif.style.background = '#333';
+        notif.style.color = '#fff';
+        notif.style.padding = '10px 15px';
+        notif.style.borderRadius = '5px';
+        notif.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        notif.style.opacity = '0';
+        notif.style.transition = 'opacity 0.5s ease';
+        container.appendChild(notif);
+
+        setTimeout(() => { notif.style.opacity = '1'; }, 100);
+        setTimeout(() => {
+            notif.style.opacity = '0';
+            setTimeout(() => notif.remove(), 500);
+        }, 4000);
+    }
+
+    function updateBatchStatus() {
+        fetch('/batch/status/')
+            .then(res => res.json())
+            .then(data => {
+                const currentBatchIds = new Set(data.map(batch => batch.id));
+
+                // ✅ Remove IDs that no longer exist in DB
+                for (const id of [...notifiedBatches]) {
+                    if (!currentBatchIds.has(id)) {
+                        notifiedBatches.delete(id);
+                    }
+                }
+
+                data.forEach(batch => {
+                    const card = document.querySelector(`.info-card[data-batch-id="${batch.id}"]`);
+                    if (card) {
+                        const totalEggsElem = card.querySelector('h5:nth-child(4)');
+                        totalEggsElem.textContent = `Total Eggs: ${batch.total_eggs}`;
+
+                        const statusElem = card.querySelector('h5:last-child');
+                        const isComplete = batch.total_eggs > 0 || batch.is_complete;
+
+                        if (isComplete) {
+                            statusElem.innerHTML = 'Processing Status: <i class="fas fa-check-circle" style="color: green;"></i>';
+                            if (!notifiedBatches.has(batch.id)) {
+                                notifiedBatches.add(batch.id);
+                                saveNotifiedBatches();
+                                // ✅ Use batch.id to avoid "undefined"
+                                showNotification(`Batch "${batch.id}" is complete!`);
+                            }
+                        } else {
+                            statusElem.innerHTML = 'Processing Status: <i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
+                        }
+                    }
+                });
+
+                // Mark initialized after first successful fetch
+                if (!initialized) {
+                    initialized = true;
+                    saveNotifiedBatches();
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    setInterval(updateBatchStatus, 3000);
+</script>
 </html>

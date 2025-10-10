@@ -174,6 +174,12 @@ def batch_images(request, batch_id):
     )
     return JsonResponse(list(images), safe=False)
 
+def batch_status(request):
+    batches = BatchDetails.objects.filter(owner="incognito").values(
+        "id", "total_eggs", "total_images", "is_complete"
+    )
+    return JsonResponse(list(batches), safe=False)
+
 def add_egg_to_db(request, image_id):
     if request.method == "POST":
         try:
