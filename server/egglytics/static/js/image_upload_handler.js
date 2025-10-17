@@ -94,7 +94,14 @@ $(document).ready(function () {
 
             // File name
             const nameCell = document.createElement("td");
-            nameCell.textContent = file.name;
+
+            // create a wrapper div to allow ellipsis
+            const nameWrap = document.createElement("div");
+            nameWrap.className = "filename";
+            nameWrap.textContent = file.name;
+            nameWrap.title = file.name;  // tooltip shows full filename on hover
+
+            nameCell.appendChild(nameWrap);
 
             // File size (pretty format)
             const sizeCell = document.createElement("td");
@@ -117,7 +124,7 @@ $(document).ready(function () {
                 <label class="switch">
                 <input type="checkbox" class="share-toggle" name="share${index}">
                 <span class="slider round"></span>
-                </label>
+                </label> 
             `;
 
             // Edit button
@@ -126,8 +133,7 @@ $(document).ready(function () {
 
             editBtn.type = "button";
             editBtn.className = "demo-btn success"; // add classes
-            editBtn.textContent = "Open Cropper with Sample Image"; // button label
-            editBtn.setAttribute("onclick", "openCropperWithSample()"); // set onclick attribute
+            editBtn.textContent = "Edit"; // button label
 
             editCell.appendChild(editBtn);
 
@@ -135,6 +141,22 @@ $(document).ready(function () {
                 index_holder = index;
                 console.log(index);
                 openCropperWithImage(img.src, index);
+            };
+            
+            // Delete button
+            const deleteCell = document.createElement("td");
+            const deleteBtn = document.createElement("button");
+
+            deleteBtn.type = "button";
+            deleteBtn.className = "demo-btn danger"; // maybe use 'danger' for clarity
+            deleteBtn.textContent = "X";
+
+            deleteCell.appendChild(deleteBtn);
+
+            // Corrected event handler
+            deleteBtn.onclick = () => {
+                index_holder = index;
+                deleteEntry(index);
             };
 
             // Append all cells to row
@@ -144,7 +166,7 @@ $(document).ready(function () {
             row.appendChild(modeCell);
             row.appendChild(shareCell);
             row.appendChild(editCell);
-
+            row.appendChild(deleteCell);
             // Add row to table
             tbody.appendChild(row);
         });
@@ -168,23 +190,87 @@ $(document).ready(function () {
             return;
         }
 
-        // Convert back to File
-        const newFile = dataURLtoFile(img.src, fileArray[index].name);
+        const dataUrl = img.src;
+        if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+            console.warn("Nothing to save — image not cropped or invalid data URL.");
+            return;
+        }
 
-        // Replace in array
+        // Convert dataURL back to a File
+        const newFile = dataURLtoFile(dataUrl, fileArray[index].name);
+        if (!newFile) {
+            console.warn("Failed to convert cropped image to file.");
+            return;
+        }
+
+        // Replace file in the array
         fileArray[index] = newFile;
 
-        // Update table row directly
+        // Update table row
         const row = document.querySelector(`#upload-table tbody tr[data-id="${index + 1}"]`);
         if (row) {
-            // Update preview image
             const previewImg = row.querySelector("td img");
-            previewImg.src = URL.createObjectURL(newFile);
+            if (previewImg) {
+                previewImg.src = URL.createObjectURL(newFile);
+            }
 
-            // Update file size cell (3rd column, index 2)
             const sizeCell = row.querySelectorAll("td")[2];
-            sizeCell.textContent = (newFile.size / (1024 * 1024)).toFixed(2) + " MB";
+            if (sizeCell) {
+                sizeCell.textContent = (newFile.size / (1024 * 1024)).toFixed(2) + " MB";
+            }
         }
+
+        // Close modal and reset UI
+        modal.style.display = "none";
+        resetInterface();
+    }
+
+
+    function deleteEntry(index) {
+        //Remove the file from the array
+        fileArray.splice(index, 1);
+
+        //Remove the row from the DOM directly
+        const tbody = document.querySelector("#upload-table tbody");
+        const rowToRemove = tbody.querySelector(`tr[data-id="${index + 1}"]`);
+        if (rowToRemove) {
+            tbody.removeChild(rowToRemove);
+        }
+
+        // Update the data-id attributes and button handlers below the deleted one
+        const rows = tbody.querySelectorAll("tr");
+        rows.forEach((row, newIndex) => {
+            row.dataset.id = newIndex + 1;
+
+            // Update the Edit and Delete buttons to match new indices
+            const editBtn = row.querySelector(".demo-btn.success");
+            const deleteBtn = row.querySelector(".demo-btn.danger");
+
+            if (editBtn) {
+                editBtn.onclick = () => {
+                    index_holder = newIndex;
+                    const img = row.querySelector("img");
+                    openCropperWithImage(img.src, newIndex);
+                };
+            }
+
+            if (deleteBtn) {
+                deleteBtn.onclick = () => {
+                    index_holder = newIndex
+                    deleteEntry(newIndex);
+                };
+            }
+        });
+
+        // 4️ Hide or show the upload button
+        updateSubmitButtonVisibility();
+
+        // 5️ Clear index holder if it referenced the deleted item
+        if (index_holder === index) {
+            index_holder = null;
+        }
+
+        console.log(`Deleted entry ${index}. Remaining files:`, fileArray.length);
     }
 
 
