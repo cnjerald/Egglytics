@@ -143,6 +143,22 @@ tr:hover {
   background: #f9f9f9;
 }
 
+/* ensures the filename wraps properly and truncates */
+#upload-table .filename {
+  max-width: 200px;        /* adjust to your design */
+  display: inline-block;   /* block or inline-block enables ellipsis */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+/* optional: keep table layout flexible */
+#upload-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
 label {
   margin: 0 8px;
   font-size: 0.9rem;
