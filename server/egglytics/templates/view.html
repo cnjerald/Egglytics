@@ -105,8 +105,10 @@
             <h5>Total Images: {{ batch.total_images }}</h5>
             <h5>Total Eggs: {{ batch.total_eggs }}</h5>
             <h5>
-                Processing Status:
-                {% if batch.total_eggs > 0 %}
+                Processing Status: 
+                {% if batch.has_fail_present %}
+                    <i class="fas fa-exclamation-triangle" style="color: orange;"></i> <!-- warning -->
+                {% elif batch.is_complete and not batch.has_fail_present %}
                     <i class="fas fa-check-circle" style="color: green;"></i> <!-- done -->
                 {% else %}
                     <i class="fas fa-spinner fa-spin" style="color: orange;"></i> <!-- loading -->
@@ -169,25 +171,24 @@
             card.addEventListener("click", () => {
                 const batchId = card.getAttribute("data-batch-id");
 
-                // Show popup immediately (loading state)
                 popupText.textContent = "Loading images...";
                 popup.style.display = "flex";
 
                 fetch(`/batch/${batchId}/images/`)
                     .then(response => response.json())
                     .then(data => {
-                        // Replace popup content with real image details
                         let detailsHTML = "";
-                        const img = data[0]; // show first image for now
+                        const img = data[0];
                         document.getElementById("popup-image").src = `../static/uploads/${img.image_name}`;
+
                         data.forEach(img => {
                             detailsHTML += `
-                                <div>
+                                <div class="image-details" data-image-id="${img.image_id}" data-image-name="${img.image_name}">
                                     <h5>Image: ${img.image_name}</h5>
                                     <p>Eggs: ${img.total_eggs}</p>
                                     <p>Hatched: ${img.total_hatched}</p>
                                     <p>Type: ${img.img_type}</p>
-                                    <button class="edit-btn" onclick="window.location.href='/edit/${img.image_id}'">
+                                    <button class="edit-btn" onclick="event.stopPropagation(); window.location.href='/edit/${img.image_id}'">
                                         Edit
                                     </button>
                                 </div>
@@ -195,8 +196,8 @@
                             `;
                         });
 
-                        popupText.textContent = "Image Details"; // header
-                        document.querySelector(".text-side").innerHTML = detailsHTML;
+                        popupText.textContent = "Image Details";
+                        $(".text-side").html(detailsHTML);
                     })
                     .catch(err => {
                         popupText.textContent = "Error loading images";
@@ -205,8 +206,27 @@
             });
         });
 
+        // Handle clicks for dynamically added `.image-details` divs
+        $(document).on("click", ".image-details", function () {
+            const imageName = $(this).data("image-name");
+            const imageId = $(this).data("image-id");
+
+            $("#popup-image").attr("src", `../static/uploads/${imageName}`);
+            console.log("Selected image:", imageId);
+        });
+
+
     </script>
 <script>
+
+
+
+
+
+
+
+
+
     const notifiedBatches = new Set(JSON.parse(localStorage.getItem('notifiedBatches') || '[]'));
     let initialized = false;
 
@@ -233,7 +253,6 @@
             setTimeout(() => notif.remove(), 500);
         }, 4000);
     }
-
     function updateBatchStatus() {
         fetch('/batch/status/')
             .then(res => res.json())
@@ -254,18 +273,27 @@
                         totalEggsElem.textContent = `Total Eggs: ${batch.total_eggs}`;
 
                         const statusElem = card.querySelector('h5:last-child');
-                        const isComplete = batch.total_eggs > 0 || batch.is_complete;
 
-                        if (isComplete) {
-                            statusElem.innerHTML = 'Processing Status: <i class="fas fa-check-circle" style="color: green;"></i>';
+                        // ✅ Match exact same logic & colors as Jinja2
+                        if (batch.has_fail_present) {
+                            console.log("CASE1");
+                            statusElem.innerHTML =
+                                'Processing Status: <i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
+                        } else if (batch.is_complete && !batch.has_fail_present) {
+                            console.log("CASE2");
+                            statusElem.innerHTML =
+                                'Processing Status: <i class="fas fa-check-circle" style="color: green;"></i>';
+
+                            // Notify once per batch (optional)
                             if (!notifiedBatches.has(batch.id)) {
                                 notifiedBatches.add(batch.id);
                                 saveNotifiedBatches();
-                                // ✅ Use batch.id to avoid "undefined"
                                 showNotification(`Batch "${batch.id}" is complete!`);
                             }
                         } else {
-                            statusElem.innerHTML = 'Processing Status: <i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
+                            console.log("CASE3");
+                            statusElem.innerHTML =
+                                'Processing Status: <i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
                         }
                     }
                 });
@@ -279,6 +307,7 @@
             .catch(err => console.error(err));
     }
 
-    setInterval(updateBatchStatus, 3000);
+
+    setInterval(updateBatchStatus, 15000);
 </script>
 </html>

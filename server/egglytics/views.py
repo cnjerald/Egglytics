@@ -11,44 +11,87 @@ from datetime import datetime
 from django.utils import timezone
 from .models import BatchDetails,ImageDetails, AnnotationPoints
 import threading
+import boto3
+from PIL import Image
+import io
 
-# This is the threadded portion of the compute
+# from dotenv import load_dotenv
+# load_dotenv()
+# Uncomment to save to S3 S3 bucket address
+# s3 = boto3.client(
+#     "s3",
+#     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+#     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+#     region_name=os.getenv("AWS_DEFAULT_REGION", "ap-southeast-1")
+# )
+
 def process_images(batch, files_data, header):
     total_eggs = 0
     total_hatched = 0
-    # For earch file in the JSON array
+    bucket_name = "egglytics"
+
     for i, file_dict in enumerate(files_data, start=0):
         try:
             file_name = f"{header}_{i}"
+            image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
             original_name = file_dict["name"]
 
-            payload = {'image': encoded, 'filename': original_name}
-            # Create image_record in db.
+
+
+            # # Upload original image to S3
+            # #Decode and upload original image to S3
+            # image_data = file_dict["data"]
+            # image_bytes = base64.b64decode(image_data)
+            # image = Image.open(io.BytesIO(image_bytes))
+
+            # buffer = io.BytesIO()
+            # image.save(buffer, format="JPEG")
+            # buffer.seek(0)
+            # s3_key = f"temp/{image_name}"
+            # s3.upload_fileobj(buffer, bucket_name, s3_key)
+            # print(f" Uploaded {image_name} to S3 bucket {bucket_name}/{s3_key}")
+
+            # Create DB record
             image_record = ImageDetails.objects.create(
                 batch=batch,
-                image_name=f"image_{file_name}.jpg",
+                image_name=image_name,
                 total_eggs=0,
                 total_hatched=0,
                 img_type="MICRO",
                 allow_collection=True,
-                is_processed=False
+                is_processed=False,
             )
-            # Send to compute server
-            response = requests.post('http://localhost:5000/upload_base64', json=payload)
-            # Await results
+
+            encoded = file_dict["data"]
+            original_name = file_dict["name"]
+
+            payload = {'image': encoded, 'filename': original_name}
+
+            # # Send to compute server
+            # payload = {
+            #     "file_name": image_name,
+            #     "s3_path": s3_key,
+            # }
+            response = requests.post("http://127.0.0.1:5000/upload_base64", json=payload)
             data = response.json()
-            points = data.get("points")
+
+            # Extract result data
+            if response.status_code != 200 or data.get("status") != "complete":
+                # Case here that the comptue server failed..
+                print(" Compute server failed:", data)
+                batch.has_fail_present = True
+                continue
+
+            points = data.get("points", [])
             image_b64 = data.get("final_image")
             temp_eggs = data.get("egg_count", 0)
-
+            
             total_eggs += temp_eggs
             image_record.total_eggs = temp_eggs
             image_record.is_processed = True
             image_record.save()
-            # Save the images locally
-            # But WHY only now? because the model changes the images, and instead of saving two images
-            # Only saved the one where model inference was conducted.
+            
             if image_b64:
                 img_data = base64.b64decode(image_b64)
                 upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
@@ -56,9 +99,22 @@ def process_images(batch, files_data, header):
                 file_path = os.path.join(upload_dir, image_record.image_name)
                 with open(file_path, "wb") as f_out:
                     f_out.write(img_data)
-            # Push point coordinates on the DB
-            print("[DEBUGGER!] TOTAL POINTS ", len(points))
+
+            #  Download processed image from S3
+            #s3_output_path = data.get("s3_output_path")  # processed image path
+            # if s3_output_path:
+            #     local_upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
+            #     os.makedirs(local_upload_dir, exist_ok=True)
+            #     local_file_path = os.path.join(local_upload_dir, image_record.image_name)
+
+            #     with open(local_file_path, "wb") as f_out:
+            #         s3.download_fileobj(bucket_name, s3_output_path, f_out)
+
+            #     print(f" Downloaded processed image to {local_file_path}")
+
+            #  Save annotation points to DB
             if points:
+                print(f"[DEBUGGER] Saving {len(points)} annotation points...")
                 for p in points:
                     AnnotationPoints.objects.create(
                         image=image_record,
@@ -66,13 +122,17 @@ def process_images(batch, files_data, header):
                         y=p[1],
                         is_original=True
                     )
+
         except Exception as e:
+            batch.has_fail_present = True
             print("Error while processing image:", e)
 
+    # Update batch summary
     batch.total_eggs = total_eggs
     batch.total_hatched = total_hatched
     batch.is_complete = True
     batch.save()
+
 
 # This is where the image is initially send after clicking the submit button in the upload.html.
 # It basically saves the image on the backend, then fires a redirect to the user to the view page once saved.
@@ -99,7 +159,8 @@ def upload(request):
             total_eggs=0,
             total_hatched=0,
             date_updated=date,
-            is_complete=False
+            is_complete=False,
+            has_fail_present=False
         )
 
         # Read files into memory BEFORE starting thread (No images are saved at this point, only on memory)
@@ -176,7 +237,7 @@ def batch_images(request, batch_id):
 
 def batch_status(request):
     batches = BatchDetails.objects.filter(owner="incognito").values(
-        "id", "total_eggs", "total_images", "is_complete"
+        "id", "total_eggs", "total_images", "is_complete","has_fail_present"
     )
     return JsonResponse(list(batches), safe=False)
 
@@ -191,10 +252,13 @@ def add_egg_to_db(request, image_id):
 
             # Fetch the image entry
             image = get_object_or_404(ImageDetails, image_id=image_id)
+            batch = image.batch
 
             # Increment total eggs
             image.total_eggs = (image.total_eggs or 0) + 1
             image.save()
+            batch.total_eggs = (batch.total_eggs or 0) + 1
+            batch.save()
 
             point = AnnotationPoints.objects.create(
                 image_id=image_id,
@@ -229,10 +293,13 @@ def remove_egg_from_db(request, image_id):
 
             # Fetch the image entry
             image = get_object_or_404(ImageDetails, image_id=image_id)
+            batch = image.batch
 
-            # Increment total eggs
+            # Decrement total eggs
             image.total_eggs = (image.total_eggs or 0) - 1
             image.save()
+            batch.total_eggs = (batch.total_eggs or 0) - 1
+            batch.save()
 
             if point.is_original:
                 # mark as deleted instead of removing

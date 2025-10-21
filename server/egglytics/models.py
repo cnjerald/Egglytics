@@ -10,6 +10,7 @@ class BatchDetails(models.Model):
     total_eggs = models.IntegerField()
     total_hatched = models.IntegerField()
     is_complete = models.BooleanField()
+    has_fail_present = models.BooleanField(default = False)
 
     class Meta:
         db_table = "batch_details"   # TABLE NAME.
