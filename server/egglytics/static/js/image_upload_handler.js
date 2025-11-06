@@ -1,9 +1,59 @@
+// Global var
+let fileArray = [];
+let index_holder = null;
+
+// Global func..
+function performSave(index) {
+    const img = document.getElementById('cropImage');
+    if (!img) {
+        console.error("Crop image not found!");
+        return;
+    }
+
+    if (index == null) {
+        console.error("No index set for saving!");
+        return;
+    }
+
+    const dataUrl = img.src;
+    if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+        console.warn("Nothing to save — image not cropped or invalid data URL.");
+        return;
+    }
+
+    // Convert dataURL back to a File
+    const newFile = dataURLtoFile(dataUrl, fileArray[index].name);
+    if (!newFile) {
+        console.warn("Failed to convert cropped image to file.");
+        return;
+    }
+
+    // Replace file in the array
+    fileArray[index] = newFile;
+
+    // Update table row
+    const row = document.querySelector(`#upload-table tbody tr[data-id="${index + 1}"]`);
+    if (row) {
+        const previewImg = row.querySelector("td img");
+        if (previewImg) {
+            previewImg.src = URL.createObjectURL(newFile);
+        }
+
+        const sizeCell = row.querySelectorAll("td")[2];
+        if (sizeCell) {
+            sizeCell.textContent = (newFile.size / (1024 * 1024)).toFixed(2) + " MB";
+        }
+    }
+
+    // Close modal and reset UI
+    modal.style.display = "none";
+    resetInterface();
+}
+
 $(document).ready(function () {
     const $dropArea = $('#drop-area');
     const $fileInput = $('#myfile');
     const $previewContainer = $('#uploaded-image');
-    let fileArray = [];
-    let index_holder = null;
 
     function updateSubmitButtonVisibility() {
         //console.log("DEBUG: updateSubmitButtonVisibility() called. Files:", document.querySelector('#upload-table tbody').children.length);
@@ -57,11 +107,14 @@ $(document).ready(function () {
         // SECTION =========== CHECKS THE UPLOAD =========== 
         // Check file count
         if (fileArray.length + files.length <= MAX_FILES) {
-            // Filter out files that are too big
-            const validFiles = Array.from(files).filter(file => 
-                file.size <= MAX_SIZE_PER_FILE);
-            
-            // Add to array
+            // Filter: keep only files that are .jpg/.jpeg/.png and within size limit
+            const validFiles = Array.from(files).filter(file => {
+                const isValidSize = file.size <= MAX_SIZE_PER_FILE;
+                const isValidType = /\.(jpe?g|png)$/i.test(file.name);
+                return isValidSize && isValidType;
+            });
+
+            // Add valid files only
             fileArray = fileArray.concat(validFiles);
         } else {
             alert("DEBUG: TOO MANY FILES!");
@@ -73,6 +126,9 @@ $(document).ready(function () {
             updateSubmitButtonVisibility();
             return;
         }
+
+
+
         // SECTION CREATE A FILE VIEW TABLE
         // select the container
 
@@ -156,7 +212,7 @@ $(document).ready(function () {
             // Corrected event handler
             deleteBtn.onclick = () => {
                 index_holder = index;
-                deleteEntry(index);
+                showDeleteConfirmation(index);
             };
 
             // Append all cells to row
@@ -173,76 +229,112 @@ $(document).ready(function () {
         updateSubmitButtonVisibility();
     }
 
-    $("#saveBtn").on("click",function(e){
+    $("#all_micro").on("change", function () {
+
+        if ($(this).is(":checked")) {
+            // exclude the global itself
+            $('input[type="radio"][value="micro"]').not("#all_micro").each(function () {
+            $(this).prop("checked", true);
+            });
+        }
+    });
+
+    $("#all_macro").on("change", function () {
+        if ($(this).is(":checked")) {
+            $('input[type="radio"][value="macro"]').not("#all_macro").each(function () {
+            $(this).prop("checked", true);
+            });
+        }
+    });
+
+    // uncheck both global mode radios
+    $(document).on("change", 'input[type="radio"][name^="mode"]', function () {
+        $("#all_micro, #all_macro").prop("checked", false);
+    });
+
+    // Handle global share toggle
+    $("#all_share").on("change", function () {
+        const isChecked = $(this).is(":checked");
+        $(".share-toggle").prop("checked", isChecked);
+    });
+
+    // When any individual share toggle changes, uncheck the global
+    $(document).on("change", ".share-toggle", function () {
+        $("#all_share").prop("checked", false);
+    });
+
+    $("#saveBtn").on("click", function(e) {
         console.log(index_holder);
         performSave(index_holder);
-    })
 
-    function performSave(index) {
-        const img = document.getElementById('cropImage');
-        if (!img) {
-            console.error("Crop image not found!");
+        // Find the corresponding row
+        const rows = document.querySelectorAll("tbody tr");
+        const targetRow = rows[index_holder];
+
+        if (targetRow) {
+            // Add a green highlight (e.g., light green background)
+            targetRow.style.backgroundColor = "#c8e6c9"; // soft green tone
+        }
+    });
+    function showDeleteConfirmation(index) {
+        console.log("HELLO!");
+        const mainContent = document.querySelector(".main-content");
+        if (!mainContent) {
+            console.error("Main content container not found!");
             return;
         }
 
-        if (index == null) {
-            console.error("No index set for saving!");
-            return;
-        }
+        // Remove any existing modal first (just in case)
+        const existingModal = mainContent.querySelector(".confirm-modal");
+        if (existingModal) existingModal.remove();
 
-        const dataUrl = img.src;
-        if (!dataUrl || !dataUrl.startsWith("data:image/")) {
-            console.warn("Nothing to save — image not cropped or invalid data URL.");
-            return;
-        }
+        // Create modal
+        const confirmModal = document.createElement("div");
+        confirmModal.classList.add("confirm-modal");
 
-        // Convert dataURL back to a File
-        const newFile = dataURLtoFile(dataUrl, fileArray[index].name);
-        if (!newFile) {
-            console.warn("Failed to convert cropped image to file.");
-            return;
-        }
+        // Build inner content with unique scoped elements (no IDs)
+        const content = document.createElement("div");
+        content.classList.add("confirm-content");
+        content.innerHTML = `
+            <p>Are you sure you want to delete this file?</p>
+            <div class="confirm-actions">
+            <button class="confirm-yes demo-btn danger">Yes</button>
+            <button class="confirm-cancel demo-btn">Cancel</button>
+            </div>
+        `;
+        confirmModal.appendChild(content);
+        mainContent.appendChild(confirmModal);
 
-        // Replace file in the array
-        fileArray[index] = newFile;
+        // Attach event handlers safely
+        const yesBtn = content.querySelector(".confirm-yes");
+        const cancelBtn = content.querySelector(".confirm-cancel");
 
-        // Update table row
-        const row = document.querySelector(`#upload-table tbody tr[data-id="${index + 1}"]`);
-        if (row) {
-            const previewImg = row.querySelector("td img");
-            if (previewImg) {
-                previewImg.src = URL.createObjectURL(newFile);
-            }
+        yesBtn.addEventListener("click", () => {
+            deleteEntry(index);
+            confirmModal.remove();
+        });
 
-            const sizeCell = row.querySelectorAll("td")[2];
-            if (sizeCell) {
-                sizeCell.textContent = (newFile.size / (1024 * 1024)).toFixed(2) + " MB";
-            }
-        }
-
-        // Close modal and reset UI
-        modal.style.display = "none";
-        resetInterface();
+        cancelBtn.addEventListener("click", () => {
+            confirmModal.remove();
+        });
     }
 
 
+
     function deleteEntry(index) {
-        //Remove the file from the array
+        // Remove file from array
         fileArray.splice(index, 1);
 
-        //Remove the row from the DOM directly
+        // Remove row from DOM
         const tbody = document.querySelector("#upload-table tbody");
         const rowToRemove = tbody.querySelector(`tr[data-id="${index + 1}"]`);
-        if (rowToRemove) {
-            tbody.removeChild(rowToRemove);
-        }
+        if (rowToRemove) tbody.removeChild(rowToRemove);
 
-        // Update the data-id attributes and button handlers below the deleted one
+        // Reindex rows and handlers
         const rows = tbody.querySelectorAll("tr");
         rows.forEach((row, newIndex) => {
             row.dataset.id = newIndex + 1;
 
-            // Update the Edit and Delete buttons to match new indices
             const editBtn = row.querySelector(".demo-btn.success");
             const deleteBtn = row.querySelector(".demo-btn.danger");
 
@@ -256,22 +348,17 @@ $(document).ready(function () {
 
             if (deleteBtn) {
                 deleteBtn.onclick = () => {
-                    index_holder = newIndex
-                    deleteEntry(newIndex);
+                    index_holder = newIndex;
+                    showDeleteConfirmation(newIndex);
                 };
             }
         });
 
-        // 4️ Hide or show the upload button
         updateSubmitButtonVisibility();
-
-        // 5️ Clear index holder if it referenced the deleted item
-        if (index_holder === index) {
-            index_holder = null;
-        }
-
+        if (index_holder === index) index_holder = null;
         console.log(`Deleted entry ${index}. Remaining files:`, fileArray.length);
     }
+
 
 
     

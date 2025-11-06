@@ -1,11 +1,13 @@
-let crop = { top: 20, bottom: 20, left: 20, right: 20 };
+let crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
 let index = null;
 let dragging = null;
 let container = null;
 const modal = document.getElementById("cropModal");
 let original_image = null;
+let has_changes = false;
 
 function openCropperWithImage(imageSrc,index) {
+    has_changes = false;
     index = index;
     modal.style.display = "block";
     original_image = imageSrc;
@@ -23,19 +25,31 @@ function loadImage(imageSrc) {
 }
 
 function resetImage(){
+    has_changes = false;
     const img = document.getElementById('cropImage');
     // Replace the original image with the original one
     img.src = original_image;
     
     // Reset crop values to show full cropped image
-    crop = { top: 20, bottom: 20, left: 20, right: 20 };
+    crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
     updateDisplay();
 }
 
 function closeCropper() {
+    if (has_changes === true) {
+        const userConfirmed = confirm("You have unsaved changes. Do you want to save them?");
+        
+        if (userConfirmed) {
+            performSave(index_holder);
+        } else {
+            // Continue without saving
+        }
+    }
+
     modal.style.display = "none";
     resetInterface();
 }
+
 
 function resetInterface() {
     document.getElementById('uploadArea').style.display = 'block';
@@ -44,7 +58,7 @@ function resetInterface() {
     document.getElementById('resetPhotoBtn').style.display = 'none';
     document.getElementById('cropBtn').style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
-    crop = { top: 20, bottom: 20, left: 20, right: 20 };
+    crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
 }
 
 function showCropper() {
@@ -152,37 +166,74 @@ function updateDisplay() {
 }
 
 function resetBars() {
-    crop = { top: 20, bottom: 20, left: 20, right: 20 };
+    crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
     updateDisplay();
 }
-
 function performCrop() {
     const img = document.getElementById('cropImage');
+    if (!img) return;
 
-    // Create an off-screen canvas instead of using a <canvas> element
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // Show loading overlay
+    showLoading("Cropping image...");
 
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
+    // Run the crop asynchronously so the UI updates
+    setTimeout(() => {
+        try {
+            // Create an off-screen canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
 
-    const cropX = (crop.left / 100) * w;
-    const cropY = (crop.top / 100) * h;
-    const cropW = w - ((crop.left + crop.right) / 100) * w;
-    const cropH = h - ((crop.top + crop.bottom) / 100) * h;
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
 
-    canvas.width = cropW;
-    canvas.height = cropH;
+            const cropX = (crop.left / 100) * w;
+            const cropY = (crop.top / 100) * h;
+            const cropW = w - ((crop.left + crop.right) / 100) * w;
+            const cropH = h - ((crop.top + crop.bottom) / 100) * h;
 
-    // Draw cropped area
-    ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            canvas.width = cropW;
+            canvas.height = cropH;
 
-    // Replace the original image with cropped result
-    img.src = canvas.toDataURL();
+            // Draw cropped area
+            ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-    crop = { top: 20, bottom: 20, left: 20, right: 20 };
-    updateDisplay();
+            // Replace the original image with cropped result
+            img.src = canvas.toDataURL();
+
+            // Reset state
+            crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
+            updateDisplay();
+            has_changes = true;
+        } catch (err) {
+            console.error("Error cropping image:", err);
+            alert("Something went wrong while cropping the image.");
+        } finally {
+            // Hide loading overlay
+            hideLoading();
+        }
+    }, 100); // small delay to let the browser render the loader
 }
+
+function showLoading(message = "Loading...") {
+    let loader = document.getElementById("loadingOverlay");
+    if (!loader) {
+        loader = document.createElement("div");
+        loader.id = "loadingOverlay";
+        loader.innerHTML = `
+            <div class="loader-content">
+                <div class="spinner"></div>
+                <p>${message}</p>
+            </div>`;
+        document.body.appendChild(loader);
+    }
+    loader.style.display = "flex";
+}
+
+function hideLoading() {
+    const loader = document.getElementById("loadingOverlay");
+    if (loader) loader.style.display = "none";
+}
+
 
 
 // Close modal when clicking outside
