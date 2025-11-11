@@ -11,7 +11,7 @@ from datetime import datetime
 from django.utils import timezone
 from .models import BatchDetails,ImageDetails, AnnotationPoints
 import threading
-import boto3
+# import boto3
 from PIL import Image
 import io
 
