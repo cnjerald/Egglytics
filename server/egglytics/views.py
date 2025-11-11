@@ -241,6 +241,18 @@ def batch_status(request):
     )
     return JsonResponse(list(batches), safe=False)
 
+def batch_status_latest(request):
+    # Get the latest batch by id (or by a timestamp if you have one)
+    latest_batch = BatchDetails.objects.filter(owner="incognito").order_by('-id').values(
+        "id", "total_eggs", "total_images", "is_complete", "has_fail_present"
+    ).first()  # returns a dict or None
+
+    if latest_batch:
+        return JsonResponse(latest_batch, safe=True)  # single object
+    else:
+        return JsonResponse({}, safe=True)  # return empty dict if none found
+
+
 def add_egg_to_db(request, image_id):
     if request.method == "POST":
         try:
@@ -317,3 +329,81 @@ def remove_egg_from_db(request, image_id):
             return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
 
     return JsonResponse({"STATUS": "Invalid request"}, status=400)
+
+# This deletes the batch and everything associated with it (Image details and Points)
+# It does not delete the image saved on local disk as of now.
+def delete_batch(request, batch_id):
+    if request.method == "POST":
+        try:
+            batch = BatchDetails.objects.get(id=batch_id)
+            images = ImageDetails.objects.filter(batch=batch)
+            AnnotationPoints.objects.filter(image__in=images).delete()
+            images.delete()
+            batch.delete()
+            return JsonResponse({"success": True})
+        except BatchDetails.DoesNotExist:
+            return JsonResponse({"error": "Batch not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid method"}, status=405)
+
+
+def delete_image(request, image_id):
+    if request.method == "POST":
+        try:
+            # Get the image
+            image = ImageDetails.objects.get(image_id=image_id)
+            batch = image.batch  # assuming ForeignKey from ImageDetails -> Batch
+
+            # Delete related annotations
+            AnnotationPoints.objects.filter(image=image).delete()
+
+            # Subtract the image's eggs from batch total
+            batch.total_eggs -= image.total_eggs
+
+            # Delete image
+            image.delete()
+
+            # Decrement total_images
+            batch.total_images -= 1
+
+            if batch.total_images <= 0:
+                batch.delete()
+                return JsonResponse({
+                    "success": True,
+                    "message": "Image deleted. Batch removed because no images left.",
+                    "batch_deleted": True
+                })
+            else:
+                batch.save()
+                return JsonResponse({
+                    "success": True,
+                    "message": "Image deleted successfully.",
+                    "batch_deleted": False,
+                    "new_total_images": batch.total_images,
+                    "new_total_eggs": batch.total_eggs
+                })
+
+        except ImageDetails.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Image not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=500)
+    else:
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=400)
+
+
+def edit_batch_name(request, batch_id):
+    if request.method == "POST":
+        import json
+        data = json.loads(request.body)
+        new_name = data.get("batch_name", "").strip()
+        if not new_name:
+            return JsonResponse({"success": False, "message": "Batch name cannot be empty."})
+        try:
+            batch = BatchDetails.objects.get(id=batch_id)
+            batch.batch_name = new_name
+            batch.save()
+            return JsonResponse({"success": True})
+        except BatchDetails.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Batch not found."})
+    return JsonResponse({"success": False, "message": "Invalid request."})

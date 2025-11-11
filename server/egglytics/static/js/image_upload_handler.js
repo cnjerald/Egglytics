@@ -365,7 +365,6 @@ $(document).ready(function () {
     $("#upload-btn").on("click", function (e) {
         e.preventDefault();
 
-        
         const formData = new FormData();
 
         fileArray.forEach(file => {
@@ -382,7 +381,7 @@ $(document).ready(function () {
             processData: false,
             contentType: false,
             headers: {
-                "X-CSRFToken": getCSRFToken()
+                "X-CSRFToken": getCSRFToken(),
             },
             success: function (response) {
                 console.log("Uploaded files:", response.filenames);
@@ -390,7 +389,8 @@ $(document).ready(function () {
                 fileArray = []; 
                 document.querySelector("#upload-table tbody").innerHTML = "";
                 updateSubmitButtonVisibility()
-
+                // This flag acts as a way to send a message to the /view, where it will tell the user that there is an ongoing computation.
+                localStorage.setItem("flag", JSON.stringify({ processingActive: true }));
                 // Redirect after successful upload
                 window.location.href = "/view";
             },
