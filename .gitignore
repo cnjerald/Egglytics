@@ -16,5 +16,4 @@ media/
 Thumbs.db
 
 # Static File
-server/egglytics/static/img
 server/egglytics/static/uploads

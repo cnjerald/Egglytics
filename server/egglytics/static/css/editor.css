@@ -1,0 +1,242 @@
+body {
+    margin: 0;
+    overflow:hidden;
+}
+/* This needs a fix, not perfectly fit into the page, esp if the picture is larger than the canvas*/
+#photo {
+    width: 100vw;              /* Use 90% of viewport width */
+    height: 100vh;             /* Use 90% of viewport height */
+    max-width: 100%;          /* Prevent overflow */
+    max-height: 100%;         /* Prevent overflow */
+    overflow: hidden;
+    position: relative;
+    background-color: white;
+    cursor: crosshair;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;           /* Center the container */
+    image-rendering: pixelated;
+    will-change: transform;
+    contain:strict;
+}
+
+#zoom-wrapper {
+    position: absolute;
+    will-change: transform;
+}
+
+
+#grid-canvas, #dot-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none; /*As this is on top of the image, i want it to allow mouse to pass */
+}
+.tools-button {
+    height: 5vh;
+    width: 5vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 12px;               /* rounded corners */
+    background-color: #f3f4f6;         /* soft gray */
+    color: #333;                       /* icon/text color */
+    cursor: pointer;                   /* show hand cursor */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);  /* subtle shadow */
+    transition: 
+        background-color 0.2s ease,
+        transform 0.15s ease,
+        box-shadow 0.2s ease;          /* smooth animations */
+}
+
+.tools-button:hover {
+    background-color: #e0e7ff;         /* soft highlight on hover */
+    transform: translateY(-2px);       /* lift effect */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.tools-button:active {
+    background-color: #c7d2fe;         /* deeper press color */
+    transform: translateY(0);          /* reset lift */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.tools-button-selected{
+    pointer-events: none;      /* Makes it unclickable */
+    opacity: 0.6;              /* Makes it look dimmed */
+    background-color: #ccc;    /* Grayed-out background */
+    color: #666;               /* Duller text color */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Gives it a pressed-in look */
+    cursor: not-allowed;
+}
+.button-photo {
+    height: 70%;
+    width: 70%;
+    object-fit: contain;
+}
+.toolbar{
+    display:flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.other-tools{
+    display:flex;
+}
+.toolbara {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown {
+display: none;              /* hidden by default */
+position: absolute;
+top: 100%;                  /* place below the edit button */
+left: 0;
+background: white;
+padding: 5px;
+border: 1px solid #ccc;
+border-radius: 6px;
+box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+z-index: 10;
+}
+
+.dropdown .tools-button {
+display: block;             /* stack vertically */
+margin: 3px 0;
+}
+
+/* Modal for both instructions and egg count */
+
+/* --- Modal Background (Dimmer) --- */
+.help-button {
+    /* Increase width to accommodate the text */
+    width: 80px; 
+    
+    /* Increase height slightly for better vertical proportion */
+    height: 40px; 
+    
+    /* Override the default button-photo style inheritance */
+    padding: 5px 10px;
+}
+
+/* Style for the text inside the button */
+.button-label {
+    /* Ensure the text is visible, centered, and readable */
+    font-size: 14px;
+    font-weight: bold;
+    color: #333; /* Use your existing button text color */
+    
+    /* Center the text within the button */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+.modal {
+    position: fixed; /* Stay in place */
+    z-index: 500; /* Sit on top of everything */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity - The dim effect */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- Modal Content Box --- */
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto; /* 10% from the top and centered horizontally */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be a fixed width like 400px */
+    max-width: 500px; /* Max size for good aesthetics */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* --- Close Button --- */
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.header-panel {
+    display: none; /* Hides the old element entirely */
+}
+
+/* Ensure the content inside the modal is readable */
+.modal-content h3 {
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.instruction-line {
+    /* Ensures each line behaves as a block to respect margins */
+    display: block; 
+    padding: 10px 0;
+}
+
+.keyboard-panel {
+    font-size: 1.5em;
+    color: #555;
+    font-family: monospace;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+/* Style for the actual key letters (Q, W, E, R) */
+.key-hint {
+    display: inline-block;
+    padding: 3px 6px;
+    margin: 0 4px;
+    background-color: #f3f4f6; /* Soft gray background like your buttons */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Subtle 3D-like effect */
+}
+
+.separator {
+    color: #aaa;
+    margin: 0 8px;
+}
+
+#egg_count {
+    /* Ensure default H1 margins are controlled */
+    /* Center the block element */
+    width: fit-content; /* Make the H1 only as wide as its content */
+    margin-left: auto; /* Push block to center */
+    margin-right: auto; /* Push block to center */
+    
+    /* Style consistency */
+    color: #333;
+    font-weight: 600;
+    
+    /* Ensure text inside the block is centered, although redundant with width: fit-content */
+    text-align: center; 
+}

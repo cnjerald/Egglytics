@@ -108,6 +108,14 @@ $("#notice-box").hide();
     // Click event for each batch row
     document.querySelectorAll("#batchTable tbody tr").forEach((row) => {
         row.addEventListener("click", () => {
+            // checks if still processing
+            const statusCell = row.children[4]; 
+            if (statusCell.querySelector('.fa-spinner')) {
+                alert("Please wait until batch finishes processing");
+                return; // Stop execution if processing is active
+            }
+            // continues if not
+
             const batchId = row.getAttribute("data-batch-id");
             const batchName = row.children[0].textContent; // Get batch name from first column
             const popup = document.getElementById("popup");

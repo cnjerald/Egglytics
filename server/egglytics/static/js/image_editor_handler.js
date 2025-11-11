@@ -380,6 +380,7 @@ $(document).ready(function () {
             removeRectOptimized(Math.floor(lastMouseX), Math.floor(lastMouseY));
         }
     });
+    
 
 
     // This function fills a grid cell by a shade of white to record it as completed, user can also unfill it.
@@ -1006,6 +1007,31 @@ $(document).ready(function () {
         }
     }, 5000);
 
-        
+    // modal toggle
+    const modal = document.getElementById("instructions-modal");
+    const openBtn = document.getElementById("open-instructions-modal");
+    const closeBtn = modal ? modal.querySelector(".close-button") : null; 
+
+    if (!modal || !openBtn || !closeBtn) {
+        console.error("Modal initialization failed: One or more elements were not found.");
+        return; 
+    }
+
+    // Open the modal
+    openBtn.addEventListener('click', () => {
+        modal.classList.add("is-visible");
+    });
+
+    // Close the modal when the 'x' is clicked
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove("is-visible");
+    });
+
+    // Close the modal when clicking anywhere outside of it
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) { 
+            modal.classList.remove("is-visible");
+        }
+    });
 
 })
