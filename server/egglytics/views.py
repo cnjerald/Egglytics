@@ -407,3 +407,14 @@ def edit_batch_name(request, batch_id):
         except BatchDetails.DoesNotExist:
             return JsonResponse({"success": False, "message": "Batch not found."})
     return JsonResponse({"success": False, "message": "Invalid request."})
+
+def test(request):
+    # Get incognito batches, sorted by date_updated descending
+
+    return render(
+        request,
+        "test.html",
+        {
+            "included_template": "test.html",
+        }
+    )
