@@ -36,154 +36,15 @@
     <p><strong>Press 'E'</strong> to draw a point at the current mouse position | <strong>Click</strong> to see pixel coordinates in console</p>
 </div>
 
-<div id="viewer"></div>
+<div id="viewer"
+     data-image-url="{% static 'img/calibrator2.jpg' %}">
+</div>
 
-<script>
-    let points = [];
-    let lastMousePos = null;
-    let viewerReady = false;
-
-    const viewer = OpenSeadragon({
-        id: "viewer",
-        prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-        tileSources: {
-            type: "image",
-            url: "{% static 'img/calibrator2.jpg' %}"
-        },
-        backgroundColor: "black",
-        gestureSettingsMouse: {
-            clickToZoom: false,
-        },
-        keyboardEnabled: false // <-- disables default keyboard shortcuts
-    });
-
-    viewer.addHandler("open", function () {
-        console.log("✓ Viewer opened and ready!");
-        viewerReady = true;
-        
-        viewer.addHandler("canvas-click", function (event) {
-            const webPoint = event.position;
-            const viewportPoint = viewer.viewport.pointFromPixel(webPoint);
-            const imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint);
-            console.log(`Clicked at Pixel: (${Math.round(imagePoint.x)}, ${Math.round(imagePoint.y)})`);
-        });
-    });
-
-    // Track mouse movement on canvas
-    viewer.addHandler("canvas-drag", function (event) {
-        lastMousePos = event.position;
-    });
-
-    new OpenSeadragon.MouseTracker({
-        element: viewer.canvas,
-        moveHandler: function(event) {
-            lastMousePos = event.position;
-        }
-    });
-
-    function drawPoint(x, y, color = "lime", size = 10) {
-        if (!viewerReady) return;
-
-        const tiledImage = viewer.world.getItemAt(0);
-        const vpPoint = tiledImage.imageToViewportCoordinates(x, y);
-
-        const halfSize = size / 2; // Calculate half the size for centering
-
-        const dot = document.createElement("div");
-        dot.style.width = size + "px";
-        dot.style.height = size + "px";
-        dot.style.background = color;
-        dot.style.border = "2px solid white";
-        dot.style.borderRadius = "50%";
-        dot.style.position = "absolute";
-        dot.style.pointerEvents = "none";
-        dot.style.boxSizing = "border-box";
-
-        // *** This fix the offset made by the openseadragon (Credit to Gemini)
-        // This tells the element to visually shift up and left by half its size,
-        // making its geometric center align with the OSD-placed top-left corner.
-        dot.style.marginTop = -halfSize + "px";
-        dot.style.marginLeft = -halfSize + "px";
-
-        // Add overlay to the viewer
-        viewer.addOverlay({
-            element: dot,
-            location: vpPoint,
-        });
-
-        points.push({
-            x: x,
-            y: y,
-            size: size,
-            element: dot,
-            color: color
-        });
-    }
-
-    // Convert to image coordinates
-    function getMousePosition() {
-        if (!lastMousePos) {
-            console.log("⚠ No mouse position tracked yet");
-            return null;
-        }
-
-        const viewportPoint = viewer.viewport.pointFromPixel(lastMousePos);
-        const imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint);
-
-        return {
-            x: Math.round(imagePoint.x),
-            y: Math.round(imagePoint.y)
-        };
-    }
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'js/image_editor.js' %}"></script>
 
 
-    // Pressing E draws a point at last mouse position
-    document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "e") {
-            console.log("--- E key pressed ---");
-            const pos = getMousePosition();
-            if (!pos) {
-                console.log("❌ Could not get mouse position");
-                return;
-            }
 
-            console.log("✓ Mouse position:", pos.x, pos.y);
-            drawPoint(pos.x, pos.y, "lime", 12);
-        }
-    });
-
-    
-    // Remove point under cursor
-    function removePointAtCursor() {
-        const pos = getMousePosition(); // your function that returns {x, y} in image coordinates
-        if (!pos) return;
-
-        const tolerance = 10; // pixels around cursor to remove
-        const tiledImage = viewer.world.getItemAt(0);
-
-        // Find the first dot close enough
-        for (let i = 0; i < points.length; i++) {
-            const pt = points[i];
-            const dx = pt.x - pos.x;
-            const dy = pt.y - pos.y;
-
-            if (Math.sqrt(dx*dx + dy*dy) <= tolerance) {
-                // Remove overlay
-                viewer.removeOverlay(pt.element);
-                points.splice(i, 1); // remove from array
-                break;
-            }
-        }
-    }
-
-    // Listen for 'R' key
-    document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "r") {
-            removePointAtCursor();
-        }
-    });
-        
-</script>
 
 </body>
 </html>
