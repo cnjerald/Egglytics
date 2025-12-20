@@ -29,6 +29,7 @@ $(document).ready(function () {
         viewerReady = true;
     });
 
+    // This disables default keys of openseadragon.
     viewer.addHandler('canvas-key',event=>{
         if(['q', 'w', 'e', 'r', 'a', 's', 'd', 'f','R'].includes(event.originalEvent.key)){
             event.preventDefaultAction = true;
@@ -155,6 +156,7 @@ $(document).ready(function () {
     let isRectAnnotate = true;
     let edges = [];            // [[x1,y1], [x2,y2]]
     let previewRect = null;    // overlay element
+    const rects = []; // store all rectangles
 
     function updatePreviewRect(x1, y1, x2, y2) {
         const tiledImage = viewer.world.getItemAt(0);
@@ -207,35 +209,44 @@ $(document).ready(function () {
     }
 
     function drawRectOSD(edges, color = "red", lineWidth = 2) {
-        if (edges.length !== 2) return;
+    if (edges.length !== 2) return;
 
-        const [x1, y1] = edges[0];
-        const [x2, y2] = edges[1];
+    const [x1, y1] = edges[0];
+    const [x2, y2] = edges[1];
 
-        const minX = Math.min(x1, x2);
-        const minY = Math.min(y1, y2);
-        const width = Math.abs(x2 - x1);
-        const height = Math.abs(y2 - y1);
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const width = Math.abs(x2 - x1);
+    const height = Math.abs(y2 - y1);
 
-        const tiledImage = viewer.world.getItemAt(0);
-        const vpTL = tiledImage.imageToViewportCoordinates(minX, minY);
-        const vpBR = tiledImage.imageToViewportCoordinates(minX + width, minY + height);
+    const tiledImage = viewer.world.getItemAt(0);
+    const vpTL = tiledImage.imageToViewportCoordinates(minX, minY);
+    const vpBR = tiledImage.imageToViewportCoordinates(minX + width, minY + height);
 
-        const rectEl = document.createElement("div");
-        rectEl.style.border = `${lineWidth}px solid ${color}`;
-        rectEl.style.pointerEvents = "none";
-        rectEl.style.boxSizing = "border-box";
+    const rectEl = document.createElement("div");
+    rectEl.style.border = `${lineWidth}px solid ${color}`;
+    rectEl.style.pointerEvents = "none";
+    rectEl.style.boxSizing = "border-box";
 
-        viewer.addOverlay({
-            element: rectEl,
-            location: new OpenSeadragon.Rect(
-                vpTL.x,
-                vpTL.y,
-                vpBR.x - vpTL.x,
-                vpBR.y - vpTL.y
-            )
-        });
-    }
+    viewer.addOverlay({
+        element: rectEl,
+        location: new OpenSeadragon.Rect(
+            vpTL.x,
+            vpTL.y,
+            vpBR.x - vpTL.x,
+            vpBR.y - vpTL.y
+        )
+    });
+
+    //  store rectangle in IMAGE coordinates
+    rects.push({
+        x: minX,
+        y: minY,
+        width,
+        height,
+        element: rectEl
+    });
+}
 
 
         
@@ -258,6 +269,34 @@ $(document).ready(function () {
         }
     });
 
+    function isPointInsideRect(px, py, rect) {
+        return (
+            px >= rect.x &&
+            px <= rect.x + rect.width &&
+            py >= rect.y &&
+            py <= rect.y + rect.height
+        );
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() !== "k") return;
+
+        const pos = getMousePosition(); // image coordinates
+        if (!pos) return;
+
+        for (let i = rects.length - 1; i >= 0; i--) {
+            const r = rects[i];
+
+            if (isPointInsideRect(pos.x, pos.y, r)) {
+                viewer.removeOverlay(r.element);
+                rects.splice(i, 1);
+                console.log(" Rectangle deleted");
+                break; // remove only one
+            }
+        }
+    });
+
+
     function getMouseImagePosition(event) {
         const viewportPoint = viewer.viewport.pointFromPixel(event.position);
         const imagePoint = viewer.viewport.viewportToImageCoordinates(viewportPoint);
@@ -267,6 +306,164 @@ $(document).ready(function () {
             y: Math.round(imagePoint.y)
         };
     }
+
+    let gridOverlays = [];
+    let gridSize = 512; // image pixels per cell
+    let filledCells = new Map(); // key -> overlay element
+
+
+    function drawGrid() {
+        if (!viewerReady) return;
+
+        clearGrid();
+
+        const tiledImage = viewer.world.getItemAt(0);
+        const imageSize = tiledImage.getContentSize();
+
+        const cols = Math.floor(imageSize.x / gridSize);
+        const rows = Math.floor(imageSize.y / gridSize);
+
+        // Vertical grid lines
+        for (let c = 1; c <= cols; c++) {
+            const x = c * gridSize;
+
+            const vpTop = tiledImage.imageToViewportCoordinates(x, 0);
+            const vpBottom = tiledImage.imageToViewportCoordinates(x, imageSize.y);
+
+            const line = document.createElement("div");
+            line.style.background = "rgba(0,0,0,0.3)";
+            line.style.pointerEvents = "none";
+
+            viewer.addOverlay({
+                element: line,
+                location: new OpenSeadragon.Rect(
+                    vpTop.x,
+                    vpTop.y,
+                    0.0005, // thin width in viewport coords
+                    vpBottom.y - vpTop.y
+                )
+            });
+
+            gridOverlays.push(line);
+        }
+
+        // Horizontal grid lines
+        for (let r = 1; r <= rows; r++) {
+            const y = r * gridSize;
+
+            const vpLeft = tiledImage.imageToViewportCoordinates(0, y);
+            const vpRight = tiledImage.imageToViewportCoordinates(imageSize.x, y);
+
+            const line = document.createElement("div");
+            line.style.background = "rgba(0,0,0,0.3)";
+            line.style.pointerEvents = "none";
+
+            viewer.addOverlay({
+                element: line,
+                location: new OpenSeadragon.Rect(
+                    vpLeft.x,
+                    vpLeft.y,
+                    vpRight.x - vpLeft.x,
+                    0.0005 // thin height
+                )
+            });
+
+            gridOverlays.push(line);
+        }
+
+        console.log("✓ Grid drawn");
+    }
+
+    function clearGrid() {
+            gridOverlays.forEach(el => viewer.removeOverlay(el));
+            gridOverlays = [];
+        }
+
+        let gridVisible = false;
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key.toLowerCase() !== "g") return;
+
+            gridVisible = !gridVisible;
+
+            if (gridVisible) {
+                drawGrid();
+            } else {
+                clearGrid();
+            }
+        });
+
+        function fillGridCell(x, y) {
+        if (!viewerReady) return;
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        const col = Math.floor(x / gridSize);
+        const row = Math.floor(y / gridSize);
+        const key = `${col},${row}`;
+
+        const cellX = col * gridSize;
+        const cellY = row * gridSize;
+
+        // Padding
+        const pad = 7;
+        const cellWidth = gridSize - pad;
+        const cellHeight = gridSize - pad;
+
+        // Convert image → viewport coordinates
+        const vpTL = tiledImage.imageToViewportCoordinates(
+            cellX + pad,
+            cellY + pad
+        );
+        const vpBR = tiledImage.imageToViewportCoordinates(
+            cellX + pad + cellWidth,
+            cellY + pad + cellHeight
+        );
+
+        const vpWidth = vpBR.x - vpTL.x;
+        const vpHeight = vpBR.y - vpTL.y;
+
+        //  TOGGLE
+        if (filledCells.has(key)) {
+            viewer.removeOverlay(filledCells.get(key));
+            filledCells.delete(key);
+            return;
+        }
+
+        // Create filled cell overlay
+        const cellEl = document.createElement("div");
+        cellEl.style.background = "rgba(0, 255, 0, 0.4)"; // greenish
+        cellEl.style.pointerEvents = "none";
+        cellEl.style.boxSizing = "border-box";
+
+        viewer.addOverlay({
+            element: cellEl,
+            location: new OpenSeadragon.Rect(
+                vpTL.x,
+                vpTL.y,
+                vpWidth,
+                vpHeight
+            )
+        });
+
+        filledCells.set(key, cellEl);
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() !== "f") return;
+
+        const pos = getMousePosition();
+        if (!pos) return;
+
+        fillGridCell(pos.x, pos.y);
+    });
+
+
+
+
+
+
+
 
         
 
