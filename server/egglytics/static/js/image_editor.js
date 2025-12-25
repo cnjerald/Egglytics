@@ -1,5 +1,13 @@
 $(document).ready(function () {
- let points = [];
+
+    let POINT_KEY = "e"
+    let RECT_KEY = "e"
+    let DEL_POINT_KEY = ""
+    let DEL_RECT_KEY = ""
+    let GRID_KEY = ""
+    let FILL_GRID_KEY = ""
+
+    let points = [];
     let lastMousePos = null;
     let viewerReady = false;
 
@@ -19,8 +27,17 @@ $(document).ready(function () {
             clickToZoom: false,
         },
         keyboardEnabled: false,
-        
+
+        // MINIMAP stuff
+        showNavigator: true,
+        navigatorPosition: "BOTTOM_RIGHT",
+        navigatorSizeRatio: 0.2,
+        navigatorMaintainSizeRatio: true,
+        navigatorBackground: "#000",
+        navigatorBorderColor: "#fff",
+        navigatorOpacity: 0.85
     });
+
 
 
     // Open the viewer (Load image)
