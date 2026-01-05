@@ -38,8 +38,6 @@ $(document).ready(function () {
         navigatorOpacity: 0.85
     });
 
-
-
     // Open the viewer (Load image)
     viewer.addHandler("open", function () {
         console.log(" Viewer opened and ready!");
@@ -169,6 +167,64 @@ $(document).ready(function () {
         }
     }
 
+    // Remove points at VIEW (Does not remove it from memory, but removes it from the view)
+    function removeViewPoints() {
+        for (let i = 0; i < points.length; i++) {
+            const pt = points[i];
+            if (pt.element) {
+                viewer.removeOverlay(pt.element);
+                pt.element = null;
+            }
+        }
+    }
+    // Restore points at VIEW (Restores it from memory and places it into view)
+    function restoreViewPoints(color = "lime", size = 10) {
+        if (!viewerReady || !viewer) return;
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        for (let i = 0; i < points.length; i++) {
+            const pt = points[i];
+
+            // Prevent duplicate overlays
+            if (pt.element) continue;
+
+            const vpPoint = tiledImage.imageToViewportCoordinates(pt.x, pt.y);
+            const halfSize = size / 2;
+
+            const dot = document.createElement("div");
+            dot.style.width = size + "px";
+            dot.style.height = size + "px";
+            dot.style.background = color;
+            dot.style.border = "2px solid white";
+            dot.style.borderRadius = "50%";
+            dot.style.position = "absolute";
+            dot.style.pointerEvents = "none";
+            dot.style.boxSizing = "border-box";
+            dot.style.marginLeft = -halfSize + "px";
+            dot.style.marginTop = -halfSize + "px";
+
+            viewer.addOverlay({
+                element: dot,
+                location: vpPoint
+            });
+            pt.element = dot;
+        }
+    }
+
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() === "b") {
+            removeViewPoints();
+        }
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() === "m") {
+            restoreViewPoints();
+        }
+    });
+
+
 
     let isRectAnnotate = true;
     let edges = [];            // [[x1,y1], [x2,y2]]
@@ -226,44 +282,44 @@ $(document).ready(function () {
     }
 
     function drawRectOSD(edges, color = "red", lineWidth = 2) {
-    if (edges.length !== 2) return;
+        if (edges.length !== 2) return;
 
-    const [x1, y1] = edges[0];
-    const [x2, y2] = edges[1];
+        const [x1, y1] = edges[0];
+        const [x2, y2] = edges[1];
 
-    const minX = Math.min(x1, x2);
-    const minY = Math.min(y1, y2);
-    const width = Math.abs(x2 - x1);
-    const height = Math.abs(y2 - y1);
+        const minX = Math.min(x1, x2);
+        const minY = Math.min(y1, y2);
+        const width = Math.abs(x2 - x1);
+        const height = Math.abs(y2 - y1);
 
-    const tiledImage = viewer.world.getItemAt(0);
-    const vpTL = tiledImage.imageToViewportCoordinates(minX, minY);
-    const vpBR = tiledImage.imageToViewportCoordinates(minX + width, minY + height);
+        const tiledImage = viewer.world.getItemAt(0);
+        const vpTL = tiledImage.imageToViewportCoordinates(minX, minY);
+        const vpBR = tiledImage.imageToViewportCoordinates(minX + width, minY + height);
 
-    const rectEl = document.createElement("div");
-    rectEl.style.border = `${lineWidth}px solid ${color}`;
-    rectEl.style.pointerEvents = "none";
-    rectEl.style.boxSizing = "border-box";
+        const rectEl = document.createElement("div");
+        rectEl.style.border = `${lineWidth}px solid ${color}`;
+        rectEl.style.pointerEvents = "none";
+        rectEl.style.boxSizing = "border-box";
 
-    viewer.addOverlay({
-        element: rectEl,
-        location: new OpenSeadragon.Rect(
-            vpTL.x,
-            vpTL.y,
-            vpBR.x - vpTL.x,
-            vpBR.y - vpTL.y
-        )
-    });
+        viewer.addOverlay({
+            element: rectEl,
+            location: new OpenSeadragon.Rect(
+                vpTL.x,
+                vpTL.y,
+                vpBR.x - vpTL.x,
+                vpBR.y - vpTL.y
+            )
+        });
 
-    //  store rectangle in IMAGE coordinates
-    rects.push({
-        x: minX,
-        y: minY,
-        width,
-        height,
-        element: rectEl
-    });
-}
+        //  store rectangle in IMAGE coordinates
+        rects.push({
+            x: minX,
+            y: minY,
+            width,
+            height,
+            element: rectEl
+        });
+    }
 
 
         
@@ -410,7 +466,7 @@ $(document).ready(function () {
             }
         });
 
-        function fillGridCell(x, y) {
+    function fillGridCell(x, y) {
         if (!viewerReady) return;
 
         const tiledImage = viewer.world.getItemAt(0);
@@ -474,6 +530,8 @@ $(document).ready(function () {
 
         fillGridCell(pos.x, pos.y);
     });
+
+
 
 
 
