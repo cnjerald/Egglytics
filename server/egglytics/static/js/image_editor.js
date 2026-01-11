@@ -1,13 +1,19 @@
 $(document).ready(function () {
 
-    let POINT_KEY = "e"
-    let RECT_KEY = "e"
-    let DEL_POINT_KEY = ""
-    let DEL_RECT_KEY = ""
+    
+    let ADD_ANOTATION_KEY = "e"
+    let DELETE_ANNOTATION_KEY = "r"
     let GRID_KEY = ""
-    let FILL_GRID_KEY = ""
 
+
+    // By default user is on point annotate.
+    let isPointAnnotate = true;
+    let isRectAnnotate = false;
+  
     let points = [];
+    const AnnotationListEl = document.getElementById("annotation-list");
+    const modeEl = document.getElementById("current-mode");
+
     let lastMousePos = null;
     let viewerReady = false;
 
@@ -51,6 +57,91 @@ $(document).ready(function () {
         }
     });
 
+    const canvas = document.createElement("canvas");
+    canvas.style.position = "absolute";
+    canvas.style.top = 0;
+    canvas.style.left = 0;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.pointerEvents = "none";
+
+    viewer.container.appendChild(canvas);
+
+    function resizeCanvas() {
+        const container = viewer.container;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+
+        // redraw points after resizing
+        redrawPoints();
+    }
+    viewer.addHandler("open", resizeCanvas);
+    viewer.addHandler("resize", resizeCanvas);
+
+    function redrawPoints() {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        for (const p of points) {
+            const vp = tiledImage.imageToViewportCoordinates(p.x, p.y);
+            const pixel = viewer.viewport.pixelFromPoint(vp, true);
+
+            const size = 10;
+            const halfSize = size / 2;
+
+            // determine color
+            let color = "lime";           // default
+            if (p === selectedPoint) color = "red";  // clicked/selected
+            else if (p.hover) color = "yellow";      // hover
+
+            // draw circle with border like your div overlay design
+            ctx.fillStyle = color;
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.arc(pixel.x, pixel.y, halfSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+
+    viewer.addHandler("open", resizeCanvas);
+    viewer.addHandler("resize", resizeCanvas);
+    viewer.addHandler("viewport-change", redrawPoints);
+
+    function loadPoints(loadedPoints) {
+        // loadedPoints = [{x:..., y:...}, ...]
+
+        points.length = 0;               // clear existing
+        loadedPoints.forEach(p => {
+            points.push({
+                x: Number(p.x),
+                y: Number(p.y)
+            });
+        });
+
+        redrawPoints();                  // ONE draw
+        renderPointsList();              // ONE list render
+    }
+    viewer.addHandler("open", function () {
+        console.log("Viewer opened and ready!");
+        viewerReady = true;
+
+        if (Array.isArray(window.points)) {
+            loadPoints(window.points);
+        }
+        console.log(
+            "Image size:",
+            viewer.world.getItemAt(0).getContentSize()
+        );
+        console.log("Sample point:", points[0]);
+    });
+
+
 
     // Track mouse movement on canvas
     new OpenSeadragon.MouseTracker({
@@ -63,6 +154,11 @@ $(document).ready(function () {
             const pos = getMouseImagePosition(event);
             updatePreviewRect(edges[0][0], edges[0][1], pos.x, pos.y);
         }
+    });
+
+    viewer.addHandler('canvas-click', function(event) {
+        selectedPoint = null;
+        redrawPoints();
     });
 
 
@@ -84,88 +180,118 @@ $(document).ready(function () {
 
     // Pressing E draws a point at last mouse position
     document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "e") {
-            console.log("--- E key pressed ---");
-            const pos = getMousePosition();
-            if (!pos) {
-                console.log(" Could not get mouse position");
-                return;
+        if (e.key.toLowerCase() === ADD_ANOTATION_KEY) {
+            if(isPointAnnotate){
+                const pos = getMousePosition();
+                if (!pos) return;
+
+                points.push(pos);
+                redrawPoints();
+                renderPointsList();
+            } else if (isRectAnnotate){
+                console.log("TEST");
+                const pos = getMousePosition();
+                if (!pos) return;
+
+                edges.push([pos.x, pos.y]);
+
+                if (edges.length === 1) {
+                    console.log("First corner placed");
+                } else if (edges.length === 2) {
+                    hidePreviewRect();
+                    drawRectOSD(edges);
+                    edges = [];
+                    renderRectList(); 
+                }
             }
 
-            console.log("✓ Mouse position:", pos.x, pos.y);
-            drawPoint(pos.x, pos.y, "lime", 12);
         }
     });
 
-    
     // Listen for 'R' key
     document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "r") {
-            removePointAtCursor();
+        if (e.key.toLowerCase() === DELETE_ANNOTATION_KEY) {
+            if(isPointAnnotate){
+                removePointAtCursor();
+            } else if (isRectAnnotate){
+                const pos = getMousePosition(); // image coordinates
+                if (!pos) return;
+
+                for (let i = rects.length - 1; i >= 0; i--) {
+                    const r = rects[i];
+
+                    if (isPointInsideRect(pos.x, pos.y, r)) {
+                        viewer.removeOverlay(r.element);
+                        rects.splice(i, 1);
+                        console.log(" Rectangle deleted");
+                        break; // remove only one
+                    }
+                }
+            }
         }
     });
 
     // Draws a point in the canvas
-    function drawPoint(x, y, color = "lime", size = 10) {
-        if (!viewerReady) return;
+    // function drawPoint(x, y, color = "lime", size = 10) {
+    //     if (!viewerReady) return;
 
-        const tiledImage = viewer.world.getItemAt(0);
-        const vpPoint = tiledImage.imageToViewportCoordinates(x, y);
+    //     const tiledImage = viewer.world.getItemAt(0);
+    //     const vpPoint = tiledImage.imageToViewportCoordinates(x, y);
 
-        const halfSize = size / 2; // Calculate half the size for centering
+    //     const halfSize = size / 2; // Calculate half the size for centering
 
-        const dot = document.createElement("div");
-        dot.style.width = size + "px";
-        dot.style.height = size + "px";
-        dot.style.background = color;
-        dot.style.border = "2px solid white";
-        dot.style.borderRadius = "50%";
-        dot.style.position = "absolute";
-        dot.style.pointerEvents = "none";
-        dot.style.boxSizing = "border-box";
+    //     const dot = document.createElement("div");
+    //     dot.style.width = size + "px";
+    //     dot.style.height = size + "px";
+    //     dot.style.background = color;
+    //     dot.style.border = "2px solid white";
+    //     dot.style.borderRadius = "50%";
+    //     dot.style.position = "absolute";
+    //     dot.style.pointerEvents = "none";
+    //     dot.style.boxSizing = "border-box";
 
-        // *** This fix the offset made by the openseadragon (Credit to Gemini)
-        // This tells the element to visually shift up and left by half its size,
-        // making its geometric center align with the OSD-placed top-left corner.
-        dot.style.marginTop = -halfSize + "px";
-        dot.style.marginLeft = -halfSize + "px";
+    //     // *** This fix the offset made by the openseadragon (Credit to Gemini)
+    //     // This tells the element to visually shift up and left by half its size,
+    //     // making its geometric center align with the OSD-placed top-left corner.
+    //     dot.style.marginTop = -halfSize + "px";
+    //     dot.style.marginLeft = -halfSize + "px";
 
-        // Add overlay to the viewer
-        viewer.addOverlay({
-            element: dot,
-            location: vpPoint,
-        });
+    //     // Add overlay to the viewer
+    //     viewer.addOverlay({
+    //         element: dot,
+    //         location: vpPoint,
+    //     });
 
-        points.push({
-            x: x,
-            y: y,
-            size: size,
-            element: dot,
-            color: color
-        });
-    }
+    //     points.push({
+    //         x: x,
+    //         y: y,
+    //         size: size,
+    //         element: dot,
+    //         color: color
+    //     });
+    // }
 
     // Remove point under cursor
     function removePointAtCursor() {
-        const pos = getMousePosition(); // your function that returns {x, y} in image coordinates
+        const pos = getMousePosition();
         if (!pos) return;
 
-        const tolerance = 10; // pixels around cursor to remove
+        const tolerance = 10;
 
-        // Find the first dot close enough
-        for (let i = 0; i < points.length; i++) {
-            const pt = points[i];
-            const dx = pt.x - pos.x;
-            const dy = pt.y - pos.y;
+        for (let i = points.length - 1; i >= 0; i--) {
+            const dx = points[i].x - pos.x;
+            const dy = points[i].y - pos.y;
 
-            if (Math.sqrt(dx*dx + dy*dy) <= tolerance) {
-                // Remove overlay
-                viewer.removeOverlay(pt.element);
-                points.splice(i, 1); // remove from array
+            if (Math.hypot(dx, dy) <= tolerance) {
+                points.splice(i, 1);
+                redrawPoints();
+                renderPointsList();
                 break;
             }
         }
     }
+
+
 
     // Remove points at VIEW (Does not remove it from memory, but removes it from the view)
     function removeViewPoints() {
@@ -213,20 +339,19 @@ $(document).ready(function () {
     }
 
 
-    document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "b") {
-            removeViewPoints();
-        }
+    const pointsCheckbox = document.getElementById("points");
+
+    pointsCheckbox.addEventListener("change", () => {
+        if (!viewerReady) return;
+
+        pointsCheckbox.checked
+            ? restoreViewPoints()
+            : removeViewPoints();
     });
-    document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "m") {
-            restoreViewPoints();
-        }
-    });
 
 
 
-    let isRectAnnotate = true;
+
     let edges = [];            // [[x1,y1], [x2,y2]]
     let previewRect = null;    // overlay element
     const rects = []; // store all rectangles
@@ -301,7 +426,11 @@ $(document).ready(function () {
         rectEl.style.pointerEvents = "none";
         rectEl.style.boxSizing = "border-box";
 
+        // ✅ generate a stable overlay ID
+        const overlayId = `rect-${rects.length}-${Date.now()}`;
+
         viewer.addOverlay({
+            id: overlayId,
             element: rectEl,
             location: new OpenSeadragon.Rect(
                 vpTL.x,
@@ -311,36 +440,77 @@ $(document).ready(function () {
             )
         });
 
-        //  store rectangle in IMAGE coordinates
+        // ✅ store rectangle in IMAGE coordinates + overlay tracking
         rects.push({
             x: minX,
             y: minY,
             width,
             height,
-            element: rectEl
+            element: rectEl,
+            overlayId
         });
     }
 
-
-        
-    window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "q") {
-            isRectAnnotate = true;   //  REQUIRED
-            const pos = getMousePosition();
-            if (!pos) return;
-
-            edges.push([pos.x, pos.y]);
-
-            if (edges.length === 1) {
-                console.log("First corner placed");
-            } else if (edges.length === 2) {
-                hidePreviewRect();
-                drawRectOSD(edges);
-                edges = [];
-                isRectAnnotate = false; // optional auto-exit
+    function removeViewRectangles() {
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            if (r.element) {
+                viewer.removeOverlay(r.element);
+                r.element = null; 
             }
         }
+    }
+
+
+    function restoreViewRectangles(color = "red", lineWidth = 2) {
+        if (!viewerReady || !viewer) return;
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+
+            // Prevent duplicate redraw
+            if (r.element) continue;
+
+            const vpTL = tiledImage.imageToViewportCoordinates(r.x, r.y);
+            const vpBR = tiledImage.imageToViewportCoordinates(
+                r.x + r.width,
+                r.y + r.height
+            );
+
+            const rectEl = document.createElement("div");
+            rectEl.style.border = `${lineWidth}px solid ${color}`;
+            rectEl.style.pointerEvents = "none";
+            rectEl.style.boxSizing = "border-box";
+
+            viewer.addOverlay({
+                element: rectEl,
+                location: new OpenSeadragon.Rect(
+                    vpTL.x,
+                    vpTL.y,
+                    vpBR.x - vpTL.x,
+                    vpBR.y - vpTL.y
+                )
+            });
+
+            // critical: restore element reference
+            r.element = rectEl;
+        }
+    }
+    
+
+
+    document.getElementById("rectangles").addEventListener("change", e => {
+        e.target.checked
+            ? restoreViewRectangles()
+            : removeViewRectangles();
     });
+
+
+
+
+
 
     function isPointInsideRect(px, py, rect) {
         return (
@@ -351,23 +521,7 @@ $(document).ready(function () {
         );
     }
 
-    window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() !== "k") return;
 
-        const pos = getMousePosition(); // image coordinates
-        if (!pos) return;
-
-        for (let i = rects.length - 1; i >= 0; i--) {
-            const r = rects[i];
-
-            if (isPointInsideRect(pos.x, pos.y, r)) {
-                viewer.removeOverlay(r.element);
-                rects.splice(i, 1);
-                console.log(" Rectangle deleted");
-                break; // remove only one
-            }
-        }
-    });
 
 
     function getMouseImagePosition(event) {
@@ -384,11 +538,10 @@ $(document).ready(function () {
     let gridSize = 512; // image pixels per cell
     let filledCells = new Map(); // key -> overlay element
 
-
     function drawGrid() {
         if (!viewerReady) return;
 
-        clearGrid();
+        clearGrid(); // remove any old grid lines + green boxes
 
         const tiledImage = viewer.world.getItemAt(0);
         const imageSize = tiledImage.getContentSize();
@@ -412,7 +565,7 @@ $(document).ready(function () {
                 location: new OpenSeadragon.Rect(
                     vpTop.x,
                     vpTop.y,
-                    0.0005, // thin width in viewport coords
+                    0.0005,
                     vpBottom.y - vpTop.y
                 )
             });
@@ -437,34 +590,26 @@ $(document).ready(function () {
                     vpLeft.x,
                     vpLeft.y,
                     vpRight.x - vpLeft.x,
-                    0.0005 // thin height
+                    0.0005
                 )
             });
 
             gridOverlays.push(line);
         }
 
-        console.log("✓ Grid drawn");
+        console.log("Grid drawn");
     }
 
+
     function clearGrid() {
-            gridOverlays.forEach(el => viewer.removeOverlay(el));
-            gridOverlays = [];
-        }
+        // Remove grid lines
+        gridOverlays.forEach(el => viewer.removeOverlay(el));
+        gridOverlays = [];
 
-        let gridVisible = false;
+        // Remove green boxes from VIEW only
+        filledCells.forEach(el => viewer.removeOverlay(el));
+    }
 
-        window.addEventListener("keydown", (e) => {
-            if (e.key.toLowerCase() !== "g") return;
-
-            gridVisible = !gridVisible;
-
-            if (gridVisible) {
-                drawGrid();
-            } else {
-                clearGrid();
-            }
-        });
 
     function fillGridCell(x, y) {
         if (!viewerReady) return;
@@ -522,14 +667,210 @@ $(document).ready(function () {
         filledCells.set(key, cellEl);
     }
 
+    function clearAllCells() {
+        // Remove all filled cell overlays from view
+        filledCells.forEach(el => viewer.removeOverlay(el));
+    }
+    function restoreAllCells() {
+        if (!viewerReady) return;
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        filledCells.forEach((el, key) => {
+            // Only restore if the overlay is currently removed
+            // We check if the element is in the DOM; if not, re-add it
+            if (!el.isConnected) {
+                const [col, row] = key.split(",").map(Number);
+
+                const cellX = col * gridSize;
+                const cellY = row * gridSize;
+                const pad = 7;
+                const cellWidth = gridSize - pad;
+                const cellHeight = gridSize - pad;
+
+                const vpTL = tiledImage.imageToViewportCoordinates(
+                    cellX + pad,
+                    cellY + pad
+                );
+                const vpBR = tiledImage.imageToViewportCoordinates(
+                    cellX + pad + cellWidth,
+                    cellY + pad + cellHeight
+                );
+
+                viewer.addOverlay({
+                    element: el,
+                    location: new OpenSeadragon.Rect(
+                        vpTL.x,
+                        vpTL.y,
+                        vpBR.x - vpTL.x,
+                        vpBR.y - vpTL.y
+                    )
+                });
+            }
+        });
+
+        console.log("All filled cells restored");
+    }
+
+
+
     window.addEventListener("keydown", (e) => {
         if (e.key.toLowerCase() !== "f") return;
 
         const pos = getMousePosition();
         if (!pos) return;
 
+
         fillGridCell(pos.x, pos.y);
     });
+
+
+    
+    const gridCheckbox = document.getElementById("grids");
+
+    gridCheckbox.addEventListener("change", () => {
+        if (!viewerReady) return;
+
+        if (gridCheckbox.checked) {
+            drawGrid();
+            restoreAllCells();
+        } else {
+            clearGrid();
+            clearAllCells();
+        }
+    });
+
+    let selectedPoint = null; // currently selected point
+    function renderPointsList() {
+        AnnotationListEl.innerHTML = "";
+
+        [...points].reverse().forEach((p, i) => {
+            const li = document.createElement("li");
+            li.textContent = `(X=${p.x}, Y=${p.y})`;
+            li.style.cursor = "pointer";
+
+            li.onclick = () => {
+                const tiledImage = viewer.world.getItemAt(0);
+                const vp = tiledImage.imageToViewportCoordinates(p.x, p.y);
+                viewer.viewport.panTo(vp);
+
+                // Set this point as selected
+                selectedPoint = p;
+
+                // redraw all points to update colors
+                redrawPoints();
+            };
+
+            li.onmouseenter = () => {
+                p.hover = true; // temporarily mark as hovered
+                redrawPoints();
+            };
+            li.onmouseleave = () => {
+                p.hover = false;
+                redrawPoints();
+            };
+
+            AnnotationListEl.appendChild(li);
+        });
+    }
+
+
+
+    function renderRectList() {
+       AnnotationListEl.innerHTML = "";
+
+        // newest first
+        [...rects].reverse().forEach((r, i) => {
+            const li = document.createElement("li");
+
+            li.textContent = `Rect: X=${r.x}, Y=${r.y}, W=${r.width}, H=${r.height}`;
+            li.style.cursor = "pointer";
+
+            // Pan to rectangle center on click
+            li.onclick = () => {
+                const tiledImage = viewer.world.getItemAt(0);
+
+                const cx = r.x + r.width / 2;
+                const cy = r.y + r.height / 2;
+
+                const vp = tiledImage.imageToViewportCoordinates(cx, cy);
+
+                viewer.viewport.panTo(vp);
+
+                // Optional: zoom in a bit
+                viewer.viewport.zoomTo(
+                    Math.min(
+                        viewer.viewport.getMaxZoom(),
+                        viewer.viewport.getZoom() * 1.3
+                    )
+                );
+            };
+
+            // Optional: highlight rectangle on hover
+            li.onmouseenter = () => {
+                if (r.element) r.element.style.borderColor = "lime";
+            };
+            li.onmouseleave = () => {
+                if (r.element) r.element.style.borderColor = "red";
+            };
+
+            // Optional: double-click to delete rectangle
+            li.ondblclick = () => {
+                if (r.element) viewer.removeOverlay(r.element);
+                rects.splice(rects.indexOf(r), 1);
+                renderRectList();
+            };
+
+            AnnotationListEl.appendChild(li);
+        });
+    }
+
+    function clearAnnotationList() {
+        AnnotationListEl.innerHTML = "";
+    }
+
+    $("#point-btn").on("click", function () {
+        isRectAnnotate = false;
+        isPointAnnotate = true;
+
+        setMode("Point");
+        clearAnnotationList();
+        renderPointsList();
+        restoreViewPoints();
+        removeViewRectangles();
+    });
+
+    $("#rect-btn").on("click", function () {
+        isPointAnnotate = false;
+        isRectAnnotate = true;
+        
+        setMode("Rectangle");
+        clearAnnotationList();
+        renderRectList();
+        restoreViewRectangles();
+        removeViewPoints();
+    });
+
+
+    function setMode(mode) {
+        modeEl.textContent = mode;
+
+        if (mode === "Point") {
+            modeEl.style.color = "#6cff6c"; // green
+        } else if (mode === "Rectangle") {
+            modeEl.style.color = "#ff6b6b"; // red
+        } else {
+            modeEl.style.color = "#ccc";
+        }
+    }
+
+        
+
+
+
+
+
+
 
 
 

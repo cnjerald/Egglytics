@@ -13,7 +13,7 @@ urlpatterns = [
     path("delete-batch/<int:batch_id>/", views.delete_batch, name="delete_batch"),
     path('delete-image/<int:image_id>/', views.delete_image, name='delete_image'),
     path('edit-batch-name/<int:batch_id>/', views.edit_batch_name, name='edit_batch_name'),
-    path("test/",views.test,name="test"),
+    path("test/<int:image_id>/",views.edit,name="test"),
 
 ]
 

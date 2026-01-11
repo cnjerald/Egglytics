@@ -198,7 +198,7 @@ def edit(request, image_id):
         request,
         "base.html",
         {
-            "included_template": "editor.html",
+            "included_template": "test.html",
             "image_name": image.image_name,                # filename for <img>
             "points_json": json.dumps(list(annotations)),   # list of dicts for JS
             "total_eggs": json.dumps(image.total_eggs),
@@ -413,7 +413,7 @@ def test(request):
 
     return render(
         request,
-        "test.html",
+        "base.html",
         {
             "included_template": "test.html",
         }

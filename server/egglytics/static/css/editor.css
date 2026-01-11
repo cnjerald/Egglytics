@@ -72,6 +72,11 @@ body {
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Gives it a pressed-in look */
     cursor: not-allowed;
 }
+
+.tools-button {
+display: block;             /* stack vertically */
+margin: 3px 0;
+}
 .button-photo {
     height: 70%;
     width: 70%;

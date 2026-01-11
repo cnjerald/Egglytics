@@ -84,6 +84,8 @@ $(document).ready(function () {
     // Draw initial points
     drawPoints(points);
 
+    
+
 
 
 

@@ -151,7 +151,7 @@ $("#notice-box").hide();
                                 <td>${img.img_type}</td>
                                 <td>
                                     <button class="edit-btn" 
-                                        onclick="event.stopPropagation(); window.location.href='/edit/${img.image_id}'">
+                                        onclick="event.stopPropagation(); window.location.href='/test/${img.image_id}'">
                                         Edit
                                     </button>
                                 </td>
