@@ -5,17 +5,30 @@ $(document).ready(function () {
     let DELETE_ANNOTATION_KEY = "r"
     let GRID_KEY = ""
 
-
     // By default user is on point annotate.
     let isPointAnnotate = true;
     let isRectAnnotate = false;
+    let pointsVisible = true;
   
     let points = [];
-    const AnnotationListEl = document.getElementById("annotation-list");
-    const modeEl = document.getElementById("current-mode");
+        let selectedPoint = null; // currently selected point
+
 
     let lastMousePos = null;
     let viewerReady = false;
+
+    let edges = [];            // [[x1,y1], [x2,y2]]
+    let previewRect = null;    // overlay element
+    const rects = []; // store all rectangles
+
+    let gridOverlays = [];
+    let gridSize = 512; // image pixels per cell
+    let filledCells = new Map(); // key -> overlay element
+
+
+    const gridCheckbox = document.getElementById("grids");
+    const AnnotationListEl = document.getElementById("annotation-list");
+    const modeEl = document.getElementById("current-mode");
 
     const imageUrl = document
         .getElementById("viewer")
@@ -75,10 +88,13 @@ $(document).ready(function () {
         // redraw points after resizing
         redrawPoints();
     }
+
     viewer.addHandler("open", resizeCanvas);
     viewer.addHandler("resize", resizeCanvas);
+    viewer.addHandler("viewport-change", redrawPoints);
 
     function redrawPoints() {
+        if (!pointsVisible) return;
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -109,10 +125,6 @@ $(document).ready(function () {
     }
 
 
-    viewer.addHandler("open", resizeCanvas);
-    viewer.addHandler("resize", resizeCanvas);
-    viewer.addHandler("viewport-change", redrawPoints);
-
     function loadPoints(loadedPoints) {
         // loadedPoints = [{x:..., y:...}, ...]
 
@@ -127,6 +139,7 @@ $(document).ready(function () {
         redrawPoints();                  // ONE draw
         renderPointsList();              // ONE list render
     }
+
     viewer.addHandler("open", function () {
         console.log("Viewer opened and ready!");
         viewerReady = true;
@@ -140,8 +153,6 @@ $(document).ready(function () {
         );
         console.log("Sample point:", points[0]);
     });
-
-
 
     // Track mouse movement on canvas
     new OpenSeadragon.MouseTracker({
@@ -231,46 +242,6 @@ $(document).ready(function () {
         }
     });
 
-    // Draws a point in the canvas
-    // function drawPoint(x, y, color = "lime", size = 10) {
-    //     if (!viewerReady) return;
-
-    //     const tiledImage = viewer.world.getItemAt(0);
-    //     const vpPoint = tiledImage.imageToViewportCoordinates(x, y);
-
-    //     const halfSize = size / 2; // Calculate half the size for centering
-
-    //     const dot = document.createElement("div");
-    //     dot.style.width = size + "px";
-    //     dot.style.height = size + "px";
-    //     dot.style.background = color;
-    //     dot.style.border = "2px solid white";
-    //     dot.style.borderRadius = "50%";
-    //     dot.style.position = "absolute";
-    //     dot.style.pointerEvents = "none";
-    //     dot.style.boxSizing = "border-box";
-
-    //     // *** This fix the offset made by the openseadragon (Credit to Gemini)
-    //     // This tells the element to visually shift up and left by half its size,
-    //     // making its geometric center align with the OSD-placed top-left corner.
-    //     dot.style.marginTop = -halfSize + "px";
-    //     dot.style.marginLeft = -halfSize + "px";
-
-    //     // Add overlay to the viewer
-    //     viewer.addOverlay({
-    //         element: dot,
-    //         location: vpPoint,
-    //     });
-
-    //     points.push({
-    //         x: x,
-    //         y: y,
-    //         size: size,
-    //         element: dot,
-    //         color: color
-    //     });
-    // }
-
     // Remove point under cursor
     function removePointAtCursor() {
         const pos = getMousePosition();
@@ -291,71 +262,26 @@ $(document).ready(function () {
         }
     }
 
-
-
     // Remove points at VIEW (Does not remove it from memory, but removes it from the view)
     function removeViewPoints() {
-        for (let i = 0; i < points.length; i++) {
-            const pt = points[i];
+        // Clear the canvas completely
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Remove overlay elements if you are using any per-point divs
+        points.forEach(pt => {
             if (pt.element) {
                 viewer.removeOverlay(pt.element);
-                pt.element = null;
+                pt.element = null; // mark as removed from view
             }
-        }
-    }
-    // Restore points at VIEW (Restores it from memory and places it into view)
-    function restoreViewPoints(color = "lime", size = 10) {
-        if (!viewerReady || !viewer) return;
+        });
 
-        const tiledImage = viewer.world.getItemAt(0);
-
-        for (let i = 0; i < points.length; i++) {
-            const pt = points[i];
-
-            // Prevent duplicate overlays
-            if (pt.element) continue;
-
-            const vpPoint = tiledImage.imageToViewportCoordinates(pt.x, pt.y);
-            const halfSize = size / 2;
-
-            const dot = document.createElement("div");
-            dot.style.width = size + "px";
-            dot.style.height = size + "px";
-            dot.style.background = color;
-            dot.style.border = "2px solid white";
-            dot.style.borderRadius = "50%";
-            dot.style.position = "absolute";
-            dot.style.pointerEvents = "none";
-            dot.style.boxSizing = "border-box";
-            dot.style.marginLeft = -halfSize + "px";
-            dot.style.marginTop = -halfSize + "px";
-
-            viewer.addOverlay({
-                element: dot,
-                location: vpPoint
-            });
-            pt.element = dot;
-        }
+        // Optional: reset any selection
+        points.forEach(pt => pt.selected = false);
+        selectedPoint = null;
     }
 
-
-    const pointsCheckbox = document.getElementById("points");
-
-    pointsCheckbox.addEventListener("change", () => {
-        if (!viewerReady) return;
-
-        pointsCheckbox.checked
-            ? restoreViewPoints()
-            : removeViewPoints();
-    });
-
-
-
-
-    let edges = [];            // [[x1,y1], [x2,y2]]
-    let previewRect = null;    // overlay element
-    const rects = []; // store all rectangles
-
+    
     function updatePreviewRect(x1, y1, x2, y2) {
         const tiledImage = viewer.world.getItemAt(0);
 
@@ -440,7 +366,7 @@ $(document).ready(function () {
             )
         });
 
-        // ✅ store rectangle in IMAGE coordinates + overlay tracking
+        // store rectangle in IMAGE coordinates + overlay tracking
         rects.push({
             x: minX,
             y: minY,
@@ -499,19 +425,6 @@ $(document).ready(function () {
         }
     }
     
-
-
-    document.getElementById("rectangles").addEventListener("change", e => {
-        e.target.checked
-            ? restoreViewRectangles()
-            : removeViewRectangles();
-    });
-
-
-
-
-
-
     function isPointInsideRect(px, py, rect) {
         return (
             px >= rect.x &&
@@ -520,9 +433,6 @@ $(document).ready(function () {
             py <= rect.y + rect.height
         );
     }
-
-
-
 
     function getMouseImagePosition(event) {
         const viewportPoint = viewer.viewport.pointFromPixel(event.position);
@@ -534,9 +444,7 @@ $(document).ready(function () {
         };
     }
 
-    let gridOverlays = [];
-    let gridSize = 512; // image pixels per cell
-    let filledCells = new Map(); // key -> overlay element
+
 
     function drawGrid() {
         if (!viewerReady) return;
@@ -671,6 +579,7 @@ $(document).ready(function () {
         // Remove all filled cell overlays from view
         filledCells.forEach(el => viewer.removeOverlay(el));
     }
+
     function restoreAllCells() {
         if (!viewerReady) return;
 
@@ -712,8 +621,6 @@ $(document).ready(function () {
         console.log("All filled cells restored");
     }
 
-
-
     window.addEventListener("keydown", (e) => {
         if (e.key.toLowerCase() !== "f") return;
 
@@ -723,10 +630,6 @@ $(document).ready(function () {
 
         fillGridCell(pos.x, pos.y);
     });
-
-
-    
-    const gridCheckbox = document.getElementById("grids");
 
     gridCheckbox.addEventListener("change", () => {
         if (!viewerReady) return;
@@ -740,7 +643,7 @@ $(document).ready(function () {
         }
     });
 
-    let selectedPoint = null; // currently selected point
+
     function renderPointsList() {
         AnnotationListEl.innerHTML = "";
 
@@ -830,19 +733,21 @@ $(document).ready(function () {
     }
 
     $("#point-btn").on("click", function () {
+        pointsVisible = true;
         isRectAnnotate = false;
         isPointAnnotate = true;
 
         setMode("Point");
         clearAnnotationList();
+        redrawPoints();
         renderPointsList();
-        restoreViewPoints();
         removeViewRectangles();
     });
 
     $("#rect-btn").on("click", function () {
         isPointAnnotate = false;
         isRectAnnotate = true;
+        pointsVisible = false;
         
         setMode("Rectangle");
         clearAnnotationList();
@@ -850,6 +755,7 @@ $(document).ready(function () {
         restoreViewRectangles();
         removeViewPoints();
     });
+
 
 
     function setMode(mode) {
@@ -865,26 +771,6 @@ $(document).ready(function () {
     }
 
         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
 
 
 
