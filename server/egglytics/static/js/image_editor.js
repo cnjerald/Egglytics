@@ -40,8 +40,8 @@ $(document).ready(function () {
         navigatorSizeRatio: 0.2,
         navigatorMaintainSizeRatio: true,
         navigatorBackground: "#000",
-        navigatorBorderColor: "#fff",
-        navigatorOpacity: 0.85
+        navigatorBorderColor: "#1480ecff",
+        navigatorOpacity: 1
     });
 
     // Open the viewer (Load image)
@@ -65,7 +65,7 @@ $(document).ready(function () {
     canvas.style.height = "100%";
     canvas.style.pointerEvents = "none";
 
-    viewer.container.appendChild(canvas);
+    viewer.canvas.appendChild(canvas);
 
     function resizeCanvas() {
         const container = viewer.container;
