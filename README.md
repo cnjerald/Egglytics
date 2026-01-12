@@ -52,6 +52,7 @@ A. Web Application to Compute Server Flow
 (See Notes [C].)
    
 Notes:
+
 [A] The base URL can be modified in
 server/egglytics/static/js/image_upload_handler.js, inside the
 $("#upload-btn").on("click", function () { ... }) handler.
