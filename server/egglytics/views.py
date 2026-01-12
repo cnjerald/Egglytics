@@ -290,6 +290,7 @@ def add_egg_to_db(request, image_id):
 
 def remove_egg_from_db(request, image_id):
     if request.method == "POST":
+        print("HIT!")
         try:
             data = json.loads(request.body.decode("utf-8"))
             print("DEBUG POST DATA:", data)

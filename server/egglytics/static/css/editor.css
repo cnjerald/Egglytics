@@ -85,33 +85,10 @@ margin: 3px 0;
 .toolbar{
     display:flex;
     align-items: center;
-    justify-content: space-between;
-}
-.other-tools{
-    display:flex;
-}
-.toolbara {
-    position: relative;
-    display: inline-block;
+    margin:0px;
+    padding:0px;
 }
 
-.dropdown {
-display: none;              /* hidden by default */
-position: absolute;
-top: 100%;                  /* place below the edit button */
-left: 0;
-background: white;
-padding: 5px;
-border: 1px solid #ccc;
-border-radius: 6px;
-box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-z-index: 10;
-}
-
-.dropdown .tools-button {
-display: block;             /* stack vertically */
-margin: 3px 0;
-}
 
 /* Modal for both instructions and egg count */
 
@@ -232,15 +209,14 @@ margin: 3px 0;
 }
 
 #egg_count {
-    /* Ensure default H1 margins are controlled */
+
     /* Center the block element */
-    width: fit-content; /* Make the H1 only as wide as its content */
     margin-left: auto; /* Push block to center */
     margin-right: auto; /* Push block to center */
-    
+    padding:0px;
     /* Style consistency */
     color: #333;
-    font-weight: 600;
+    font-weight: 500px;
     
     /* Ensure text inside the block is centered, although redundant with width: fit-content */
     text-align: center; 
@@ -335,7 +311,7 @@ body {
 /* App container */
 .app {
     display: flex;
-    height: 90vh;   /* 👈 force full screen height */
+    height: 80vh;   /* 👈 force full screen height */
     width: 100vw;
     overflow: hidden;
 }
@@ -395,10 +371,11 @@ body {
 }
 
 .annotation-list {
+    align-items: center;
     list-style: none;          /* remove bullets */
     padding: 0;
     margin: 10px 0;
-    max-height: 75vh; /* REMINDER TO JERALD(SELF) CHANGE THIS */
+    max-height: 50vh; /* REMINDER TO JERALD(SELF) CHANGE THIS */
     overflow-y: auto;
 }
 

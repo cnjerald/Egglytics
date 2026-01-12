@@ -1,17 +1,18 @@
 $(document).ready(function () {
 
     
-    let ADD_ANOTATION_KEY = "e"
+    let ADD_ANNOTATION_KEY = "e"
     let DELETE_ANNOTATION_KEY = "r"
     let GRID_KEY = ""
 
     // By default user is on point annotate.
     let isPointAnnotate = true;
     let isRectAnnotate = false;
+    let isGridVisible = false;
     let pointsVisible = true;
   
     let points = [];
-        let selectedPoint = null; // currently selected point
+    let selectedPoint = null; // currently selected point
 
 
     let lastMousePos = null;
@@ -25,10 +26,19 @@ $(document).ready(function () {
     let gridSize = 512; // image pixels per cell
     let filledCells = new Map(); // key -> overlay element
 
+    const PAGE_SIZE = 50;
+    let renderedCount = 0;
 
-    const gridCheckbox = document.getElementById("grids");
+    let totalEggs = window.total_egg_count
+    console.log(totalEggs);
+
+
     const AnnotationListEl = document.getElementById("annotation-list");
     const modeEl = document.getElementById("current-mode");
+    const eggCountEl = document.getElementById("egg_count");
+
+
+    setTotalEggCount();
 
     const imageUrl = document
         .getElementById("viewer")
@@ -137,7 +147,7 @@ $(document).ready(function () {
         });
 
         redrawPoints();                  // ONE draw
-        renderPointsList();              // ONE list render
+        renderPointsList(true);              // ONE list render
     }
 
     viewer.addHandler("open", function () {
@@ -189,18 +199,24 @@ $(document).ready(function () {
         };
     }
 
+    function setTotalEggCount(){
+        eggCountEl.innerHTML = "Egg Count: " + totalEggs;
+
+    }
+
     // Pressing E draws a point at last mouse position
     document.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === ADD_ANOTATION_KEY) {
+        if (e.key.toLowerCase() === ADD_ANNOTATION_KEY) {
             if(isPointAnnotate){
                 const pos = getMousePosition();
                 if (!pos) return;
 
                 points.push(pos);
+                sendPoint(image_id,pos.x,pos.y)
                 redrawPoints();
-                renderPointsList();
+                renderPointsList(true);
             } else if (isRectAnnotate){
-                console.log("TEST");
+
                 const pos = getMousePosition();
                 if (!pos) return;
 
@@ -224,6 +240,9 @@ $(document).ready(function () {
         if (e.key.toLowerCase() === DELETE_ANNOTATION_KEY) {
             if(isPointAnnotate){
                 removePointAtCursor();
+                totalEggs--;
+                
+                setTotalEggCount();
             } else if (isRectAnnotate){
                 const pos = getMousePosition(); // image coordinates
                 if (!pos) return;
@@ -250,17 +269,25 @@ $(document).ready(function () {
         const tolerance = 10;
 
         for (let i = points.length - 1; i >= 0; i--) {
-            const dx = points[i].x - pos.x;
-            const dy = points[i].y - pos.y;
+            const p = points[i]; // ✅ get the point object
+
+            const dx = p.x - pos.x;
+            const dy = p.y - pos.y;
 
             if (Math.hypot(dx, dy) <= tolerance) {
+
+                // send correct coordinates
+                remove_egg_from_db(image_id, p.x, p.y);
+                // remove from memory
                 points.splice(i, 1);
+
                 redrawPoints();
-                renderPointsList();
+                renderPointsList(true);
                 break;
             }
         }
     }
+
 
     // Remove points at VIEW (Does not remove it from memory, but removes it from the view)
     function removeViewPoints() {
@@ -630,24 +657,16 @@ $(document).ready(function () {
 
         fillGridCell(pos.x, pos.y);
     });
-
-    gridCheckbox.addEventListener("change", () => {
-        if (!viewerReady) return;
-
-        if (gridCheckbox.checked) {
-            drawGrid();
-            restoreAllCells();
-        } else {
-            clearGrid();
-            clearAllCells();
+    function renderPointsList(reset = false) {
+        if (reset) {
+            AnnotationListEl.innerHTML = "";
+            renderedCount = 0;
         }
-    });
 
+        const reversed = [...points].reverse();
+        const slice = reversed.slice(renderedCount, renderedCount + PAGE_SIZE);
 
-    function renderPointsList() {
-        AnnotationListEl.innerHTML = "";
-
-        [...points].reverse().forEach((p, i) => {
+        slice.forEach(p => {
             const li = document.createElement("li");
             li.textContent = `(X=${p.x}, Y=${p.y})`;
             li.style.cursor = "pointer";
@@ -657,17 +676,15 @@ $(document).ready(function () {
                 const vp = tiledImage.imageToViewportCoordinates(p.x, p.y);
                 viewer.viewport.panTo(vp);
 
-                // Set this point as selected
                 selectedPoint = p;
-
-                // redraw all points to update colors
                 redrawPoints();
             };
 
             li.onmouseenter = () => {
-                p.hover = true; // temporarily mark as hovered
+                p.hover = true;
                 redrawPoints();
             };
+
             li.onmouseleave = () => {
                 p.hover = false;
                 redrawPoints();
@@ -675,7 +692,10 @@ $(document).ready(function () {
 
             AnnotationListEl.appendChild(li);
         });
+
+        renderedCount += slice.length;
     }
+
 
 
 
@@ -728,6 +748,17 @@ $(document).ready(function () {
         });
     }
 
+    AnnotationListEl.addEventListener("scroll", () => {
+        const nearBottom =
+            AnnotationListEl.scrollTop + AnnotationListEl.clientHeight >=
+            AnnotationListEl.scrollHeight - 10;
+
+        if (nearBottom && renderedCount < points.length) {
+            renderPointsList(false);
+        }
+    });
+
+
     function clearAnnotationList() {
         AnnotationListEl.innerHTML = "";
     }
@@ -740,7 +771,7 @@ $(document).ready(function () {
         setMode("Point");
         clearAnnotationList();
         redrawPoints();
-        renderPointsList();
+        renderPointsList(true);
         removeViewRectangles();
     });
 
@@ -756,6 +787,19 @@ $(document).ready(function () {
         removeViewPoints();
     });
 
+    $("#grid-btn").on("click", function () {
+        if(isGridVisible){
+            isGridVisible = false;
+            clearGrid();
+            clearAllCells();
+        } else{
+            isGridVisible = true;
+            drawGrid();
+            restoreAllCells();
+        }
+
+    });
+
 
 
     function setMode(mode) {
@@ -768,6 +812,95 @@ $(document).ready(function () {
         } else {
             modeEl.style.color = "#ccc";
         }
+    }
+
+    // --- Main sendPoint function ---
+    async function sendPoint(image_id, x, y) {
+        try {
+            // Try to establish connection to server..
+            const response = await fetch(`/add_egg_to_db/${image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x, y })
+            });
+
+            // If no connection is established
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            // Else if connection is established.
+            const data = await response.json();
+            console.log("Server says:", data.message || data.STATUS);
+            totalEggs++;
+            setTotalEggCount();
+
+
+            return true; // Return success
+
+        } catch (err) {
+            console.error("Server offline, storing point locally:", err);
+
+            //  Only add to unsent queue if we're NOT already retrying
+            // if (!isRetryingSend) {
+            //     unsentPoints.push({ image_id, x, y, radius, color });
+            //     localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+            // }
+            return false; // Return failure
+        }
+    }
+
+    async function remove_egg_from_db(image_id, x, y, radius = 5, color = 'red', transparency = 0.5) {
+        // const point = { image_id, x, y, radius, color, transparency };
+
+        try {
+            const response = await fetch(`/remove_egg_from_db/${image_id}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken("csrftoken"),
+                    },
+                    body: JSON.stringify({ x, y })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Server says:", data.message || data.STATUS);
+
+                // SUCCESS: Remove ghost point
+                // removeGhostPoint(x, y, image_id);
+                totalEggs--;
+                setTotalEggCount();
+                return true; // Return success
+        } catch (err) {
+            console.warn("Deletion failed, keeping ghost point:", err);
+
+            // // ⏸️ Keep ghost + add to retry queue (ONLY if not already retrying)
+            // if (!isRetrying) {
+            //     unsentRemovals.push(point);
+            //     localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));
+            // }
+            return false; // Return failure
+        }
+    }
+
+
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = $.trim(cookies[i]);
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return '';
     }
 
         

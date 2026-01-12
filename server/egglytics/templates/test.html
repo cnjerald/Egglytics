@@ -7,10 +7,7 @@
     <meta charset="UTF-8">
     <title>Egglytics</title>
     <container class="toolbar">
-        <button type="button" class="tools-button help-button" title="Instructions" id="open-instructions-modal">
-            <span class="button-label">Controls</span> 
-        </button>
-        <h1 id="egg_count"> Total Eggs: 0 </h1>
+        <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
     </container>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
 </head>
@@ -63,14 +60,14 @@
             <button type="button" class="tools-button" id="grid-btn">
                 <img src="{% static 'img/grid.png' %}" alt="grids" class="button-photo">
             </button>
+
+            <button type="button" class="tools-button help-button" title="Instructions" id="open-instructions-modal">
+                <span class="button-label">Controls</span> 
+            </button>
         </div>
 
 
-        <div class="sidebar-controls">
 
-            <input type="checkbox" id="grids">
-            <label for="grids"> Grids </label><br>
-        </div>
 
         <div>
             <h4>Annotations</h4>
@@ -94,7 +91,7 @@
 <!-- LOAD VARIABLES (No Syntax error here.) -->
 <script>
     window.points = {{ points_json|safe }};
-    let total_egg_count = {{ total_eggs }};
+    window.total_egg_count = {{ total_eggs }};
     const image_id = {{img_id}};
     console.log(points);
 </script>
@@ -146,14 +143,6 @@
 </script>
 
 <script>
-
-    // NO there is no SYNTAX error here and NO you can not put this on image_editor_handler.js
-    const points = {{ points_json|safe }};
-    let total_egg_count = {{ total_eggs }};
-    const image_id = {{img_id}};
-
-    console.log("Total:egg debug: ", total_egg_count);
-    $("#egg_count").text("Total Eggs: " + total_egg_count);
 
     $("#edit-toggle").on("click", function (e) {
         e.stopPropagation();
