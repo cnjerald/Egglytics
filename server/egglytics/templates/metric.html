@@ -1,0 +1,48 @@
+<h2>Model Evaluation Summary</h2>
+
+<h3>Dataset Overview</h3>
+<ul>
+    <li><strong>Total Images Evaluated:</strong> {{ total_images }}</li>
+    <li><strong>Total Ground Truth Points:</strong> {{ total_ground_truth }}</li>
+    <li><strong>Total Model Predictions:</strong> {{ total_model_predictions }}</li>
+</ul>
+
+<hr>
+
+<h3>Detection Confusion Matrix</h3>
+
+<table border="1" cellpadding="10">
+    <tr>
+        <th></th>
+        <th>Ground Truth: Present</th>
+    </tr>
+    <tr>
+        <th>Model Predicted</th>
+        <td><strong>True Positives (TP)</strong><br>{{ TP }}</td>
+    </tr>
+    <tr>
+        <th>Model Incorrect</th>
+        <td>
+            <strong>False Positives (FP)</strong>: {{ FP }}<br>
+            <strong>False Negatives (FN)</strong>: {{ FN }}
+        </td>
+    </tr>
+</table>
+
+<hr>
+
+<h3>Detection Metrics</h3>
+<ul>
+    <li><strong>Precision:</strong> {{ precision }}</li>
+    <li><strong>Recall:</strong> {{ recall }}</li>
+    <li><strong>F1 Score:</strong> {{ f1_score }}</li>
+</ul>
+
+<hr>
+
+<h3>Counting Performance</h3>
+<ul>
+    <li><strong>Count Accuracy:</strong> {{ count_accuracy }}</li>
+    <li><strong>Mean Absolute Error (MAE):</strong> {{ MAE }}</li>
+    <li><strong>Mean Absolute Percentage Error (MAPE):</strong> {{ MAPE }}</li>
+</ul>

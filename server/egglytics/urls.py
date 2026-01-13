@@ -14,6 +14,7 @@ urlpatterns = [
     path('delete-image/<int:image_id>/', views.delete_image, name='delete_image'),
     path('edit-batch-name/<int:batch_id>/', views.edit_batch_name, name='edit_batch_name'),
     path("test/<int:image_id>/",views.edit,name="test"),
+    path("metric/",views.metric,name="metric"),
 
 ]
 

@@ -61,6 +61,7 @@ def process_images(batch, files_data, header):
                 img_type="MICRO",
                 allow_collection=True,
                 is_processed=False,
+                is_validated = False
             )
 
             encoded = file_dict["data"]
@@ -188,6 +189,10 @@ def edit(request, image_id):
     # Get image entry
     image = get_object_or_404(ImageDetails, image_id=image_id)
 
+    if not image.is_validated:
+        image.is_validated = True
+        image.save()
+    
     # Get related annotation points
     annotations = AnnotationPoints.objects.filter(image=image, is_deleted = False).values(
         "point_id", "x", "y"
@@ -417,5 +422,105 @@ def test(request):
         "base.html",
         {
             "included_template": "test.html",
+        }
+    )
+
+def metric(request):
+
+    validated_images = ImageDetails.objects.filter(is_validated=True)
+    total_images = validated_images.count()
+
+    # ---- Point-level classification ----
+
+    TP_qs = AnnotationPoints.objects.filter(
+        image_id__in=validated_images,
+        is_original=True,
+        is_deleted=False
+    )
+
+    FP_qs = AnnotationPoints.objects.filter(
+        image_id__in=validated_images,
+        is_original=True,
+        is_deleted=True
+    )
+
+    FN_qs = AnnotationPoints.objects.filter(
+        image_id__in=validated_images,
+        is_original=False
+    )
+
+    TP = TP_qs.count()
+    FP = FP_qs.count()
+    FN = FN_qs.count()
+
+    # Total model predictions (before correction)
+    total_model_predictions = TP + FP
+
+    # Total ground truth points
+    total_ground_truth = TP + FN
+
+    # ---- Detection Metrics ----
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+    f1_score = (
+        2 * precision * recall / (precision + recall)
+        if (precision + recall) > 0 else 0
+    )
+
+    # ---- Counting Metrics ----
+    total_accuracy = 0
+    total_abs_error = 0
+    total_pct_error = 0
+    valid_image_count = 0
+
+    for image in validated_images:
+
+        predicted_count = AnnotationPoints.objects.filter(
+            image_id=image,
+            is_original=True,
+            is_deleted=False
+        ).count()
+
+        added_count = AnnotationPoints.objects.filter(
+            image_id=image,
+            is_original=False
+        ).count()
+
+        true_count = predicted_count + added_count
+
+        if true_count > 0:
+            abs_error = abs(predicted_count - true_count)
+            total_accuracy += 1 - abs_error / true_count
+            total_abs_error += abs_error
+            total_pct_error += abs_error / true_count
+            valid_image_count += 1
+
+    count_accuracy = total_accuracy / valid_image_count if valid_image_count else 0
+    MAE = total_abs_error / valid_image_count if valid_image_count else 0
+    MAPE = total_pct_error / valid_image_count if valid_image_count else 0
+
+    return render(
+        request,
+        "base.html",
+        {
+            "included_template": "metric.html",
+
+            # Totals
+            "total_images": total_images,
+            "total_model_predictions": total_model_predictions,
+            "total_ground_truth": total_ground_truth,
+
+            # Confusion-style values
+            "TP": TP,
+            "FP": FP,
+            "FN": FN,
+
+            # Metrics
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1_score": round(f1_score, 4),
+            "count_accuracy": round(count_accuracy, 4),
+            "MAE": round(MAE, 4),
+            "MAPE": round(MAPE, 4),
         }
     )
