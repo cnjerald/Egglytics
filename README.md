@@ -42,7 +42,38 @@ DB_PORT='5432'
 1. On SHELL go to ROOT directory and activate venv
 2. python app.py
 
-### VI. Important Notes
+### VI. Deploying Your Own Model
+A. Web Application to Compute Server Flow
+1. The web application server sends images to the compute server using a default base URL ("/").
+(To change this, see Notes [A].)
+2. The default URL path is defined in server/urls.py.
+(To change this, see Notes [B].)
+3. In views.py, the function upload(request) receives a list of uploaded image files, encodes them in Base64, and forwards the data to a separate thread. This thread calls the process_images() function, which compiles the data into a JSON payload and sends it to the compute server’s API endpoint. The function then waits for and returns a JSON response from the compute server.
+(See Notes [C].)
+   
+Notes:
+
+[A] The base URL can be modified in
+server/egglytics/static/js/image_upload_handler.js, inside the
+$("#upload-btn").on("click", function () { ... }) handler.
+
+[B] In server/urls.py, the default route maps to views.upload (see line 5).
+
+[C] By default, the data is sent to:
+
+http://127.0.0.1:5000/upload_base64
+Format - PROTOCOL://IP_ADDRESS:PORT/ENDPOINT_PATH
+
+B. Using a different model
+1. To use multiple or alternative models, the same workflow can be followed while changing the endpoint path used by the web application to target the desired model on the compute server.
+2. By default, each model is implemented as its own class in compute/models.py, which was called after the pre-processing steps done in def upload_base64() function in compute/app.py.
+3. You may define custom endpoint paths, preprocessing pipelines, and model inference strategies to suit your deployment needs.
+4. Ensure that, after inference, the model returns the expected output data (such as JSON or arrays) back to the web application.
+
+
+
+
+### VII. Important Notes
 1. Check gitIgnore before pushing
 2. HTML Files on Egglytics/Templates
 3. JS Scripts on Egglytics/static/js
