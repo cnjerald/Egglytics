@@ -1,0 +1,22 @@
+<body>
+
+    <!-- Model selection -->
+    <label for="model-select"><strong>Select Model:</strong></label>
+    <select id="model-select" name="model">
+        <option value="">-- Select a model --</option>
+        {% for model in models %}
+            <option value="{{ model }}">{{ model }}</option>
+        {% endfor %}
+    </select>
+
+    <hr>
+
+    <h1> Total Points: </h1>
+
+    <h1>Points:</h1>
+    <!-- leave this blank for now -->
+
+    <h1>Rectangles:</h1>
+    <!-- leave this blank for now -->
+
+</body>

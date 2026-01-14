@@ -15,6 +15,8 @@ urlpatterns = [
     path('edit-batch-name/<int:batch_id>/', views.edit_batch_name, name='edit_batch_name'),
     path("test/<int:image_id>/",views.edit,name="test"),
     path("metric/",views.metric,name="metric"),
+    path("metric/ajax/", views.metric_ajax, name="metric_ajax"),
+    path("export/",views.export,name="export"),
 
 ]
 

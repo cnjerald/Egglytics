@@ -61,7 +61,8 @@ def process_images(batch, files_data, header):
                 img_type="MICRO",
                 allow_collection=True,
                 is_processed=False,
-                is_validated = False
+                is_validated = False,
+                model_used = "doc_jet_model_heatmap"
             )
 
             encoded = file_dict["data"]
@@ -161,7 +162,7 @@ def upload(request):
             total_hatched=0,
             date_updated=date,
             is_complete=False,
-            has_fail_present=False
+            has_fail_present=False,
         )
 
         # Read files into memory BEFORE starting thread (No images are saved at this point, only on memory)
@@ -424,103 +425,212 @@ def test(request):
             "included_template": "test.html",
         }
     )
-
 def metric(request):
-
-    validated_images = ImageDetails.objects.filter(is_validated=True)
-    total_images = validated_images.count()
-
-    # ---- Point-level classification ----
-
-    TP_qs = AnnotationPoints.objects.filter(
-        image_id__in=validated_images,
-        is_original=True,
-        is_deleted=False
+    # ---- dropdown data ----
+    models = (
+        ImageDetails.objects
+        .values_list("model_used", flat=True)
+        .distinct()
     )
 
-    FP_qs = AnnotationPoints.objects.filter(
-        image_id__in=validated_images,
-        is_original=True,
-        is_deleted=True
-    )
+    selected_models = request.GET.getlist("model")
 
-    FN_qs = AnnotationPoints.objects.filter(
-        image_id__in=validated_images,
-        is_original=False
-    )
+    context = {
+        "included_template": "metric.html",
+        "models": models,
+        "selected_models": selected_models,
+        "comparison": [],
+    }
 
-    TP = TP_qs.count()
-    FP = FP_qs.count()
-    FN = FN_qs.count()
+    if not selected_models:
+        return render(request, "base.html", context)
 
-    # Total model predictions (before correction)
-    total_model_predictions = TP + FP
+    for model in selected_models:
+        validated_images = ImageDetails.objects.filter(
+            is_validated=True,
+            model_used=model
+        )
 
-    # Total ground truth points
-    total_ground_truth = TP + FN
+        total_images = validated_images.count()
 
-    # ---- Detection Metrics ----
-    precision = TP / (TP + FP) if (TP + FP) > 0 else 0
-    recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-    f1_score = (
-        2 * precision * recall / (precision + recall)
-        if (precision + recall) > 0 else 0
-    )
-
-    # ---- Counting Metrics ----
-    total_accuracy = 0
-    total_abs_error = 0
-    total_pct_error = 0
-    valid_image_count = 0
-
-    for image in validated_images:
-
-        predicted_count = AnnotationPoints.objects.filter(
-            image_id=image,
+        # ---- Point-level classification ----
+        TP = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
             is_original=True,
             is_deleted=False
         ).count()
 
-        added_count = AnnotationPoints.objects.filter(
-            image_id=image,
+        FP = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
+            is_original=True,
+            is_deleted=True
+        ).count()
+
+        FN = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
             is_original=False
         ).count()
 
-        true_count = predicted_count + added_count
+        total_model_predictions = TP + FP
+        total_ground_truth = TP + FN
 
-        if true_count > 0:
-            abs_error = abs(predicted_count - true_count)
-            total_accuracy += 1 - abs_error / true_count
-            total_abs_error += abs_error
-            total_pct_error += abs_error / true_count
-            valid_image_count += 1
+        # ---- Detection metrics ----
+        precision = TP / (TP + FP) if (TP + FP) else 0
+        recall = TP / (TP + FN) if (TP + FN) else 0
+        f1_score = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) else 0
+        )
 
-    count_accuracy = total_accuracy / valid_image_count if valid_image_count else 0
-    MAE = total_abs_error / valid_image_count if valid_image_count else 0
-    MAPE = total_pct_error / valid_image_count if valid_image_count else 0
+        # ---- Counting metrics ----
+        total_accuracy = total_abs_error = total_pct_error = valid_image_count = 0
 
-    return render(
-        request,
-        "base.html",
-        {
-            "included_template": "metric.html",
+        for image in validated_images:
+            predicted_count = AnnotationPoints.objects.filter(
+                image_id=image,
+                is_original=True,
+                is_deleted=False
+            ).count()
 
-            # Totals
+            added_count = AnnotationPoints.objects.filter(
+                image_id=image,
+                is_original=False
+            ).count()
+
+            true_count = predicted_count + added_count
+
+            if true_count > 0:
+                abs_error = abs(predicted_count - true_count)
+                total_accuracy += 1 - abs_error / true_count
+                total_abs_error += abs_error
+                total_pct_error += abs_error / true_count
+                valid_image_count += 1
+
+        count_accuracy = total_accuracy / valid_image_count if valid_image_count else 0
+        MAE = total_abs_error / valid_image_count if valid_image_count else 0
+        MAPE = total_pct_error / valid_image_count if valid_image_count else 0
+
+        context["comparison"].append({
+            "model": model,
+
+            # Dataset overview
             "total_images": total_images,
-            "total_model_predictions": total_model_predictions,
             "total_ground_truth": total_ground_truth,
+            "total_model_predictions": total_model_predictions,
 
-            # Confusion-style values
+            # Confusion
             "TP": TP,
             "FP": FP,
             "FN": FN,
 
-            # Metrics
+            # Detection metrics
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1_score": round(f1_score, 4),
+
+            # Counting metrics
+            "count_accuracy": round(count_accuracy, 4),
+            "MAE": round(MAE, 4),
+            "MAPE": round(MAPE, 4),
+        })
+
+    return render(request, "base.html", context)
+
+def metric_ajax(request):
+    selected_models = request.GET.getlist("model")
+    if not selected_models:
+        return JsonResponse({"error": "No model selected"}, status=400)
+
+    comparison = []
+
+    for model in selected_models:
+        validated_images = ImageDetails.objects.filter(
+            is_validated=True,
+            model_used=model
+        )
+
+        total_images = validated_images.count()
+
+        # Point-level classification
+        TP = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
+            is_original=True,
+            is_deleted=False
+        ).count()
+
+        FP = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
+            is_original=True,
+            is_deleted=True
+        ).count()
+
+        FN = AnnotationPoints.objects.filter(
+            image_id__in=validated_images,
+            is_original=False
+        ).count()
+
+        total_model_predictions = TP + FP
+        total_ground_truth = TP + FN
+
+        # Detection metrics
+        precision = TP / (TP + FP) if (TP + FP) else 0
+        recall = TP / (TP + FN) if (TP + FN) else 0
+        f1_score = 2 * precision * recall / (precision + recall) if (precision + recall) else 0
+
+        # Counting metrics
+        total_accuracy = total_abs_error = total_pct_error = valid_image_count = 0
+        for image in validated_images:
+            predicted_count = AnnotationPoints.objects.filter(
+                image_id=image,
+                is_original=True,
+                is_deleted=False
+            ).count()
+            added_count = AnnotationPoints.objects.filter(
+                image_id=image,
+                is_original=False
+            ).count()
+            true_count = predicted_count + added_count
+            if true_count > 0:
+                abs_error = abs(predicted_count - true_count)
+                total_accuracy += 1 - abs_error / true_count
+                total_abs_error += abs_error
+                total_pct_error += abs_error / true_count
+                valid_image_count += 1
+
+        count_accuracy = total_accuracy / valid_image_count if valid_image_count else 0
+        MAE = total_abs_error / valid_image_count if valid_image_count else 0
+        MAPE = total_pct_error / valid_image_count if valid_image_count else 0
+
+        comparison.append({
+            "model": model,
+            "total_images": total_images,
+            "total_ground_truth": total_ground_truth,
+            "total_model_predictions": total_model_predictions,
+            "TP": TP,
+            "FP": FP,
+            "FN": FN,
             "precision": round(precision, 4),
             "recall": round(recall, 4),
             "f1_score": round(f1_score, 4),
             "count_accuracy": round(count_accuracy, 4),
             "MAE": round(MAE, 4),
             "MAPE": round(MAPE, 4),
+        })
+
+    return JsonResponse({"comparison": comparison})
+
+def export(request):
+    models = (
+        ImageDetails.objects
+        .values_list("model_used", flat=True)
+        .distinct()
+    )
+
+    return render(
+        request,
+        "base.html",
+        {
+            "included_template": "export.html",
+            "models": models,
         }
     )

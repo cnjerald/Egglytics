@@ -11,6 +11,7 @@ class BatchDetails(models.Model):
     total_hatched = models.IntegerField()
     is_complete = models.BooleanField()
     has_fail_present = models.BooleanField(default = False)
+    
 
     class Meta:
         db_table = "batch_details"   # TABLE NAME.
@@ -36,6 +37,7 @@ class ImageDetails(models.Model):
     allow_collection = models.BooleanField(default=True)
     is_processed = models.BooleanField()
     is_validated = models.BooleanField()
+    model_used = models.CharField(max_length = 255)
 
     class Meta:
         db_table = "image_details"  # TABLE NAME.
