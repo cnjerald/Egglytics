@@ -1,131 +1,27 @@
-<h2>Model Evaluation Summary</h2>
+{% load static %}
 
-<form id="model-form">
-    <label><strong>Select Model(s):</strong></label>
-    <select id="model-select" name="model" multiple>
-        {% for model in models %}
-            <option value="{{ model }}">{{ model }}</option>
-        {% endfor %}
-    </select>
-</form>
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/metric.css' %}">
+<div class="container">
+    <h2>Model Evaluation Summary</h2>
 
-<hr>
+    <form id="model-form">
+        <label for="model-select"><strong>Select Model(s):</strong></label>
+        <select id="model-select" name="model" multiple class="custom-select">
+            {% for model in models %}
+                <option value="{{ model }}">{{ model }}</option>
+            {% endfor %}
+        </select>
+    </form>
 
-<!-- Metrics container -->
-<div id="metrics-container" style="display: flex; flex-wrap: wrap; gap: 20px;">
-    <p>Select one or more models to view metrics.</p>
-</div>
+    <hr>
 
-<script>
-document.getElementById("model-select").addEventListener("change", function() {
-    const selectedOptions = Array.from(this.selectedOptions).map(opt => opt.value);
-
-    const container = document.getElementById("metrics-container");
-
-    if (selectedOptions.length === 0) {
-        container.innerHTML = "<p>Select one or more models to view metrics.</p>";
-        return;
-    }
-
-    const params = selectedOptions.map(m => "model=" + encodeURIComponent(m)).join("&");
-
-    fetch(`/metric/ajax/?${params}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                container.innerHTML = "<p>" + data.error + "</p>";
-                return;
-            }
-
-            let html = "";
-
-            data.comparison.forEach(r => {
-                html += `
-<div class="model-card">
-    <h3>${r.model}</h3>
-
-    <h4>Dataset Overview</h4>
-    <ul class="metrics-list">
-        <li><strong>Total Images:</strong> ${r.total_images}</li>
-        <li><strong>Ground Truth Points:</strong> ${r.total_ground_truth}</li>
-        <li><strong>Model Predictions:</strong> ${r.total_model_predictions}</li>
-    </ul>
-
-    <h4>Confusion Matrix</h4>
-    <div class="metric-grid">
-        <div class="metric-card-small tp">TP<br>${r.TP}</div>
-        <div class="metric-card-small fp">FP<br>${r.FP}</div>
-        <div class="metric-card-small fn">FN<br>${r.FN}</div>
+    <div id="metrics-container" class="dashboard-grid">
+        <p class="placeholder-text">Select one or more models to view metrics.</p>
     </div>
+</div>
+{% endblock %}
 
-    <h4>Detection Metrics</h4>
-    <ul class="metrics-list">
-        <li><strong>Precision:</strong> ${r.precision}</li>
-        <li><strong>Recall:</strong> ${r.recall}</li>
-        <li><strong>F1 Score:</strong> ${r.f1_score}</li>
-    </ul>
-
-    <h4>Counting Performance</h4>
-    <ul class="metrics-list">
-        <li><strong>Count Accuracy:</strong> ${r.count_accuracy}</li>
-        <li><strong>MAE:</strong> ${r.MAE}</li>
-        <li><strong>MAPE:</strong> ${r.MAPE}</li>
-    </ul>
-</div>`;
-            });
-
-            container.innerHTML = html;
-        })
-        .catch(err => {
-            console.error(err);
-            container.innerHTML = "<p>Error loading metrics.</p>";
-        });
-});
-</script>
-
-
-<style>
-.model-card {
-    border: 1px solid #ccc;
-    border-radius: 12px;
-    padding: 16px;
-    width: 300px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    background: #fff;
-    font-family: Arial, sans-serif;
-}
-
-.model-card h3 {
-    text-align: center;
-    margin-top: 0;
-}
-
-.metric-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin: 12px 0;
-}
-
-.metric-card-small {
-    padding: 12px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: bold;
-    color: #000;
-}
-
-.tp { background: #e6fffa; }
-.fp { background: #fff5f5; }
-.fn { background: #fffbea; }
-
-.metrics-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.metrics-list li {
-    margin-bottom: 4px;
-}
-</style>
-
+{% block extra_js %}
+<script src="{% static 'js/metrics_handler.js' %}"></script>
+{% endblock %}
