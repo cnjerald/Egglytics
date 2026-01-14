@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     const modelSelect = document.getElementById("model-select");
     const container = document.getElementById("metrics-container");
+    const template = document.getElementById("model-card-template");
 
     modelSelect.addEventListener("change", function() {
         const selectedOptions = Array.from(this.selectedOptions).map(opt => opt.value);
-
         if (selectedOptions.length === 0) {
-            container.innerHTML = "<p>Select one or more models to view metrics.</p>";
+            container.innerHTML = '<p class="placeholder">Select a model to begin.</p>';
             return;
         }
 
@@ -15,51 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch(`/metric/ajax/?${params}`)
             .then(res => res.json())
             .then(data => {
-                if (data.error) {
-                    container.innerHTML = `<p class="error">${data.error}</p>`;
-                    return;
-                }
-                renderMetrics(data.comparison);
-            })
-            .catch(err => {
-                console.error("Fetch error:", err);
-                container.innerHTML = "<p>Error loading metrics.</p>";
+                container.innerHTML = ""; // Clear current cards
+                data.comparison.forEach(r => {
+                    const clone = template.content.cloneNode(true);
+                    
+                    clone.querySelector(".js-model-name").textContent = r.model;
+                    clone.querySelector(".js-images").textContent = r.total_images;
+                    clone.querySelector(".js-preds").textContent = r.total_model_predictions;
+                    clone.querySelector(".js-tp").textContent = `TP: ${r.TP}`;
+                    clone.querySelector(".js-fp").textContent = `FP: ${r.FP}`;
+                    clone.querySelector(".js-fn").textContent = `FN: ${r.FN}`;
+                    clone.querySelector(".js-precision").textContent = r.precision;
+                    clone.querySelector(".js-recall").textContent = r.recall;
+
+                    container.appendChild(clone);
+                });
             });
     });
-
-    function renderMetrics(comparisonData) {
-        container.innerHTML = comparisonData.map(r => `
-            <div class="model-card">
-                <h3>${r.model}</h3>
-                
-                <section>
-                    <h4>Dataset Overview</h4>
-                    <ul class="metrics-list">
-                        <li><span>Total Images:</span> <strong>${r.total_images}</strong></li>
-                        <li><span>Ground Truth:</span> <strong>${r.total_ground_truth}</strong></li>
-                        <li><span>Predictions:</span> <strong>${r.total_model_predictions}</strong></li>
-                    </ul>
-                </section>
-
-                <section>
-                    <h4>Confusion Matrix</h4>
-                    <div class="metric-grid">
-                        <div class="metric-card-small tp">TP: ${r.TP}</div>
-                        <div class="metric-card-small fp">FP: ${r.FP}</div>
-                        <div class="metric-card-small fn">FN: ${r.FN}</div>
-                    </div>
-                </section>
-
-                <section>
-                    <h4>Performance</h4>
-                    <ul class="metrics-list">
-                        <li><span>Precision:</span> ${r.precision}</li>
-                        <li><span>Recall:</span> ${r.recall}</li>
-                        <li><span>F1 Score:</span> ${r.f1_score}</li>
-                        <li><span>MAE:</span> ${r.MAE}</li>
-                    </ul>
-                </section>
-            </div>
-        `).join('');
-    }
 });

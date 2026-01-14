@@ -893,7 +893,7 @@ $(document).ready(function () {
         } catch (err) {
             console.warn("Deletion failed, keeping ghost point:", err);
 
-            // ⏸️ Keep ghost + add to retry queue (ONLY if not already retrying)
+            // Keep ghost + add to retry queue (ONLY if not already retrying)
             if (!isRetrying) {
                 unsentRemovals.push(point);
                 localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));
