@@ -240,8 +240,6 @@ $(document).ready(function () {
         if (e.key.toLowerCase() === DELETE_ANNOTATION_KEY) {
             if(isPointAnnotate){
                 removePointAtCursor();
-                totalEggs--;
-                
                 setTotalEggCount();
             } else if (isRectAnnotate){
                 const pos = getMousePosition(); // image coordinates
@@ -868,6 +866,8 @@ $(document).ready(function () {
 
                 if (!response.ok) {
                     throw new Error(`Server error: ${response.status}`);
+                } else{
+                    totalEggs--;
                 }
 
                 const data = await response.json();
@@ -875,7 +875,6 @@ $(document).ready(function () {
 
                 // SUCCESS: Remove ghost point
                 // removeGhostPoint(x, y, image_id);
-                totalEggs--;
                 setTotalEggCount();
                 return true; // Return success
         } catch (err) {
