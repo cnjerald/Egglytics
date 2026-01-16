@@ -1,0 +1,164 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <link rel="stylesheet" href="{% static 'css/editor.css' %}">
+<head>
+    <meta charset="UTF-8">
+    <title>Egglytics</title>
+    <container class="toolbar">
+        <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
+    </container>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+</head>
+<body>
+    
+
+<button id="sidebarToggle" class="menu-btn">☰</button>
+    <div id="instructions-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span> 
+            <h3>Editor Shortcuts & Controls</h3>
+            <div class="keyboard-panel">
+                <div class="instruction-line">
+                    <span class="key-hint">Q</span> - DEBUG PIXEL LOC
+                </div>
+                <div class="instruction-line">
+                    <span class="key-hint">W</span> - MARK GRID AS DONE/UNDONE
+                </div>
+                <div class="instruction-line">
+                    <span class="key-hint">E</span> - CREATE DOT
+                </div>
+                <div class="instruction-line">
+                    <span class="key-hint">R</span> - REMOVE DOT
+                </div>
+                
+                <div class="instruction-line pan-line">
+                    <span class="key-hint">RMB</span> + DRAG - PAN IMAGE
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="app">
+    <aside id="sidebar" class="sidebar">
+        <h3>
+            Current Mode:
+            <span id="current-mode" style="color:#6cff6c;">Point</span>
+        </h3>
+        <h3>Tools</h3>
+
+        <div class = "sidebar-controls">
+            <button type="button" class="tools-button" id="point-btn">
+                <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
+            </button>
+
+            <button type="button" class="tools-button" id="rect-btn">
+                <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
+            </button>
+
+            <button type="button" class="tools-button" id="grid-btn">
+                <img src="{% static 'img/grid.png' %}" alt="grids" class="button-photo">
+            </button>
+
+            <button type="button" class="tools-button help-button" title="Instructions" id="open-instructions-modal">
+                <span class="button-label">Controls</span> 
+            </button>
+        </div>
+
+
+
+
+        <div>
+            <h4>Annotations</h4>
+            <ul id="annotation-list" class="annotation-list"></ul>
+        </div>
+    </aside>
+
+    <!--  MAIN WRAPPER -->
+    <main class="main">
+        <!-- optional top controls later -->
+
+        <!--  viewer lives here -->
+
+        <div id="viewer"
+            data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}">
+        </div>
+    </main>
+</div>
+
+
+<!-- LOAD VARIABLES (No Syntax error here.) -->
+<script>
+    window.points = {{ points_json|safe }};
+    window.total_egg_count = {{ total_eggs }};
+    const image_id = {{img_id}};
+    console.log(points);
+</script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'js/image_editor.js' %}"></script>
+
+
+
+<!-- For sidebar -->
+<script>
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("sidebarToggle");
+
+    toggleBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("closed");
+    });
+    document.addEventListener('contextmenu', event => event.preventDefault());
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const modal = document.getElementById("instructions-modal");
+        const openBtn = document.getElementById("open-instructions-modal");
+        const closeBtn = modal ? modal.querySelector(".close-button") : null; 
+
+        if (!modal || !openBtn || !closeBtn) {
+            console.error("Modal initialization failed: One or more elements were not found.");
+            return; 
+        }
+
+        // Open the modal
+        openBtn.addEventListener('click', () => {
+            modal.classList.add("is-visible");
+        });
+
+        // Close the modal when the 'x' is clicked
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove("is-visible");
+        });
+
+        // Close the modal when clicking anywhere outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) { 
+                modal.classList.remove("is-visible");
+            }
+        });
+    });
+</script>
+
+<script>
+
+    $("#edit-toggle").on("click", function (e) {
+        e.stopPropagation();
+        $("#edit-dropdown").toggle();
+    });
+
+    // Close when clicking outside
+    $(document).on("click", function (e) {
+        if (!$(e.target).closest("#edit-toggle, #edit-dropdown").length) {
+            $("#edit-dropdown").hide(); // <-- use .hide() instead of .toggle()
+        }
+    });
+
+
+</script>
+
+
+</body>
+</html>

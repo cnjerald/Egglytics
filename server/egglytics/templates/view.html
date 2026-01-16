@@ -1,198 +1,119 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
     <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="{% static 'css/view.css' %}">
 
         <title>Sample Info</title>
-        <style>
-            .info-card {
-                display: flex;
-                flex-direction: column; /* stack vertically */
-                border: 2px solid black;
-                margin: 20px auto;
-                padding: 1%;
-                text-align: center;
-                width: 80%; /* fixed width for consistent look */
-                border-radius: 8px;
-                background-color: #f9f9f9;
-            }
-            .info-card:hover {
-                background-color: #e0e0e0;
-            }
-            .info-card h5 {
-                margin: 5px 0;
-            }
-
-
-            /* Popup modal styles */
-            .popup {
-                    display: none;
-                    position: fixed;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.5);
-                    justify-content: center;
-                    align-items: center;
-                    padding: 20px; /* prevent edges from sticking */
-                }
-
-                .popup-content {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 8px;
-                    text-align: center;
-                    width: 80vw; /* This is the width of the popup box */
-                    min-height: 50vh; /* This is the height of the popup box */
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                }
-
-                .popup-holder {
-                    display: flex;
-                    gap: 20px;
-                    align-items: flex-start;
-                    width: 100%;
-                }
-
-                .half {
-                    flex:1;
-                }
-
-                .text-side {
-                    text-align: left;
-                    max-height: 60vh;        /* limit height of text section */
-                    overflow-y: auto;        /* only this column scrolls */
-                }
-
-                .button-photo {
-                    height: auto;
-                }
-
-                .close-btn {
-                    margin-top: 15px;
-                    padding: 8px 15px;
-                    border: none;
-                    border-radius: 5px;
-                    background: #333;
-                    color: white;
-                    cursor: pointer;
-                }
-                .button-photo {
-                    max-width: 100%;   /* don't exceed parent column width */
-                    max-height: 60vh;  /* don't exceed 60% of viewport height */
-                    object-fit: contain; /* scale down while keeping aspect ratio */
-                    border-radius: 6px;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                }
-
-        </style>
     </head>
     <body>
-        {% for batch in batches %}
-        <div class="info-card" data-batch-id="{{ batch.id }}">
-            <h5>NAME: {{ batch.batch_name }}</h5>
-            <h5>Date: {{ batch.date_updated|date:"m/d/Y" }}</h5>
-            <h5>Total Images: {{ batch.total_images }}</h5>
-            <h5>Total Eggs: {{ batch.total_eggs }}</h5>
-            <h5>
-                Processing Status:
-                {% if batch.total_eggs > 0 %}
-                    <i class="fas fa-check-circle" style="color: green;"></i> <!-- done -->
-                {% else %}
-                    <i class="fas fa-spinner fa-spin" style="color: orange;"></i> <!-- loading -->
-                {% endif %}
-            </h5>
-        </div>
-        {% endfor %}
-                
-        <!-- Popup Modal -->
-        <div class="popup" id="popup">
-            <div class="popup-content">
-                <!-- Title / Header -->
-                <h3 id="popup-text">Details</h3>
 
-                <div class="popup-holder">
-                    <!-- Left side can be static or used for thumbnails -->
-                    <div class="half">
-                        <img id="popup-image" src="" alt="Image Preview" class="button-photo">
-                    </div>
+        <div id="notice-box"></div>
 
-                    <!-- Right side: dynamic content goes here -->
-                    <div class="half text-side" id="popup-details">
-                        <!-- Will be filled by JS -->
-                        <p>Loading...</p>
-                    </div>
+        <div class="table-controls">
+            <div class="filter-group">
+                <input type="text" id="batchSearch" placeholder="Search Batch Name..." />
+
+                <div class="filter-item">
+                <label>Date Updated:</label>
+                <input type="date" id="dateFrom"> -
+                <input type="date" id="dateTo">
                 </div>
 
-                <button class="close-btn" onclick="closePopup()">Close</button>
+                <div class="filter-item">
+                <label>Total Images:</label>
+                <input type="number" id="imagesMin" placeholder="Min" min="0"> -
+                <input type="number" id="imagesMax" placeholder="Max" min="0">
+                </div>
+
+                <div class="filter-item">
+                <label>Total Eggs:</label>
+                <input type="number" id="eggsMin" placeholder="Min" min="0"> -
+                <input type="number" id="eggsMax" placeholder="Max" min="0">
+                </div>
             </div>
         </div>
+        <table class="table" id="batchTable">
+            <thead>
+                <tr>
+                    <th>Batch Name</th>
+                    <th>Date Updated</th>
+                    <th>Total Images</th>
+                    <th>Total Eggs</th>
+                    <th>Processing Status</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for batch in batches %}
+                <tr data-batch-id="{{ batch.id }}">
+                    <td>{{ batch.batch_name }}</td>
+                    <td>{{ batch.date_updated|date:"m/d/Y" }}</td>
+                    <td>{{ batch.total_images }}</td>
+                    <td>{{ batch.total_eggs }}</td>
+                    <td>
+                        {% if batch.has_fail_present %}
+                            <i class="fas fa-exclamation-triangle" style="color: red;"></i>
+                        {% elif batch.is_complete and not batch.has_fail_present %}
+                            <i class="fas fa-check-circle" style="color: green;"></i>
+                        {% else %}
+                            <i class="fas fa-spinner fa-spin" style="color: orange;"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="delete-btn" data-batch-id="{{ batch.id }}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
+        <!-- Popup Modal -->
+        <div class="popup" id="popup">
+        <div class="popup-content">
+            <h3 id="popup-text">
+                Image Details for: 
+                <span id="popup-batch-name-container">
+                    <span id="popup-batch-name"></span>
+                    <button id="edit-batch-btn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </span>
+            </h3>
+            <div class="popup-holder">
+            <div class="half">
+                <img id="popup-image" src="" alt="Image Preview" class="button-photo">
+            </div>
+            <div class="half text-side">
+                <table id="popup-table">
+                <thead>
+                    <tr>
+                    <th data-column="image_name">Image</th>
+                    <th data-column="total_eggs">Eggs</th>
+                    <th data-column="total_hatched">Hatched</th>
+                    <th data-column="img_type">Type</th>
+                    <th>Edit</th>
+                    <th>Delete</th> <!-- New column -->
+                    </tr>
+                </thead>
+                <tbody id="popup-details">
+                    <!-- JS will fill this -->
+                </tbody>
+                </table>
+            </div>
+            </div>
+            <button class="close-btn" onclick="closePopup()">Close</button>
+        </div>
+        </div>
     </body>
-    <script>
-        const cards = document.querySelectorAll('.info-card');
-        const popup = document.getElementById('popup');
-        const popupText = document.getElementById('popup-text');
-        const popupContent = document.querySelector('.popup-content');
-        // Function to open popup
-        function openPopup(message) {
-            popupText.textContent = message;
-            
-            popup.style.display = 'flex';
-        }
-
-        // Function to close popup
-        function closePopup() {
-            popup.style.display = 'none';
-        }
-
-        // Close when clicking outside
-        popup.addEventListener('click', (e) => {
-            if (!popupContent.contains(e.target)) {
-                closePopup();
-            }
-        });
 
 
-        // Add click events to cards
-        cards.forEach((card) => {
-            card.addEventListener("click", () => {
-                const batchId = card.getAttribute("data-batch-id");
-
-                // Show popup immediately (loading state)
-                popupText.textContent = "Loading images...";
-                popup.style.display = "flex";
-
-                fetch(`/batch/${batchId}/images/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Replace popup content with real image details
-                        let detailsHTML = "";
-                        const img = data[0]; // show first image for now
-                        document.getElementById("popup-image").src = `../static/uploads/${img.image_name}`;
-                        data.forEach(img => {
-                            detailsHTML += `
-                                <div>
-                                    <h5>Image: ${img.image_name}</h5>
-                                    <p>Eggs: ${img.total_eggs}</p>
-                                    <p>Hatched: ${img.total_hatched}</p>
-                                    <p>Type: ${img.img_type}</p>
-                                    <button class="edit-btn" onclick="window.location.href='/edit/${img.image_id}'">
-                                        Edit
-                                    </button>
-                                </div>
-                                <hr/>
-                            `;
-                        });
-
-                        popupText.textContent = "Image Details"; // header
-                        document.querySelector(".text-side").innerHTML = detailsHTML;
-                    })
-                    .catch(err => {
-                        popupText.textContent = "Error loading images";
-                        console.error(err);
-                    });
-            });
-        });
-
-    </script>
+    <script src="{% static 'js/view_functions_handler.js' %}"></script>
 </html>
+
+<script>
+    const MEDIA_URL = "{{ MEDIA_URL }}";
+</script>

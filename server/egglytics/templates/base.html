@@ -1,17 +1,28 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
+        <link href="{% static 'css/base.css' %}" rel="stylesheet">
+        
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <title>Egglytics</title>
-        <text> Random Text</text>
     </head>
-    <header>
-        <a href="/">Upload</a>
-        <a href="/edit">Annotate</a>
-        <a href="/view">Results</a>
-        <a href="/login">Results</a>
+    
+    <header class="main-header">
+        <span class="header-brand" onclick="window.location.href='/'" style="cursor:pointer;">Egglytics</span>
+        <nav class="header-nav">
+            <a href="/" class="nav-link">Upload</a>
+            <!-- <a href="/edit" class="nav-link">Annotate</a> -->
+            <a href="/view" class="nav-link">Results</a>
+            <a href="/metric" class="nav-link">Metric</a>
+            <a href="/export" class="nav-link">Export</a>
+        </nav>
     </header>
+    
     <body>
-        {% include included_template %}
+        <div class="main-content">
+            {% include included_template %}
+        </div>
     </body>
 </html>
