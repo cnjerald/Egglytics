@@ -75,14 +75,14 @@
         </div>
     </aside>
 
-    <!-- ✅ MAIN WRAPPER -->
+    <!--  MAIN WRAPPER -->
     <main class="main">
         <!-- optional top controls later -->
 
-        <!-- ✅ viewer lives here -->
+        <!--  viewer lives here -->
 
         <div id="viewer"
-            data-image-url="{% static 'uploads/' %}{{ image_name }}">
+            data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}">
         </div>
     </main>
 </div>

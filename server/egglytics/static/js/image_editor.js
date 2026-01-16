@@ -267,7 +267,7 @@ $(document).ready(function () {
         const tolerance = 10;
 
         for (let i = points.length - 1; i >= 0; i--) {
-            const p = points[i]; // ✅ get the point object
+            const p = points[i]; //  get the point object
 
             const dx = p.x - pos.x;
             const dy = p.y - pos.y;
@@ -377,7 +377,7 @@ $(document).ready(function () {
         rectEl.style.pointerEvents = "none";
         rectEl.style.boxSizing = "border-box";
 
-        // ✅ generate a stable overlay ID
+        // generate a stable overlay ID
         const overlayId = `rect-${rects.length}-${Date.now()}`;
 
         viewer.addOverlay({

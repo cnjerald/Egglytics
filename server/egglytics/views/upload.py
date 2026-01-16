@@ -124,7 +124,7 @@ def process_images(batch, files_data, header):
             
             if image_b64:
                 img_data = base64.b64decode(image_b64)
-                upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
+                upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
                 os.makedirs(upload_dir, exist_ok=True)
                 file_path = os.path.join(upload_dir, image_record.image_name)
                 with open(file_path, "wb") as f_out:

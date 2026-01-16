@@ -9,9 +9,20 @@
         {% endfor %}
     </select>
 
+    <div class="filter-item">
+        <label>Date range:</label>
+        <input type="date" id="dateFrom">
+        -
+        <input type="date" id="dateTo">
+    </div>
+
+
+    <input type="checkbox" id="include_verified" name="include_verified" value="include_verified" checked>
+    <label for="include_verified"> Only Download verified results </label><br>
+
     <hr>
 
-    <h1> Total Points: </h1>
+    <h1 id = "total_images"> Total Points: </h1>
 
     <h1>Points:</h1>
     <!-- leave this blank for now -->
@@ -19,4 +30,111 @@
     <h1>Rectangles:</h1>
     <!-- leave this blank for now -->
 
+    <button id="export-btn">Download Dataset</button>
+
 </body>
+<script>
+function updateExportStats() {
+    const model = document.getElementById("model-select").value;
+    const verifiedCheckbox = document.getElementById("include_verified");
+    const dateFrom = document.getElementById("dateFrom").value;
+    const dateTo = document.getElementById("dateTo").value;
+
+    if (!model) return;
+
+    let params = new URLSearchParams({ model });
+
+    if (verifiedCheckbox.checked) {
+        params.append("verified", "1");
+    }
+
+    if (dateFrom) {
+        params.append("date_from", dateFrom);
+    }
+
+    if (dateTo) {
+        params.append("date_to", dateTo);
+    }
+
+    fetch(`/export/export_image_count/?${params.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+
+            document.getElementById("total_images").textContent =
+                "Total Points: " + data.total_images;
+        })
+        .catch(err => console.error("Count error:", err));
+}
+
+// Runs ONLY when model changes
+function updateDateRangeAndStats() {
+    const model = document.getElementById("model-select").value;
+    if (!model) return;
+
+    fetch(`/export/date-range/?model=${encodeURIComponent(model)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+
+            const dateFromInput = document.getElementById("dateFrom");
+            const dateToInput = document.getElementById("dateTo");
+
+            dateFromInput.min = data.dateFrom;
+            dateFromInput.max = data.dateTo;
+            dateToInput.min = data.dateFrom;
+            dateToInput.max = data.dateTo;
+
+            dateFromInput.value = data.dateFrom;
+            dateToInput.value = data.dateTo;
+
+            // After dates are set, update counts
+            updateExportStats();
+        })
+        .catch(err => console.error("Date range error:", err));
+}
+
+/* -----------------------
+   Event listeners
+------------------------ */
+
+// Model change → update date range + stats
+document.getElementById("model-select")
+    .addEventListener("change", updateDateRangeAndStats);
+
+// Any filter change → update stats only
+document.getElementById("include_verified")
+    .addEventListener("change", updateExportStats);
+
+document.getElementById("dateFrom")
+    .addEventListener("change", updateExportStats);
+
+document.getElementById("dateTo")
+    .addEventListener("change", updateExportStats);
+
+document.getElementById("export-btn").addEventListener("click", function () {
+    const model = document.getElementById("model-select").value;
+    const verified = document.getElementById("include_verified").checked;
+    const dateFrom = document.getElementById("dateFrom").value;
+    const dateTo = document.getElementById("dateTo").value;
+
+    if (!model) {
+        alert("Select a model first");
+        return;
+    }
+
+    let params = new URLSearchParams({ model });
+
+    if (verified) params.append("verified", "1");
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+
+    window.location.href = `/export/download/?${params.toString()}`;
+});
+</script>

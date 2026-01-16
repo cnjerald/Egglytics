@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import metrics, upload, view, editor, export
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # UPLOAD PAGE
@@ -25,6 +27,11 @@ urlpatterns = [
 
     # EXPORTING
     path("export/",export.export,name="export"),
+    path("export/date-range/", export.export_date_range, name="export_date_range"),
+    path("export/export_image_count/", export.export_image_count, name="export_image_count"),
+    path("export/download/", export.export_dataset, name="export_dataset"),
 
 ]
 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

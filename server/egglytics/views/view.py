@@ -25,14 +25,32 @@ def view(request):
         {
             "included_template": "view.html",
             "batches": batches,
+            "MEDIA_URL": settings.MEDIA_URL,
         }
     )
 
 def batch_images(request, batch_id):
-    images = ImageDetails.objects.filter(batch_id=batch_id).values(
-        "image_id","image_name", "total_eggs", "img_type"
-    )
-    return JsonResponse(list(images), safe=False)
+    images = ImageDetails.objects.filter(batch_id=batch_id)
+
+    data = []
+
+    for img in images:
+        # If using ImageField:
+        # image_url = img.image.url
+        
+        # If using just a filename (string) stored in image_name:
+        image_url = f"{settings.MEDIA_URL}uploads/{img.image_name}"
+        print(image_url)
+
+        data.append({
+            "image_id": img.image_id,
+            "image_name": img.image_name,
+            "image_url": image_url,
+            "total_eggs": img.total_eggs,
+            "img_type": img.img_type
+        })
+
+    return JsonResponse(data, safe=False)
 
 def batch_status(request):
     batches = BatchDetails.objects.filter(owner="incognito").values(
@@ -67,15 +85,15 @@ def edit(request, image_id):
     )
 
     return render(
-        
         request,
         "base.html",
         {
             "included_template": "test.html",
-            "image_name": image.image_name,                # filename for <img>
-            "points_json": json.dumps(list(annotations)),   # list of dicts for JS
+            "image_name": image.image_name,                # filename only
+            "points_json": json.dumps(list(annotations)), # list of dicts for JS
             "total_eggs": json.dumps(image.total_eggs),
-            "img_id" : json.dumps(image_id) 
+            "img_id": json.dumps(image_id),
+            "MEDIA_URL": settings.MEDIA_URL,              # add MEDIA_URL for template
         }
     )
 
@@ -117,13 +135,18 @@ def delete_image(request, image_id):
         try:
             # Get the image
             image = ImageDetails.objects.get(image_id=image_id)
-            batch = image.batch  # assuming ForeignKey from ImageDetails -> Batch
+            batch = image.batch 
 
             # Delete related annotations
             AnnotationPoints.objects.filter(image=image).delete()
 
             # Subtract the image's eggs from batch total
             batch.total_eggs -= image.total_eggs
+            
+            # Delete the actual file from MEDIA_ROOT/uploads/
+            image_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image.image_name)
+            if os.path.exists(image_path):
+                os.remove(image_path)
 
             # Delete image
             image.delete()

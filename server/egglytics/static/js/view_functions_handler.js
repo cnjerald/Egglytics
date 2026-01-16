@@ -136,7 +136,11 @@ $("#notice-box").hide();
                 .then(res => res.json())
                 .then(data => {
                     if (data.length > 0) {
-                        popupImage.src = `../static/uploads/${data[0].image_name}`;
+                        if (data.length > 0) {
+                            if (data.length > 0) {
+                                popupImage.src = data[0].image_url;
+                            }
+                        }
                     }
 
                     let rowsHTML = "";
@@ -176,10 +180,9 @@ $("#notice-box").hide();
 
     // Change image on click inside popup
     $(document).on("click", ".image-details", function () {
-    const imageName = $(this).data("image-name");
-    $("#popup-image").attr("src", `../static/uploads/${imageName}`);
+        const imageName = $(this).data("image-name");
+        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${imageName}`);
     });
-
 
     // Advanced filtering: search + range filters
     const inputs = [
@@ -288,10 +291,11 @@ $("#notice-box").hide();
     // Handle delete button click inside popup
     $(document).on("click", ".popup .delete-btn", function(event) {
         event.stopPropagation(); // Prevent row click from firing
+
         const row = $(this).closest("tr");
         const imageId = row.data("image-id");
         const currentPreview = $("#popup-image").attr("src");
-        const imageSrc = `../static/uploads/${row.data("image-name")}`;
+        const imageUrl = row.data("image-url"); // use full MEDIA_URL path
 
         if (confirm("Are you sure you want to delete this image?")) {
             fetch(`/delete-image/${imageId}/`, {
@@ -307,11 +311,11 @@ $("#notice-box").hide();
                     row.remove();
 
                     // Update preview if it was the deleted image
-                    if (currentPreview === imageSrc) {
+                    if (currentPreview === imageUrl) {
                         const firstRow = $("#popup-details tr").first();
                         if (firstRow.length) {
-                            const firstImageName = firstRow.data("image-name");
-                            $("#popup-image").attr("src", `../static/uploads/${firstImageName}`);
+                            const firstImageUrl = firstRow.data("image-url");
+                            $("#popup-image").attr("src", firstImageUrl);
                         } else {
                             $("#popup-image").attr("src", ""); // no images left
                         }
@@ -319,7 +323,7 @@ $("#notice-box").hide();
 
                     // Update main batch table or remove batch if deleted
                     if (data.batch_deleted) {
-                        const batchId = row.closest(".popup").data("batch-id"); // make sure you set this attribute
+                        const batchId = $("#popup").data("batch-id");
                         $(`#batchTable tbody tr[data-batch-id="${batchId}"]`).remove();
                         closePopup(); // close the popup since batch is gone
                         alert("Last image deleted. Batch removed.");
@@ -337,6 +341,7 @@ $("#notice-box").hide();
             .catch(err => console.error(err));
         }
     });
+
 
     const popupBatchName = document.getElementById("popup-batch-name");
     const editBatchBtn = document.getElementById("edit-batch-btn");
