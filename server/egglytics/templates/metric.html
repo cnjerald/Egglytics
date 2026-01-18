@@ -10,16 +10,19 @@
         <h2>Model Evaluation Summary</h2>
         <form id="model-form">
             <label><strong>Select Model(s):</strong></label>
-            <select id="model-select" name="model" multiple class="custom-select">
+            <div id="model-checkbox-group" class="model-grid">
                 {% for model in models %}
-                    <option value="{{ model }}">{{ model }}</option>
+                <label class="model-chip">
+                    <input type="checkbox" name="model" value="{{ model }}" class="js-model-checkbox">
+                    <span class="chip-label">{{ model }}</span>
+                </label>
                 {% endfor %}
-            </select>
+            </div>
         </form>
 
         <hr>
 
-        <div id="metrics-container" class="dashboard-grid">
+        <div id="metrics-container" class="dashboard-grid" data-url="{% url 'metric_ajax' %}">
             <p class="placeholder">Select a model to begin.</p>
         </div>
     </div>
