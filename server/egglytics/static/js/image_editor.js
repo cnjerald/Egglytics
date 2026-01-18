@@ -227,6 +227,13 @@ $(document).ready(function () {
                 } else if (edges.length === 2) {
                     hidePreviewRect();
                     drawRectOSD(edges);
+                        sendRect(
+                            image_id,
+                            edges[0][0], // x1
+                            edges[0][1], // y1
+                            edges[1][0], // x2
+                            edges[1][1]  // y2
+                        );
                     edges = [];
                     renderRectList(); 
                 }
@@ -250,6 +257,13 @@ $(document).ready(function () {
 
                     if (isPointInsideRect(pos.x, pos.y, r)) {
                         viewer.removeOverlay(r.element);
+                        remove_rect(
+                            image_id,
+                            r.x,
+                            r.y,
+                            r.x + r.width,
+                            r.y + r.height
+                        );
                         rects.splice(i, 1);
                         console.log(" Rectangle deleted");
                         break; // remove only one
@@ -275,7 +289,7 @@ $(document).ready(function () {
             if (Math.hypot(dx, dy) <= tolerance) {
 
                 // send correct coordinates
-                remove_egg_from_db(image_id, p.x, p.y);
+                remove_point(image_id, p.x, p.y);
                 // remove from memory
                 points.splice(i, 1);
 
@@ -816,7 +830,7 @@ $(document).ready(function () {
     async function sendPoint(image_id, x, y) {
         try {
             // Try to establish connection to server..
-            const response = await fetch(`/add_egg_to_db/${image_id}/`, {
+            const response = await fetch(`/add_egg_to_db_point/${image_id}/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -851,11 +865,11 @@ $(document).ready(function () {
         }
     }
 
-    async function remove_egg_from_db(image_id, x, y, radius = 5, color = 'red', transparency = 0.5) {
+    async function remove_point(image_id, x, y) {
         // const point = { image_id, x, y, radius, color, transparency };
 
         try {
-            const response = await fetch(`/remove_egg_from_db/${image_id}/`, {
+            const response = await fetch(`/remove_egg_from_db_point/${image_id}/`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -880,7 +894,83 @@ $(document).ready(function () {
         } catch (err) {
             console.warn("Deletion failed, keeping ghost point:", err);
 
-            // // ⏸️ Keep ghost + add to retry queue (ONLY if not already retrying)
+            // // Keep ghost + add to retry queue (ONLY if not already retrying)
+            // if (!isRetrying) {
+            //     unsentRemovals.push(point);
+            //     localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));
+            // }
+            return false; // Return failure
+        }
+    }
+
+    // --- Main sendPoint function ---
+    async function sendRect(image_id, x1, y1, x2, y2) {
+        try {
+            // Try to establish connection to server..
+            const response = await fetch(`/add_egg_to_db_rect/${image_id}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken("csrftoken"),
+                },
+                body: JSON.stringify({ x1, y1, x2, y2 })
+            });
+
+            // If no connection is established
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            // Else if connection is established.
+            const data = await response.json();
+            console.log("Server says:", data.message || data.STATUS);
+            totalEggs++;
+            setTotalEggCount();
+
+            return true; // Return success
+
+        } catch (err) {
+            console.error("Server offline, storing point locally:", err);
+
+            //  Only add to unsent queue if we're NOT already retrying
+            // if (!isRetryingSend) {
+            //     unsentPoints.push({ image_id, x, y, radius, color });
+            //     localStorage.setItem("unsentPoints", JSON.stringify(unsentPoints));
+            // }
+            return false; // Return failure
+        }
+    }
+
+    
+    async function remove_rect(image_id, x1, y1, x2, y2) {
+        // const point = { image_id, x, y, radius, color, transparency };
+        try {
+            const response = await fetch(`/remove_egg_from_db_rect/${image_id}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken("csrftoken"),
+                    },
+                    body: JSON.stringify({ x1, y1, x2, y2 })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                } else{
+                    totalEggs--;
+                }
+
+                const data = await response.json();
+                console.log("Server says:", data.message || data.STATUS);
+
+                // SUCCESS: Remove ghost point
+                // removeGhostPoint(x, y, image_id);
+                setTotalEggCount();
+                return true; // Return success
+        } catch (err) {
+            console.warn("Deletion failed, keeping ghost point:", err);
+
+            // //  Keep ghost + add to retry queue (ONLY if not already retrying)
             // if (!isRetrying) {
             //     unsentRemovals.push(point);
             //     localStorage.setItem("unsentRemovals", JSON.stringify(unsentRemovals));

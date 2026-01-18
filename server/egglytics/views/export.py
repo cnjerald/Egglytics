@@ -86,14 +86,18 @@ def export_dataset(request):
         return HttpResponse("Model required", status=400)
 
     # ---- Filter images ----
-    qs = ImageDetails.objects.filter(model_used=model)
+    # Filter images that allows collection
+    qs = ImageDetails.objects.filter(model_used=model,allow_collection = True)
 
+    # Filter images that were validated by the user
     if verified:
         qs = qs.filter(is_validated=True)
 
+    # Start Date
     if date_from:
         qs = qs.filter(date_uploaded__date__gte=parse_date(date_from))
 
+    # End Date
     if date_to:
         qs = qs.filter(date_uploaded__date__lte=parse_date(date_to))
 
@@ -127,18 +131,37 @@ def export_dataset(request):
         annotation_data = []
         for p in points:
             annotation_data.append({
+                "label": "Egg",
                 "x": p.x,
                 "y": p.y,
-                "is_original": p.is_original,
-                "is_deleted": p.is_deleted,
             })
 
         annotation_json = json.dumps(annotation_data, indent=2)
 
+        # ---------------------
+        # Add metadata
+        # ---------------------
+        
         zip_file.writestr(
             f"annotations/{image.image_name}.json",
             annotation_json
         )
+    
+    today_date_object = datetime.today()
+    metadata = {
+        "model_used": model,
+        "date_downloaded": str(today_date_object),
+        "total_images": qs.count(),
+        "start_date": date_from,
+        "end_date": date_to,
+        "format": "JSON"
+    }
+
+    # Convert metadata to formatted JSON string
+    metadata_text = json.dumps(metadata, indent=2)
+
+    # Write metadata.txt into ZIP
+    zip_file.writestr("metadata.txt", metadata_text)
 
     zip_file.close()
     buffer.seek(0)

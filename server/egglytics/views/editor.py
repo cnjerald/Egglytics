@@ -11,7 +11,7 @@
 
 from ._imports import *
 
-def add_egg_to_db(request, image_id):
+def add_egg_to_db_point(request, image_id):
     if request.method == "POST":
         try:
             
@@ -46,7 +46,7 @@ def add_egg_to_db(request, image_id):
     return JsonResponse({"error": "Invalid method"}, status=405)
 
 
-def remove_egg_from_db(request, image_id):
+def remove_egg_from_db_point(request, image_id):
     if request.method == "POST":
         print("HIT!")
         try:
@@ -88,3 +88,89 @@ def remove_egg_from_db(request, image_id):
             return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
 
     return JsonResponse({"STATUS": "Invalid request"}, status=400)
+
+def add_egg_to_db_rect(request, image_id):
+    if request.method == "POST":
+        try:
+            
+            data = json.loads(request.body.decode("utf-8"))
+            print("DEBUG POST DATA:", data) 
+            x1 = data.get("x1")
+            y1 = data.get("y1")
+            x2 = data.get("x2")
+            y2 = data.get("y2")
+
+            # Fetch the image entry
+            image = get_object_or_404(ImageDetails, image_id=image_id)
+            batch = image.batch
+
+            # Increment total eggs
+            # image.total_eggs = (image.total_eggs or 0) + 1
+            # image.save()
+            # batch.total_eggs = (batch.total_eggs or 0) + 1
+            # batch.save()
+
+            rect = AnnotationRect.objects.create(
+                image_id=image_id,
+                x_init=x1,
+                y_init=y1,
+                x_end=x2,
+                y_end=y2,
+                is_original=False
+            )
+
+            return JsonResponse({
+                "STATUS" : "HI"
+            })
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid method"}, status=405)
+
+def remove_egg_from_db_rect(request, image_id):
+    if request.method == "POST":
+        print("HIT!")
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            print("DEBUG POST DATA:", data)
+
+            x1 = data.get("x1")
+            y1 = data.get("y1")
+            x2 = data.get("x2")
+            y2 = data.get("y2")
+
+            # Try to get the point
+            rect = AnnotationRect.objects.filter(image_id = image_id, x_init = x1, y_init=y1, x_end=x2, y_end = y2).first()
+            print("CP1")
+
+            if not rect:
+                return JsonResponse({"STATUS": "Rect not found"}, status=404)
+
+            # # Fetch the image entry
+            # image = get_object_or_404(ImageDetails, image_id=image_id)
+            # batch = image.batch
+
+            # # Decrement total eggs
+            # image.total_eggs = (image.total_eggs or 0) - 1
+            # image.save()
+            # batch.total_eggs = (batch.total_eggs or 0) - 1
+            # batch.save()
+
+            if rect.is_original:
+
+                # mark as deleted instead of removing
+                print("[DEBUG]: CASE 1")
+                rect.is_deleted = True
+                rect.save()
+                return JsonResponse({"STATUS": "Deleted"})
+            else:
+                # actually remove the row
+                AnnotationRect.objects.filter(image_id = image_id, x_init = x1, y_init=y1, x_end=x2, y_end = y2).delete()
+                return JsonResponse({"STATUS": "Deleted"})
+            
+        except Exception as e:
+            return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
+
+    return JsonResponse({"STATUS": "Invalid request"}, status=400)
+
+
