@@ -90,7 +90,7 @@ def process_images(batch, files_data, header):
                 allow_collection=True,
                 is_processed=False,
                 is_validated = False,
-                model_used = "testmodel"
+                model_used = "doc_jet"
             )
 
             encoded = file_dict["data"]
