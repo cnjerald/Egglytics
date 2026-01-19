@@ -58,7 +58,7 @@ class AnnotationPoints(models.Model):
         db_table = "annotation_points"
 
 class AnnotationRect(models.Model):
-    point_id = models.AutoField(primary_key=True)
+    rect_id = models.AutoField(primary_key=True)
     image = models.ForeignKey(
         ImageDetails,
         on_delete=models.CASCADE,

@@ -20,7 +20,7 @@ $(document).ready(function () {
 
     let edges = [];            // [[x1,y1], [x2,y2]]
     let previewRect = null;    // overlay element
-    const rects = []; // store all rectangles
+    let rects = []; // store all rectangles
 
     let gridOverlays = [];
     let gridSize = 512; // image pixels per cell
@@ -150,12 +150,64 @@ $(document).ready(function () {
         renderPointsList(true);              // ONE list render
     }
 
+    function loadRects(loadedRects) {
+        rects.length = 0; // clear existing rects
+
+        const tiledImage = viewer.world.getItemAt(0);
+
+        loadedRects.forEach(r => {
+            const minX = Math.min(r.x_init, r.x_end);
+            const minY = Math.min(r.y_init, r.y_end);
+            const width = Math.abs(r.x_end - r.x_init);
+            const height = Math.abs(r.y_end - r.y_init);
+
+            // convert IMAGE → VIEWPORT coordinates
+            const vpTL = tiledImage.imageToViewportCoordinates(minX, minY);
+            const vpBR = tiledImage.imageToViewportCoordinates(
+                minX + width,
+                minY + height
+            );
+
+            const rectEl = document.createElement("div");
+            rectEl.style.border = "2px solid red";
+            rectEl.style.pointerEvents = "none";
+            rectEl.style.boxSizing = "border-box";
+
+            const overlayId = `rect-${r.rect_id}`;
+
+            viewer.addOverlay({
+                id: overlayId,
+                element: rectEl,
+                location: new OpenSeadragon.Rect(
+                    vpTL.x,
+                    vpTL.y,
+                    vpBR.x - vpTL.x,
+                    vpBR.y - vpTL.y
+                )
+            });
+
+            // IMPORTANT: store in IMAGE coordinates
+            rects.push({
+                id: r.rect_id,
+                x: minX,
+                y: minY,
+                width,
+                height,
+                element: rectEl,
+                overlayId
+            });
+        });
+    }
+
     viewer.addHandler("open", function () {
         console.log("Viewer opened and ready!");
         viewerReady = true;
 
         if (Array.isArray(window.points)) {
             loadPoints(window.points);
+        }
+        if (Array.isArray(window.rects)){
+            loadRects(window.rects)
         }
         console.log(
             "Image size:",

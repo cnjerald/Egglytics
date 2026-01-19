@@ -92,6 +92,8 @@
 <script>
     window.points = {{ points_json|safe }};
     window.total_egg_count = {{ total_eggs }};
+    window.rects = {{rects_json|safe}};
+    console.log(rects);
     const image_id = {{img_id}};
     console.log(points);
 </script>
