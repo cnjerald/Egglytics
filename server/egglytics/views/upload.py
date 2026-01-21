@@ -105,7 +105,7 @@ def process_images(batch, files_data, header):
                 allow_collection = allow_sharing,
                 is_processed = False,
                 is_validated = False,
-                model_used = "doc_jet"
+                model_used = model
             )
 
             encoded = file_dict["data"]
@@ -123,7 +123,7 @@ def process_images(batch, files_data, header):
             response = None
             data = None
             status_code = None
-            
+
             match model:
                 case "polyegg_heatmap":
                     response = requests.post(
