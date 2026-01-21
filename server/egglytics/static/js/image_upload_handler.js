@@ -2,6 +2,26 @@
 let fileArray = [];
 let index_holder = null;
 
+// Model Names
+const models = [
+  { value: "polyegg_heatmap", label: "PolyEgg_Heatmap" },
+  { value: "free_annotate", label: "Upload without a model (Free Annotate)" },
+  { value: "reserved", label: "RESERVED SLOT FOR DEVS" }
+];
+
+// Load Model names into HTML header
+
+  const $allModel = $("#all_model");
+  // Populate options
+  $.each(models, function (i, model) {
+    $allModel.append(
+      $("<option>", { value: model.value, text: model.label })
+    );
+  });
+
+  // Default value
+  $allModel.val("polyegg_heatmap");
+
 // Global func..
 function performSave(index) {
     const img = document.getElementById('cropImage');
@@ -198,6 +218,31 @@ $(document).ready(function () {
                 console.log(index);
                 openCropperWithImage(img.src, index);
             };
+
+            // Model dropdown
+            const modelCell = document.createElement("td");
+
+            const modelSelect = document.createElement("select");
+            modelSelect.className = "limited-width-select";
+            modelSelect.name = `model${index}`;
+            modelSelect.setAttribute("data-row-model", "true");
+
+            // Populate from models array
+            models.forEach((model, i) => {
+            const option = document.createElement("option");
+            option.value = model.value;
+            option.textContent = model.label;
+
+            // Default selection (first model or specific one)
+            if (model.value === "polyegg_heatmap") {
+                option.selected = true;
+            }
+
+            modelSelect.appendChild(option);
+            });
+
+            modelCell.appendChild(modelSelect);
+
             
             // Delete button
             const deleteCell = document.createElement("td");
@@ -222,6 +267,7 @@ $(document).ready(function () {
             row.appendChild(modeCell);
             row.appendChild(shareCell);
             row.appendChild(editCell);
+            row.appendChild(modelCell);
             row.appendChild(deleteCell);
             // Add row to table
             tbody.appendChild(row);
@@ -257,6 +303,15 @@ $(document).ready(function () {
         const isChecked = $(this).is(":checked");
         $(".share-toggle").prop("checked", isChecked);
     });
+
+    // Handle global model toggle
+    $("#all_model").on("change", function() {
+        const newValue = $(this).val();  // get selected value
+        $('select[data-row-model="true"]').each(function() {
+            $(this).val(newValue);       // update each row
+        });
+    });
+
 
     // When any individual share toggle changes, uncheck the global
     $(document).on("change", ".share-toggle", function () {
@@ -367,17 +422,38 @@ $(document).ready(function () {
 
         const formData = new FormData();
 
-        fileArray.forEach(file => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);              
-                  // Append to FormData using key "myfiles"
-                formData.append('myfiles', file);
-        })
+        $("#upload-table tbody tr").each(function(index) {
+            const $row = $(this);
+
+            // Get the file
+            const file = fileArray[index];
+            if (!file) return; // safety
+
+            formData.append("myfiles", file);
+
+            // Get the selected model for this row
+            const model = $row.find('select[data-row-model="true"]').val();
+            formData.append(`model_${index}`, model);
+
+            // Get Micro/Macro choice
+            const mode = $row.find(`input[name="mode${index}"]:checked`).val();
+            formData.append(`mode_${index}`, mode);
+
+            // Get share toggle
+            const share = $row.find('input.share-toggle').is(":checked");
+            formData.append(`share_${index}`, share ? "true" : "false");
+        });
+
+        // Optional: include total number of files (This might be useful in the future..)
+        formData.append("file_count", fileArray.length);
+
 
         $.ajax({
             url: "/",
             type: "POST",
             data: formData,
+            // Things related to sending formData which is best set to false to
+            // avoid problems with regards to encoding.
             processData: false,
             contentType: false,
             headers: {
