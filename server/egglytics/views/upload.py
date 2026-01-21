@@ -36,16 +36,30 @@ def upload(request):
         )
 
         # Read files into memory BEFORE starting thread (No images are saved at this point, only on memory)
-        files_data = []
-        for f in request.FILES.getlist('myfiles'):
+        files = request.FILES.getlist("myfiles")
+        files_data = [] # Store as Array of JSON
+        for i, f in enumerate(files):
             file_bytes = f.read()
-            # Encode to base64 to send it to the compute server
             encoded = base64.b64encode(file_bytes).decode("utf-8")
-            # Append json to array
-            files_data.append({"name": f.name, "data": encoded})
+
+            # Retrieve per-file metadata
+            model = request.POST.get(f"model_{i}")
+            mode = request.POST.get(f"mode_{i}")          # "micro" or "macro"
+            share = request.POST.get(f"share_{i}") == "true"
+
+            files_data.append({
+                "name": f.name,
+                "data": encoded,
+                "model": model,
+                "mode": mode,
+                "share": share,
+            })
 
         # Throw to thread and forget
-        t = threading.Thread(target=process_images, args=(batch, files_data, batch_name))
+        t = t = threading.Thread(
+                target=process_images,
+                args=(batch, files_data, batch_name)
+            )
         t.start()
         # Send that upload was completed to the user, while thread is running.
         return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
@@ -56,7 +70,7 @@ def upload(request):
 def process_images(batch, files_data, header):
     total_eggs = 0
     total_hatched = 0
-    bucket_name = "egglytics"
+    # bucket_name = "egglytics"
 
     for i, file_dict in enumerate(files_data, start=0):
         try:
@@ -64,8 +78,9 @@ def process_images(batch, files_data, header):
             image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
             original_name = file_dict["name"]
-
-
+            allow_sharing = file_dict["share"]
+            model = file_dict["model"]
+            mode = file_dict["mode"]
 
             # # Upload original image to S3
             # #Decode and upload original image to S3
@@ -82,15 +97,15 @@ def process_images(batch, files_data, header):
 
             # Create DB record
             image_record = ImageDetails.objects.create(
-                batch=batch,
-                image_name=image_name,
-                total_eggs=0,
-                total_hatched=0,
-                img_type="MICRO",
-                allow_collection=True,
-                is_processed=False,
+                batch = batch,
+                image_name = image_name,
+                total_eggs = 0,
+                total_hatched = 0,
+                img_type = mode,
+                allow_collection = allow_sharing,
+                is_processed = False,
                 is_validated = False,
-                model_used = "testmodel"
+                model_used = model
             )
 
             encoded = file_dict["data"]
@@ -103,13 +118,34 @@ def process_images(batch, files_data, header):
             #     "file_name": image_name,
             #     "s3_path": s3_key,
             # }
-            response = requests.post("http://127.0.0.1:5000/upload_base64", json=payload)
-            data = response.json()
+
+            # 
+            response = None
+            data = None
+            status_code = None
+
+            match model:
+                case "polyegg_heatmap":
+                    response = requests.post(
+                        "http://127.0.0.1:5000/upload_base64",
+                        json=payload,
+                        timeout=30
+                    )
+                    data = response.json()
+                    status_code = response.status_code
+
+                case "free_annotate":
+                    data = {
+                        "status": "complete",
+                        "points": [],
+                        "final_image": encoded,
+                        "egg_count": 0
+                    }
+                    status_code = 200
 
             # Extract result data
-            if response.status_code != 200 or data.get("status") != "complete":
-                # Case here that the comptue server failed..
-                print(" Compute server failed:", data)
+            if status_code != 200 or data.get("status") != "complete":
+                print("Compute server failed:", data)
                 batch.has_fail_present = True
                 continue
 

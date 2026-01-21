@@ -430,3 +430,8 @@ label {
   justify-content: center;
   gap: 10px;
 }
+
+.limited-width-select {
+  width: 60%;
+  max-width: 150px;
+}

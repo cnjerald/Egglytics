@@ -57,3 +57,22 @@ class AnnotationPoints(models.Model):
     class Meta:
         db_table = "annotation_points"
 
+class AnnotationRect(models.Model):
+    rect_id = models.AutoField(primary_key=True)
+    image = models.ForeignKey(
+        ImageDetails,
+        on_delete=models.CASCADE,
+        db_column="image_id"   # explicitly link to image_details
+    )
+    # Idea behind this: I wanted to minimize the total memory consumed by the database
+    # Which is why instead of storing 4 (x,y) points, just store 2 points with the assumption that
+    # both these points are opposite edges of a rectangle.
+    x_init = models.IntegerField() 
+    y_init = models.IntegerField()
+    x_end = models.IntegerField()
+    y_end = models.IntegerField()
+    is_original = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
+    class Meta:
+        db_table = "annotation_rects"
+

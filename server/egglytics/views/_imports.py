@@ -20,10 +20,11 @@ import zipfile
 from io import BytesIO
 
 
+
 # Third Party
 import numpy as np
 import requests
 from PIL import Image
 
 # Local Models
-from .models import BatchDetails, ImageDetails, AnnotationPoints
+from .models import BatchDetails, ImageDetails, AnnotationPoints,AnnotationRect

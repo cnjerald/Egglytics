@@ -18,8 +18,10 @@ urlpatterns = [
     path("editor/<int:image_id>/", view.edit, name="edit"), # EDITOR BUTTON
 
     # EDITOR FUNCTION PAGE
-    path("add_egg_to_db/<int:image_id>/", editor.add_egg_to_db, name="add_egg_to_db"),
-    path("remove_egg_from_db/<int:image_id>/", editor.remove_egg_from_db, name="remove_egg_from_db"),
+    path("add_egg_to_db_point/<int:image_id>/", editor.add_egg_to_db_point, name="add_egg_to_db_point"),
+    path("remove_egg_from_db_point/<int:image_id>/", editor.remove_egg_from_db_point, name="remove_egg_from_db_point"),
+    path("add_egg_to_db_rect/<int:image_id>/", editor.add_egg_to_db_rect, name="add_egg_to_db_rect"),
+    path("remove_egg_from_db_rect/<int:image_id>/", editor.remove_egg_from_db_rect, name="remove_egg_from_db_rect"),
 
     # METRICS PAGE
     path("metric/",metrics.metric,name="metric"),

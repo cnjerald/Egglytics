@@ -84,6 +84,10 @@ def edit(request, image_id):
         "point_id", "x", "y"
     )
 
+    rectangles = AnnotationRect.objects.filter(image=image, is_deleted = False).values(
+        "rect_id","x_init","y_init","x_end","y_end"
+    )
+
     return render(
         request,
         "base.html",
@@ -91,6 +95,7 @@ def edit(request, image_id):
             "included_template": "test.html",
             "image_name": image.image_name,                # filename only
             "points_json": json.dumps(list(annotations)), # list of dicts for JS
+            "rects_json": json.dumps(list(rectangles)),
             "total_eggs": json.dumps(image.total_eggs),
             "img_id": json.dumps(image_id),
             "MEDIA_URL": settings.MEDIA_URL,              # add MEDIA_URL for template
