@@ -130,7 +130,7 @@ def remove_egg_from_db_rect(request, image_id):
             x2 = data.get("x2")
             y2 = data.get("y2")
 
-            # 🔑 NORMALIZE HERE TOO
+            # NORMALIZE HERE TOO
             x1, y1, x2, y2 = normalize_rect(x1, y1, x2, y2)
 
             rect = AnnotationRect.objects.filter(

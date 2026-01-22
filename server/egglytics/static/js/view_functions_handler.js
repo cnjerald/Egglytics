@@ -1,5 +1,8 @@
 $("#notice-box").hide();
     let flag = JSON.parse(localStorage.getItem("flag"));
+    let totalHatched = 0;
+    let totalEggs = 0;
+    recalcTotals()
 
     // Show notice if processing is active
     if (flag?.processingActive) {
@@ -13,8 +16,8 @@ $("#notice-box").hide();
 
     // Periodic batch status update
     updateBatchStatus(); // immediate call
-    setInterval(updateBatchStatus, 15000); // every 15 sec
-
+    const poller = setInterval(updateBatchStatus, 15000);
+    
     function updateBatchStatus() {
         fetch('/batch/status/latest/')
             .then(res => res.json())
@@ -32,19 +35,21 @@ $("#notice-box").hide();
                     const statusCell = row.children[4]; // 5th column
                     if (batch.is_complete && !batch.has_fail_present) {
                         statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
-                        if(flag?.processingActive){
+                        if (getFlag()?.processingActive) {
                             $("#notice-box").html("<h5>Processing Complete! All images have been processed successfully</h5>").show();
                         }
+                        clearInterval(poller); 
                         localStorage.removeItem("flag");
                     } else if (batch.is_complete) {
                         statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: red;"></i>';
-                        if(flag?.processingActive){
+                        if (getFlag()?.processingActive) {
                             $("#notice-box").html("<h5>Processing Complete! Some images have failed processing</h5>").show();
                         }
+                        clearInterval(poller); 
                         localStorage.removeItem("flag");
                     } else if (batch.has_fail_present) {
                         statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
-                        if(flag?.processingActive){
+                        if (getFlag()?.processingActive) {
                             $("#notice-box").html("<h5>Processing Ongoing! Some images have failed processing</h5>").show();
                         }
                         localStorage.removeItem("flag");
@@ -136,14 +141,16 @@ $("#notice-box").hide();
                 .then(res => res.json())
                 .then(data => {
                     if (data.length > 0) {
-                        if (data.length > 0) {
-                            if (data.length > 0) {
-                                popupImage.src = data[0].image_url;
-                            }
-                        }
+                        popupImage.src = data[0].image_url;
                     }
+                    totalEggs = data.reduce((sum, img) => sum + img.total_eggs, 0);
+                    // This can be changed so not const
+                    totalHatched = data.reduce((sum, img) => sum + img.total_hatched, 0);
+                    
+                    document.getElementById("eggs-header").textContent = `Eggs (Total: ${totalEggs})`;
+                    document.getElementById("hatched-header").textContent = `Hatched (Total: ${totalHatched})`;
 
-                    let rowsHTML = "";
+                    let rowsHTML = ""
                     data.forEach(img => {
                         rowsHTML += `
                             <tr class="image-details" 
@@ -151,7 +158,10 @@ $("#notice-box").hide();
                                 data-image-id="${img.image_id}">
                                 <td>${img.image_name}</td>
                                 <td>${img.total_eggs}</td>
-                                <td>${img.total_hatched}</td>
+                                <td class="editable-hatched"
+                                    data-image-id="${img.image_id}">
+                                    ${img.total_hatched}
+                                </td>
                                 <td>${img.img_type}</td>
                                 <td>
                                     <button class="edit-btn" 
@@ -200,37 +210,38 @@ $("#notice-box").hide();
     });
 
     function applyFilters() {
-    const searchQuery = document.getElementById("batchSearch").value.toLowerCase();
-    const dateFrom = document.getElementById("dateFrom").value ? new Date(document.getElementById("dateFrom").value) : null;
-    const dateTo = document.getElementById("dateTo").value ? new Date(document.getElementById("dateTo").value) : null;
-    const imagesMin = parseFloat(document.getElementById("imagesMin").value) || 0;
-    const imagesMax = parseFloat(document.getElementById("imagesMax").value) || Infinity;
-    const eggsMin = parseFloat(document.getElementById("eggsMin").value) || 0;
-    const eggsMax = parseFloat(document.getElementById("eggsMax").value) || Infinity;
+        const searchQuery = document.getElementById("batchSearch").value.toLowerCase();
+        const dateFrom = document.getElementById("dateFrom").value ? new Date(document.getElementById("dateFrom").value) : null;
+        const dateTo = document.getElementById("dateTo").value ? new Date(document.getElementById("dateTo").value) : null;
+        const imagesMin = parseFloat(document.getElementById("imagesMin").value) || 0;
+        const imagesMax = parseFloat(document.getElementById("imagesMax").value) || Infinity;
+        const eggsMin = parseFloat(document.getElementById("eggsMin").value) || 0;
+        const eggsMax = parseFloat(document.getElementById("eggsMax").value) || Infinity;
 
-    const rows = document.querySelectorAll("#batchTable tbody tr");
+        const rows = document.querySelectorAll("#batchTable tbody tr");
 
-    rows.forEach(row => {
-        const cells = row.children;
-        const batchName = cells[0].textContent.toLowerCase();
-        const dateText = cells[1].textContent.trim();
-        const totalImages = parseFloat(cells[2].textContent.trim()) || 0;
-        const totalEggs = parseFloat(cells[3].textContent.trim()) || 0;
+        rows.forEach(row => {
+            const cells = row.children;
+            const batchName = cells[0].textContent.toLowerCase();
+            const dateText = cells[1].textContent.trim();
+            const totalImages = parseFloat(cells[2].textContent.trim()) || 0;
+            const totalEggs = parseFloat(cells[3].textContent.trim()) || 0;
 
-        // Parse date (supports MM/DD/YYYY)
-        const dateParts = dateText.split('/');
-        const rowDate = new Date(`${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`);
+            // Parse date (supports MM/DD/YYYY)
+            const dateParts = dateText.split('/');
+            const rowDate = new Date(`${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`);
 
-        // Check filters
-        const matchesName = batchName.includes(searchQuery);
-        const matchesDate =
-        (!dateFrom || rowDate >= dateFrom) && (!dateTo || rowDate <= dateTo);
-        const matchesImages = totalImages >= imagesMin && totalImages <= imagesMax;
-        const matchesEggs = totalEggs >= eggsMin && totalEggs <= eggsMax;
+            // Check filters
+            const matchesName = batchName.includes(searchQuery);
+            const matchesDate =
+            (!dateFrom || rowDate >= dateFrom) && (!dateTo || rowDate <= dateTo);
+            const matchesImages = totalImages >= imagesMin && totalImages <= imagesMax;
+            const matchesEggs = totalEggs >= eggsMin && totalEggs <= eggsMax;
 
-        // Show only rows that match all conditions
-        row.style.display = matchesName && matchesDate && matchesImages && matchesEggs ? "" : "none";
-    });
+            // Show only rows that match all conditions
+            row.style.display = matchesName && matchesDate && matchesImages && matchesEggs ? "" : "none";
+        });
+        recalcTotals();
     }
 
     document.querySelectorAll(".delete-btn").forEach(btn => {
@@ -289,58 +300,73 @@ $("#notice-box").hide();
     });
 
     // Handle delete button click inside popup
-    $(document).on("click", ".popup .delete-btn", function(event) {
-        event.stopPropagation(); // Prevent row click from firing
+    $(document).on("click", ".popup .delete-btn", function (event) {
+        event.stopPropagation();
 
         const row = $(this).closest("tr");
         const imageId = row.data("image-id");
         const currentPreview = $("#popup-image").attr("src");
-        const imageUrl = row.data("image-url"); // use full MEDIA_URL path
+        const imageUrl = row.data("image-url");
 
-        if (confirm("Are you sure you want to delete this image?")) {
-            fetch(`/delete-image/${imageId}/`, {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": getCSRFToken(),
-                },
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // Remove row from popup table
-                    row.remove();
+        // ✅ Read values BEFORE removing the row
+        const eggs = parseInt(row.find("td:nth-child(2)").text(), 10) || 0;
+        const hatched = parseInt(row.find("td:nth-child(3)").text(), 10) || 0;
 
-                    // Update preview if it was the deleted image
-                    if (currentPreview === imageUrl) {
-                        const firstRow = $("#popup-details tr").first();
-                        if (firstRow.length) {
-                            const firstImageUrl = firstRow.data("image-url");
-                            $("#popup-image").attr("src", firstImageUrl);
-                        } else {
-                            $("#popup-image").attr("src", ""); // no images left
-                        }
-                    }
+        if (!confirm("Are you sure you want to delete this image?")) return;
 
-                    // Update main batch table or remove batch if deleted
-                    if (data.batch_deleted) {
-                        const batchId = $("#popup").data("batch-id");
-                        $(`#batchTable tbody tr[data-batch-id="${batchId}"]`).remove();
-                        closePopup(); // close the popup since batch is gone
-                        alert("Last image deleted. Batch removed.");
-                    } else {
-                        // Update the total_images and total_eggs columns
-                        const batchId = $("#popup").data("batch-id");
-                        const batchRow = $(`#batchTable tbody tr[data-batch-id="${batchId}"]`);
-                        batchRow.find("td:nth-child(3)").text(data.new_total_images); // total images
-                        batchRow.find("td:nth-child(4)").text(data.new_total_eggs);   // total eggs
-                    }
-                } else {
-                    alert("Failed to delete image: " + data.message);
-                }
-            })
-            .catch(err => console.error(err));
-        }
+        fetch(`/delete-image/${imageId}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": getCSRFToken() },
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                alert("Failed to delete image: " + data.message);
+                return;
+            }
+
+            // Remove row
+            row.remove();
+
+            // Update popup totals
+            totalEggs -= eggs;
+            totalHatched -= hatched;
+
+            // Clamp to zero (safety)
+            totalEggs = Math.max(0, totalEggs);
+            totalHatched = Math.max(0, totalHatched);
+
+            document.getElementById("eggs-header").textContent =
+                `Eggs (Total: ${totalEggs})`;
+
+            document.getElementById("hatched-header").textContent =
+                `Hatched (Total: ${totalHatched})`;
+
+            // Update preview
+            if (currentPreview === imageUrl) {
+                const firstRow = $("#popup-details tr").first();
+                $("#popup-image").attr(
+                    "src",
+                    firstRow.length ? firstRow.data("image-url") : ""
+                );
+            }
+
+            // Update main batch table
+            if (data.batch_deleted) {
+                const batchId = $("#popup").data("batch-id");
+                $(`#batchTable tbody tr[data-batch-id="${batchId}"]`).remove();
+                closePopup();
+                alert("Last image deleted. Batch removed.");
+            } else {
+                const batchId = $("#popup").data("batch-id");
+                const batchRow = $(`#batchTable tbody tr[data-batch-id="${batchId}"]`);
+                batchRow.find("td:nth-child(3)").text(data.new_total_images);
+                batchRow.find("td:nth-child(4)").text(data.new_total_eggs);
+            }
+        })
+        .catch(err => console.error(err));
     });
+
 
 
     const popupBatchName = document.getElementById("popup-batch-name");
@@ -403,6 +429,102 @@ $("#notice-box").hide();
         });
     });
 
+    function recalcTotals() {
+        let totalImages = 0;
+        let totalEggs = 0;
+
+        document.querySelectorAll("#batchTable tbody tr").forEach(row => {
+            if (row.style.display !== "none") {
+                totalImages += parseInt(row.children[2].innerText, 10) || 0;
+                totalEggs += parseInt(row.children[3].innerText, 10) || 0;
+            }
+        });
+
+        document.getElementById("total-images-header").innerText =
+            `Total Images: ${totalImages}`;
+
+        document.getElementById("total-eggs-header").innerText =
+            `Total Eggs: ${totalEggs}`;
+    }
+
+    function getFlag() {
+        return JSON.parse(localStorage.getItem("flag"));
+    }
+
+    document.addEventListener("dblclick", function (e) {
+    const cell = e.target;
+
+    if (!cell.classList.contains("editable-hatched")) return;
+
+    const imageId = cell.dataset.imageId;
+    const oldValue = parseInt(cell.textContent.trim(), 10) || 0;
+
+    // Prevent multiple inputs
+    if (cell.querySelector("input")) return;
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = 0;
+    input.value = oldValue;
+    input.style.width = "60px";
+
+    cell.textContent = "";
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+
+    let saved = false;
+
+    function save() {
+        if (saved) return;
+        saved = true;
+
+        const newValue = input.value;
+
+        if (newValue === "" || parseInt(newValue) === oldValue) {
+            cell.textContent = oldValue;
+            return;
+        }
+
+        fetch(`/update-hatched/${imageId}/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            body: JSON.stringify({ total_hatched: newValue })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const newVal = parseInt(newValue, 10);
+
+                cell.textContent = newVal;
+
+                totalHatched = totalHatched - oldValue + newVal;
+                document.getElementById("hatched-header").textContent =
+                    `Hatched (Total: ${totalHatched})`;
+            } else {
+                cell.textContent = oldValue;
+            }
+        })
+        .catch(() => {
+            cell.textContent = oldValue;
+        });
+    }
+
+
+    input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") cell.textContent = oldValue;
+        });
+
+        input.addEventListener("blur", save);
+    });
+
+
+
+
 
 
 
@@ -419,3 +541,4 @@ $("#notice-box").hide();
         }
         return '';
     }
+

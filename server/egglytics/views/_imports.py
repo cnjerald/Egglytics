@@ -8,6 +8,8 @@ from django.db.models import Min, Max
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.utils.timezone import now
+from django.db.models import Sum
+
 
 # Standard Libraries
 import os
