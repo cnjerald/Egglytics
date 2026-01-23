@@ -56,6 +56,7 @@ $(document).ready(function () {
             clickToZoom: false,
         },
         keyboardEnabled: false,
+        maxZoomPixelRatio: 20,
 
         // MINIMAP stuff
         showNavigator: true,
