@@ -92,7 +92,14 @@ function updateExportStats() {
             }
 
             document.getElementById("total_images").textContent =
-                "Total Points: " + data.total_images;
+                "Total Images: " + data.total_images;
+            
+            document.getElementById("total_eggs_point").textContent = 
+                "Total Eggs (Point): " + data.total_points;
+
+            document.getElementById("total_eggs_rect").textContent = 
+                "Total Eggs (Rect): " + data.total_rects;
+            
         })
         .catch(err => console.error("Count error:", err));
 }

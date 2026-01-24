@@ -74,26 +74,19 @@ def process_images(batch, files_data, header):
 
     for i, file_dict in enumerate(files_data, start=0):
         try:
+
+            # Params:
+            # File name (STRING) ->  The name of the file saved on media/uploads\
+            # image_name (STRING) -> The name of the image (NOTE TO JERALD PLS CHANGE THIS SO USER CAN RENAME FILES IN FUTURE)
+            # encoded (STRING) -> Image in base64
+            # allow_sharing(BOOLEAN) -> Bool allow downloading
+            # mode (Binary STRING) -> If Micro or Macro
             file_name = f"{header}_{i}"
             image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
-            original_name = file_dict["name"]
             allow_sharing = file_dict["share"]
             model = file_dict["model"]
             mode = file_dict["mode"]
-
-            # # Upload original image to S3
-            # #Decode and upload original image to S3
-            # image_data = file_dict["data"]
-            # image_bytes = base64.b64decode(image_data)
-            # image = Image.open(io.BytesIO(image_bytes))
-
-            # buffer = io.BytesIO()
-            # image.save(buffer, format="JPEG")
-            # buffer.seek(0)
-            # s3_key = f"temp/{image_name}"
-            # s3.upload_fileobj(buffer, bucket_name, s3_key)
-            # print(f" Uploaded {image_name} to S3 bucket {bucket_name}/{s3_key}")
 
             # Create DB record
             image_record = ImageDetails.objects.create(
@@ -108,18 +101,8 @@ def process_images(batch, files_data, header):
                 model_used = model
             )
 
-            encoded = file_dict["data"]
-            original_name = file_dict["name"]
+            payload = {'image': encoded,'mode': mode}
 
-            payload = {'image': encoded, 'filename': original_name}
-
-            # # Send to compute server
-            # payload = {
-            #     "file_name": image_name,
-            #     "s3_path": s3_key,
-            # }
-
-            # 
             response = None
             data = None
             status_code = None
@@ -129,7 +112,7 @@ def process_images(batch, files_data, header):
                     response = requests.post(
                         "http://127.0.0.1:5000/upload_base64",
                         json=payload,
-                        timeout=30
+                        timeout=300
                     )
                     data = response.json()
                     status_code = response.status_code
@@ -144,10 +127,16 @@ def process_images(batch, files_data, header):
                     status_code = 200
 
             # Extract result data
+            # Just put has fail present if something goes wrong
             if status_code != 200 or data.get("status") != "complete":
                 print("Compute server failed:", data)
                 batch.has_fail_present = True
-                continue
+                data = {
+                    "status": "complete",
+                    "points": [],
+                    "final_image": encoded,
+                    "egg_count": 0
+                }
 
             points = data.get("points", [])
             image_b64 = data.get("final_image")

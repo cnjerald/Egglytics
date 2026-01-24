@@ -19,6 +19,12 @@ def view(request):
         .order_by("-date_updated")
     )
 
+    totals = BatchDetails.objects.aggregate(
+        total_images=Sum("total_images"),
+        total_eggs=Sum("total_eggs"),
+    )
+
+
     return render(
         request,
         "base.html",
@@ -26,6 +32,8 @@ def view(request):
             "included_template": "view.html",
             "batches": batches,
             "MEDIA_URL": settings.MEDIA_URL,
+            "total_images": totals["total_images"] or 0,
+            "total_eggs": totals["total_eggs"] or 0,
         }
     )
 
@@ -47,7 +55,8 @@ def batch_images(request, batch_id):
             "image_name": img.image_name,
             "image_url": image_url,
             "total_eggs": img.total_eggs,
-            "img_type": img.img_type
+            "img_type": img.img_type,
+            "total_hatched": img.total_hatched,
         })
 
     return JsonResponse(data, safe=False)
@@ -182,3 +191,20 @@ def delete_image(request, image_id):
             return JsonResponse({"success": False, "message": str(e)}, status=500)
     else:
         return JsonResponse({"success": False, "message": "Invalid request method."}, status=400)
+    
+def update_hatched(request, image_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_value = int(data.get("total_hatched"))
+
+            image = ImageDetails.objects.get(image_id=image_id)
+            image.total_hatched = new_value
+            image.save()
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False}, status=405)
+    

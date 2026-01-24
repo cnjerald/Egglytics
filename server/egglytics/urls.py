@@ -15,7 +15,9 @@ urlpatterns = [
     path("delete-batch/<int:batch_id>/", view.delete_batch, name="delete_batch"),
     path('delete-image/<int:image_id>/', view.delete_image, name='delete_image'),
     path('edit-batch-name/<int:batch_id>/', view.edit_batch_name, name='edit_batch_name'),
-    path("editor/<int:image_id>/", view.edit, name="edit"), # EDITOR BUTTON
+    path("update-hatched/<int:image_id>/", view.update_hatched, name="update_hatched"),
+    path("editor/<int:image_id>/", view.edit, name="edit"),
+    
 
     # EDITOR FUNCTION PAGE
     path("add_egg_to_db_point/<int:image_id>/", editor.add_egg_to_db_point, name="add_egg_to_db_point"),

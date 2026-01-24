@@ -72,8 +72,18 @@ def export_image_count(request):
         if parsed_to:
             qs = qs.filter(date_uploaded__date__lte=parsed_to)
 
+    total_points = AnnotationPoints.objects.filter(
+        image__in=qs
+    ).count()
+
+    total_rect = AnnotationRect.objects.filter(
+        image__in=qs
+    ).count()
+
     return JsonResponse({
-        "total_images": qs.count()
+        "total_images": qs.count(),
+        "total_points": total_points,
+        "total_rects": total_rect
     })
 
 def export_dataset(request):
