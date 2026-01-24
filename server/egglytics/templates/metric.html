@@ -27,25 +27,6 @@
         </div>
     </div>
 
-    <template id="model-card-template">
-        <div class="model-card">
-            <h3 class="js-model-name"></h3>
-            <div class="metrics-list">
-                <div>Images: <strong class="js-images"></strong></div>
-                <div>Predictions: <strong class="js-preds"></strong></div>
-            </div>
-            <div class="metric-grid">
-                <div class="metric-card-small tp js-tp"></div>
-                <div class="metric-card-small fp js-fp"></div>
-                <div class="metric-card-small fn js-fn"></div>
-            </div>
-            <div class="footer-metrics">
-                <span>Precision: <strong class="js-precision"></strong></span>
-                <span>Recall: <strong class="js-recall"></strong></span>
-            </div>
-        </div>
-    </template>
-
     <script src="{% static 'js/metrics_handler.js' %}"></script>
 </body>
 </html>

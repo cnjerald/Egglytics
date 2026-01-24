@@ -1,0 +1,36 @@
+{% for stats in comparison %}
+<div class="model-card">
+    <div class="card-header">
+        <h3>Model: {{ stats.model }}</h3>
+    </div>
+    
+    <div class="metrics-list">
+        <div class="metric-row">
+            <span>Images</span>
+            <strong>{{ stats.total_images }}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Predictions</span>
+            <strong>{{ stats.total_model_predictions }}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Precision</span>
+            <strong>{{ stats.precision }}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Recall</span>
+            <strong>{{ stats.recall }}</strong>
+        </div>
+        <div class="metric-row">
+            <span>MAE</span>
+            <strong>{{ stats.MAE }}</strong>
+        </div>
+    </div>
+
+    <div class="metric-grid">
+        <div class="metric-card-small tp">TP: {{ stats.TP }}</div>
+        <div class="metric-card-small fp">FP: {{ stats.FP }}</div>
+        <div class="metric-card-small fn">FN: {{ stats.FN }}</div>
+    </div>
+</div>
+{% endfor %}
