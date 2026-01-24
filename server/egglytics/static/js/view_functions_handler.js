@@ -115,10 +115,10 @@ $("#notice-box").hide();
         row.addEventListener("click", () => {
             // checks if still processing
             const statusCell = row.children[4]; 
-            if (statusCell.querySelector('.fa-spinner')) {
-                alert("Please wait until batch finishes processing");
-                return; // Stop execution if processing is active
-            }
+            // if (statusCell.querySelector('.fa-spinner')) {
+            //     alert("Please wait until batch finishes processing");
+            //     return; // Stop execution if processing is active
+            // }
             // continues if not
 
             const batchId = row.getAttribute("data-batch-id");

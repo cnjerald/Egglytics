@@ -112,7 +112,7 @@ def process_images(batch, files_data, header):
                     response = requests.post(
                         "http://127.0.0.1:5000/upload_base64",
                         json=payload,
-                        timeout=30
+                        timeout=300
                     )
                     data = response.json()
                     status_code = response.status_code
@@ -127,10 +127,16 @@ def process_images(batch, files_data, header):
                     status_code = 200
 
             # Extract result data
+            # Just put has fail present if something goes wrong
             if status_code != 200 or data.get("status") != "complete":
                 print("Compute server failed:", data)
                 batch.has_fail_present = True
-                continue
+                data = {
+                    "status": "complete",
+                    "points": [],
+                    "final_image": encoded,
+                    "egg_count": 0
+                }
 
             points = data.get("points", [])
             image_b64 = data.get("final_image")
