@@ -186,11 +186,12 @@ $(document).ready(function () {
             // Micro/Macro radio buttons
             const modeCell = document.createElement("td");
             modeCell.innerHTML = `
-                <label>
-                <input type="radio" name="mode${index}" value="micro" checked> Micro
-                </label>
-                <label>
-                <input type="radio" name="mode${index}" value="macro"> Macro
+                <label class="text-switch">
+                    <input type="checkbox" class="mode-toggle" name="mode${index}">
+                    <span class="text-slider">
+                        <span class="text-micro">Micro</span>
+                        <span class="text-macro">Macro</span>
+                    </span>
                 </label>
             `;
 
@@ -293,9 +294,15 @@ $(document).ready(function () {
         }
     });
 
-    // uncheck both global mode radios
-    $(document).on("change", 'input[type="radio"][name^="mode"]', function () {
-        $("#all_micro, #all_macro").prop("checked", false);
+    // Handle Global Mode Toggle
+    $(document).on("change", "#all_mode_toggle", function () {
+        const isChecked = $(this).is(":checked");
+        // Set all row toggles to match the header toggle
+        $(".mode-toggle").prop("checked", isChecked);
+    });
+
+    $(document).on("change", ".mode-toggle", function () {
+        $("#all_mode_toggle").prop("checked", false);
     });
 
     // Handle global share toggle
@@ -436,7 +443,8 @@ $(document).ready(function () {
             formData.append(`model_${index}`, model);
 
             // Get Micro/Macro choice
-            const mode = $row.find(`input[name="mode${index}"]:checked`).val();
+            const isMacro = $row.find('.mode-toggle').is(":checked");
+            const mode = isMacro ? "macro" : "micro";
             formData.append(`mode_${index}`, mode);
 
             // Get share toggle

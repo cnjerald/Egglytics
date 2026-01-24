@@ -1,12 +1,12 @@
 #parent-container {
   display: flex;
-  flex-direction: column; /* This makes the content go down instead of side by side*/
+  flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   background-color: #ffffff;
   padding: 30px;
 
-  height: 90vh; /* Consume 90% of the screen (A bit of allowance for the header and potential footer) */
+  height: 90vh;
   box-sizing: border-box;
 }
 
@@ -18,8 +18,6 @@
   margin: 1%;
   min-width: 50vw;
   min-height: 25vh;
-
-  /* Center content */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -33,15 +31,13 @@
 }
 
 #drop-area.highlight {
-  /* This is the color when a file is dragged */
   border-color: #1849d6;
-  /* This is the default color */
   background-color: rgb(139, 193, 255);
 }
 
 #view-area {
   background-color: #eeeeee;
-  width: 50vw;
+  width: 70vw;
   height: 50vh;
   overflow-y: auto; /* scroll when content exceeds */
   overflow-x: hidden;
@@ -57,7 +53,122 @@
   height: 15%;
 }
 
-/* This toggled switch an edited version of https://www.w3schools.com/howto/tryit.asp?filename=tryhow_css_switch*/
+table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 100%;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background: #f4f4f4;
+  font-weight: bold;
+}
+
+tr:hover {
+  background: #f9f9f9;
+}
+
+/* ensures the filename wraps properly and truncates */
+#upload-table .filename {
+  max-width: 200px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+#upload-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+label {
+  margin: 0 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.submit-btn-container {
+  width: 100%;
+  text-align: center;
+  padding: 15px 0;
+}
+
+#upload-btn {
+  display: none; /* initially hidden */
+
+  background-color: #383838; 
+  color: white;
+  border: none;
+  padding: 10px 30px;
+  font-size: 1.1em;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+#upload-btn:hover {
+  background-color: #4c90af;
+}
+
+#loadingOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loader-content {
+    color: white;
+    text-align: center;
+    font-family: sans-serif;
+}
+
+.spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+.limited-width-select {
+  width: 60%;
+  max-width: 150px;
+}
+
+
+/* 
+
+
+BASIC TOGGLE SWITCH 
+This toggled switch an edited version of https://www.w3schools.com/howto/tryit.asp?filename=tryhow_css_switch
+
+
+*/
 .switch {
   position: relative;
   display: inline-block;
@@ -117,78 +228,104 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-  text-align: center;
-  font-family: Arial, sans-serif;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
-}
 
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-}
+/* 
 
-th {
-  background: #f4f4f4;
-  font-weight: bold;
-}
 
-tr:hover {
-  background: #f9f9f9;
-}
+SWITCH WITH TEXT 
 
-/* ensures the filename wraps properly and truncates */
-#upload-table .filename {
-  max-width: 200px;        /* adjust to your design */
-  display: inline-block;   /* block or inline-block enables ellipsis */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+*/
+.text-switch {
+  position: relative;
+  display: inline-flex;
+  width: 120px; 
+  height: 34px;
   vertical-align: middle;
+  margin-top: 5px;
+  user-select: none
 }
 
-/* optional: keep table layout flexible */
-#upload-table {
-  width: 100%;
-  border-collapse: collapse;
+.text-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
-label {
-  margin: 0 8px;
-  font-size: 0.9rem;
+.text-slider {
+  position: absolute;
   cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cccccc;
+  transition: 0.4s;
+  border-radius: 34px;
 }
 
-.submit-btn-container {
-  width: 100%;
-  text-align: center;
-  padding: 15px 0;
+.text-slider:before {
+  position: absolute;
+  content: "";
+  height: 28px;
+  width: 58px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 30px;
+  z-index: 1;
 }
 
-#upload-btn {
-  display: none; /* initially hidden */
-
-  background-color: #383838; 
-  color: white;
-  border: none;
-  padding: 10px 30px;
-  font-size: 1.1em;
-  cursor: pointer;
-  border-radius: 5px;
-  transition: background-color 0.3s;
+.text-micro, .text-macro {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  z-index: 2;
+  transition: color 0.4s;
+  pointer-events: none;
 }
 
-#upload-btn:hover {
-  background-color: #4c90af;
+.text-micro {
+  left: 0;
+  color: #333;
 }
 
-/* Modal Styles */
+.text-macro {
+  right: 0;
+  color: #fff;
+}
+
+/* --- Checked (MACRO) State --- */
+
+input:checked + .text-slider:before {
+  transform: translateX(56px);
+}
+
+input:checked + .text-slider {
+  background-color: #2196f3;
+}
+
+input:checked + .text-slider .text-micro {
+  color: #fff;
+}
+
+input:checked + .text-slider .text-macro {
+  color: #333;
+}
+
+
+/* 
+
+
+CROPPER MODAL 
+
+
+*/
 .modal {
   display: none;
   position: fixed;
@@ -371,37 +508,14 @@ label {
   flex-wrap: wrap;
 }
 
-#loadingOverlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
 
-.loader-content {
-    color: white;
-    text-align: center;
-    font-family: sans-serif;
-}
+/* 
 
-.spinner {
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top: 4px solid white;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    margin: 0 auto 10px;
-    animation: spin 0.8s linear infinite;
-}
 
-@keyframes spin {
-    100% { transform: rotate(360deg); }
-}
+DELETE MODAL 
 
+
+*/
 .confirm-modal {
   position: fixed;
   top: 0;
@@ -431,7 +545,4 @@ label {
   gap: 10px;
 }
 
-.limited-width-select {
-  width: 60%;
-  max-width: 150px;
-}
+
