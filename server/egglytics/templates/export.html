@@ -1,35 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dataset Export</title>
+    <link rel="stylesheet" href="{% static 'css/export.css' %}">
+</head>
 <body>
+    <div class="container">
+        <h2>Dataset Export Summary</h2>
+    <form id="export-form">
+            <div class="form-group">
+                <label><strong>Select Model:</strong></label>
+                <select id="model-select" name="model" class="custom-select">
+                    <option value="">-- Select a model --</option>
+                    {% for model in models %}
+                        <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-    <!-- Model selection -->
-    <label for="model-select"><strong>Select Model:</strong></label>
-    <select id="model-select" name="model">
-        <option value="">-- Select a model --</option>
-        {% for model in models %}
-            <option value="{{ model }}">{{ model }}</option>
-        {% endfor %}
-    </select>
+            <div class="form-group">
+                <label><strong>Date range:</strong></label>
+                <div class="date-range">
+                    <input type="date" id="dateFrom">
+                    <span>-</span>
+                    <input type="date" id="dateTo">
+                </div>
+            </div>
 
-    <div class="filter-item">
-        <label>Date range:</label>
-        <input type="date" id="dateFrom">
-        -
-        <input type="date" id="dateTo">
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="include_verified" checked>
+                <label for="include_verified">Only download verified results</label>
+            </div>
+        </form>
+
+        <hr>
+
+        <div id="export-summary" class="dashboard-grid">
+            <div class="model-card">
+                <h3>Dataset Summary</h3>
+
+                 <div class="metrics-list">
+                    <div id="total_images">
+                        Total Points: 0
+                    </div>
+                </div>
+
+                <div class="metric-grid">
+                    <div class="metric-card-small tp">
+                        Points
+                    </div>
+                    <div class="metric-card-small fn">
+                        Rectangles
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button id="export-btn">Download Dataset</button>
     </div>
 
-
-    <input type="checkbox" id="include_verified" name="include_verified" value="include_verified" checked>
-    <label for="include_verified"> Only Download verified results </label><br>
-
-    <hr>
-
-    <h1 id = "total_images"> Total Images: </h1>
-
-    <h1 id = "total_eggs_point"> Total Annotations (Point): </h1>
-    <h1 id = "total_eggs_rect"> Total Annotations (Rect): </h1>
-
-    <button id="export-btn">Download Dataset</button>
-
-</body>
 <script>
 function updateExportStats() {
     const model = document.getElementById("model-select").value;
@@ -142,3 +172,5 @@ document.getElementById("export-btn").addEventListener("click", function () {
     window.location.href = `/export/download/?${params.toString()}`;
 });
 </script>
+</body>
+</html>
