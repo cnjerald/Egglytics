@@ -101,7 +101,7 @@ def edit(request, image_id):
         request,
         "base.html",
         {
-            "included_template": "test.html",
+            "included_template": "editor.html",
             "image_name": image.image_name,                # filename only
             "points_json": json.dumps(list(annotations)), # list of dicts for JS
             "rects_json": json.dumps(list(rectangles)),

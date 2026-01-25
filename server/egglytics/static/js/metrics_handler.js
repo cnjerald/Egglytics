@@ -25,9 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = selectedOptions.map(m => "model=" + encodeURIComponent(m)).join("&");
 
         fetch(`${ajaxUrl}?${params}`)
-            .then(res => res.text()) // Use .text() because we are getting HTML
+            .then(res => res.text())
             .then(html => {
-                container.innerHTML = html; // Just drop the HTML in!
+                container.innerHTML = html;
             })
             .catch(err => console.error("Error fetching metrics:", err));
     });
