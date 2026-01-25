@@ -86,7 +86,11 @@ margin: 3px 0;
     display:flex;
     align-items: center;
     margin:0px;
-    padding:0px;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 50px;
+    padding-bottom: 50px;
+    height: 60px;
 }
 
 
@@ -311,7 +315,8 @@ body {
 /* App container */
 .app {
     display: flex;
-    height: 80vh;   /* 👈 force full screen height */
+    position: relative;
+    height: 80vh; 
     width: 100vw;
     overflow: hidden;
 }
@@ -323,6 +328,10 @@ body {
     flex-shrink: 0;
     overflow: hidden;    
     transition: width 0.25s ease;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 /* Collapsed sidebar */
@@ -352,12 +361,12 @@ body {
 
 /* Toggle button */
 .menu-btn {
-    position: fixed;
-    top: 12px;
-    left: 12px;
+    position: static;
+    margin-right: 20px;
     z-index: 10;
     padding: 6px 10px;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 
