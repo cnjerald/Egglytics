@@ -35,6 +35,11 @@ urlpatterns = [
     path("export/export_image_count/", export.export_image_count, name="export_image_count"),
     path("export/download/", export.export_dataset, name="export_dataset"),
 
+    # RECALIBRATION
+    # RECALIBRATION
+    path("recalibrate/", upload.recalibrate, name="recalibrate"),
+
+
 ]
 
 if settings.DEBUG:

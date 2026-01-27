@@ -49,8 +49,10 @@ export class UIManager {
             li.onclick = () => {
                 panToImageCoordinates(viewer, p.x, p.y);
                 pointManager.setSelectedPoint(p);
-                pointManager.redraw();
+
+                redrawAll(); // redraw everything
             };
+
 
             li.onmouseenter = () => {
                 p.hover = true;
@@ -120,4 +122,6 @@ export class UIManager {
             }
         });
     }
+
+    
 }

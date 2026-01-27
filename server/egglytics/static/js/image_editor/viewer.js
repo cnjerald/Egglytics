@@ -56,19 +56,32 @@ export function setupCanvas(viewer) {
 }
 
 export function setupCanvasResize(viewer, canvas, redrawCallback) {
+
     function resizeCanvas() {
         const container = viewer.container;
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
-        redrawCallback();
+        redrawCallback(); // redraw after size change
     }
 
+    // Image first loads
     viewer.addHandler("open", resizeCanvas);
+
+    // Viewer element size changes
     viewer.addHandler("resize", resizeCanvas);
-    viewer.addHandler("viewport-change", redrawCallback);
+
+    // User pans or zooms (continuous)
+    viewer.addHandler("animation", redrawCallback);
+
+    // Final viewport state after change
+    viewer.addHandler("update-viewport", redrawCallback);
 
     return resizeCanvas;
 }
+
+
+
+
 
 export function setupMouseTracker(viewer, onMoveHandler) {
     const tracker = new OpenSeadragon.MouseTracker({
@@ -112,3 +125,4 @@ export function panToImageCoordinates(viewer, x, y) {
 export function getImageSize(viewer) {
     return viewer.world.getItemAt(0).getContentSize();
 }
+

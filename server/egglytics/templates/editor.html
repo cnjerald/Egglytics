@@ -39,12 +39,12 @@
                 </button>
             </div>
 
-
-
-
             <div>
                 <h4>Annotations</h4>
                 <ul id="annotation-list" class="annotation-list"></ul>
+            </div>
+            <div>
+                <button id="recalibrate-btn"> Recalibrate Results </button>
             </div>
         </aside>
 
@@ -58,6 +58,22 @@
         </main>
     </div>
 
+    
+    <div id="recalibrate-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="warning">⚠ WARNING!</h3>
+            <p>Recalibration will erase all current annotations. Your progress will not be saved.
+            Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="recalibrate-yes">Yes, Recalibrate for New Annotations</button>
+                <button id="recalibrate-no">No, Keep Annotations</button>
+            </div>
+        </div>
+    </div>
+
+
+
+
 
     <!-- LOAD VARIABLES (NO ERROR FOR DJANGO) -->
     <script>
@@ -65,8 +81,7 @@
         window.total_egg_count = {{ total_eggs }};
         window.rects = {{rects_json|safe}};
         console.log(rects);
-        const image_id = {{img_id}};
-        console.log(points);
+        window.image_id = {{img_id}};
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

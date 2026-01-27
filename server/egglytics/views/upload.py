@@ -56,7 +56,7 @@ def upload(request):
             })
 
         # Throw to thread and forget
-        t = t = threading.Thread(
+        t = threading.Thread(
                 target=process_images,
                 args=(batch, files_data, batch_name)
             )
@@ -65,7 +65,150 @@ def upload(request):
         return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
 
     return render(request, "base.html", {'included_template': 'upload.html'})
+def recalibrate(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
 
+            image_id = data.get("imageId")
+            avg_pixels = data.get("averagePixels")
+
+            print("Image ID:", image_id)
+            print("Average Pixels:", avg_pixels)
+
+            # Get image record
+            image_obj = ImageDetails.objects.get(image_id=image_id)
+
+            image_path = os.path.join(
+                settings.MEDIA_ROOT,      # /full/system/path/media
+                "uploads",                # your folder
+                image_obj.image_name      # filename from DB
+            )
+
+            model = image_obj.model_used
+            mode = "macro"
+
+            print("Resolved path:", image_path)
+
+            # Load image as base64
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+            print("Image loaded. Size:", len(image_base64))
+
+            # Throw to thread and forget
+            t = threading.Thread(
+                    target=recalibrate_image,
+                    args=(image_base64,avg_pixels,model,mode,image_id)
+                )
+            t.start()
+            return JsonResponse({"status": "success"})
+
+        except ImageDetails.DoesNotExist:
+            return JsonResponse({"error": "Image not found"}, status=404)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request"}, status=405)
+
+def recalibrate_image(image, avg_pixels, model, mode, image_id):
+    payload = {
+        "image": image,
+        "avg_pixels": avg_pixels,
+        "mode": mode
+    }
+
+    response = None
+    data = None
+    status_code = None
+
+    # ---------------- AI CALL ----------------
+    try:
+        match model:
+            case "polyegg_heatmap":
+                response = requests.post(
+                    "http://127.0.0.1:5000/recalibrate_base64",
+                    json=payload,
+                    timeout=300
+                )
+                status_code = response.status_code
+                print("Flask raw:", response.text[:300])
+                data = response.json()
+
+            case "RESERVED_":
+                print("RESERVED")
+                return
+
+    except Exception as e:
+        print("Flask request failed:", e)
+        return
+
+    # --------------- FAIL SAFE ---------------
+    if status_code != 200 or data.get("status") != "complete":
+        print("AI failed, using fallback")
+        data = {
+            "status": "complete",
+            "points": [],
+            "final_image": image,
+            "egg_count": 0
+        }
+
+    # --------------- EXTRACT DATA ---------------
+    points = data.get("points", [])
+    image_b64 = data.get("final_image")
+    egg_count = data.get("egg_count", 0)
+
+    print(f"[Recalibrate] Points: {len(points)}, Eggs: {egg_count}")
+
+    # --------------- GET EXISTING IMAGE RECORD ---------------
+    try:
+        image_record = ImageDetails.objects.get(image_id=image_id)
+    except ImageDetails.DoesNotExist:
+        print("Image record missing during recalibration")
+        return
+
+    # --------------- PURGE OLD ANNOTATIONS ---------------
+    AnnotationPoints.objects.filter(image=image_record).delete()
+    print("Old annotations deleted")
+
+    # --------------- INSERT NEW ANNOTATIONS ---------------
+    for p in points:
+        AnnotationPoints.objects.create(
+            image=image_record,
+            x=p[0],
+            y=p[1],
+            is_original=False  # recalibrated result
+        )
+
+    print("New annotations saved")
+
+    # --------------- UPDATE IMAGE FILE ---------------
+    if image_b64:
+        img_data = base64.b64decode(image_b64)
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        file_path = os.path.join(upload_dir, image_record.image_name)
+
+        with open(file_path, "wb") as f_out:
+            f_out.write(img_data)
+
+        print("Image file replaced")
+
+    # --------------- UPDATE COUNTS ---------------
+    image_record.total_eggs = egg_count
+    image_record.is_processed = True
+    image_record.save()
+
+    print("Recalibration complete for image:", image_id)
+
+
+
+                
+
+    
 # HELPER FUNCTION TO PROCESS IMAGES
 def process_images(batch, files_data, header):
     total_eggs = 0
@@ -129,7 +272,6 @@ def process_images(batch, files_data, header):
             # Extract result data
             # Just put has fail present if something goes wrong
             if status_code != 200 or data.get("status") != "complete":
-                print("Compute server failed:", data)
                 batch.has_fail_present = True
                 data = {
                     "status": "complete",
