@@ -34,7 +34,6 @@ class ImageDetails(models.Model):
         ("MACRO", "Macro"),
     ]
     img_type = models.CharField(max_length=10, choices=IMG_TYPE_CHOICES)
-    allow_collection = models.BooleanField(default=True)
     is_processed = models.BooleanField()
     is_validated = models.BooleanField()
     model_used = models.CharField(max_length = 255)

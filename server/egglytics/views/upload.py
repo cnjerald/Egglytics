@@ -222,12 +222,11 @@ def process_images(batch, files_data, header):
             # File name (STRING) ->  The name of the file saved on media/uploads\
             # image_name (STRING) -> The name of the image (NOTE TO JERALD PLS CHANGE THIS SO USER CAN RENAME FILES IN FUTURE)
             # encoded (STRING) -> Image in base64
-            # allow_sharing(BOOLEAN) -> Bool allow downloading
             # mode (Binary STRING) -> If Micro or Macro
             file_name = f"{header}_{i}"
             image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
-            allow_sharing = file_dict["share"]
+
             model = file_dict["model"]
             mode = file_dict["mode"]
 
@@ -238,7 +237,6 @@ def process_images(batch, files_data, header):
                 total_eggs = 0,
                 total_hatched = 0,
                 img_type = mode,
-                allow_collection = allow_sharing,
                 is_processed = False,
                 is_validated = False,
                 model_used = model

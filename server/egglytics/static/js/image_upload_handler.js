@@ -120,9 +120,9 @@ $(document).ready(function () {
     function handleFiles(files) {
         // SECTION =========== CONSTANTS =========== 
         // Maximum file count
-        const MAX_FILES = 15;
+        const MAX_FILES = 100;
         // Maximum file size
-        const MAX_SIZE_PER_FILE = 200 * 1024 * 1024;
+        const MAX_SIZE_PER_FILE = 500 * 1024 * 1024;
 
         // SECTION =========== CHECKS THE UPLOAD =========== 
         // Check file count
@@ -185,9 +185,17 @@ $(document).ready(function () {
 
             // Micro/Macro radio buttons
             const modeCell = document.createElement("td");
+
+            const isMacro = (file.size / (1024 * 1024)) >= 1;  // true if ≥ 1MB
+
             modeCell.innerHTML = `
                 <label class="text-switch">
-                    <input type="checkbox" class="mode-toggle" name="mode${index}">
+                    <input 
+                        type="checkbox" 
+                        class="mode-toggle" 
+                        name="mode${index}" 
+                        ${isMacro ? "checked" : ""}
+                    >
                     <span class="text-slider">
                         <span class="text-micro">Micro</span>
                         <span class="text-macro">Macro</span>
@@ -195,14 +203,6 @@ $(document).ready(function () {
                 </label>
             `;
 
-            // Sharing toggle
-            const shareCell = document.createElement("td");
-            shareCell.innerHTML = `
-                <label class="switch">
-                <input type="checkbox" class="share-toggle" name="share${index}">
-                <span class="slider round"></span>
-                </label> 
-            `;
 
             // Edit button
             const editCell = document.createElement("td");
@@ -266,7 +266,6 @@ $(document).ready(function () {
             row.appendChild(nameCell);
             row.appendChild(sizeCell);
             row.appendChild(modeCell);
-            row.appendChild(shareCell);
             row.appendChild(editCell);
             row.appendChild(modelCell);
             row.appendChild(deleteCell);
@@ -305,11 +304,6 @@ $(document).ready(function () {
         $("#all_mode_toggle").prop("checked", false);
     });
 
-    // Handle global share toggle
-    $("#all_share").on("change", function () {
-        const isChecked = $(this).is(":checked");
-        $(".share-toggle").prop("checked", isChecked);
-    });
 
     // Handle global model toggle
     $("#all_model").on("change", function() {
@@ -320,10 +314,7 @@ $(document).ready(function () {
     });
 
 
-    // When any individual share toggle changes, uncheck the global
-    $(document).on("change", ".share-toggle", function () {
-        $("#all_share").prop("checked", false);
-    });
+
 
     $("#saveBtn").on("click", function(e) {
         console.log(index_holder);
@@ -447,9 +438,6 @@ $(document).ready(function () {
             const mode = isMacro ? "macro" : "micro";
             formData.append(`mode_${index}`, mode);
 
-            // Get share toggle
-            const share = $row.find('input.share-toggle').is(":checked");
-            formData.append(`share_${index}`, share ? "true" : "false");
         });
 
         // Optional: include total number of files (This might be useful in the future..)

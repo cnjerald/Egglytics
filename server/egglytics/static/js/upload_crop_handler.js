@@ -198,7 +198,7 @@ function performCrop() {
             ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
             // Replace the original image with cropped result
-            img.src = canvas.toDataURL();
+            img.src = canvas.toDataURL("image/jpeg", 0.90);
 
             // Reset state
             crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
