@@ -1,4 +1,10 @@
 # Egglytics
+<p align="center">
+<img src="assets/demo.jpg" alt="Banner" width = "100%" style="max-height: 200px">
+</p>
+
+<br>
+
 
 ## For Developers
 ## I. Initial Requirements
