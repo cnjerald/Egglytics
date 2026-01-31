@@ -84,6 +84,7 @@ export class PolygonManager {
 
         const ctx = this.canvas.getContext("2d");
 
+
         // --------------------------
         // Draw completed polygons
         // --------------------------

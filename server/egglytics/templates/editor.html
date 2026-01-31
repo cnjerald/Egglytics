@@ -54,7 +54,9 @@
 
             <!--  viewer lives here -->
 
-            <div id="viewer" data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}"></div>
+            <div id="viewer"
+                data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
+            </div>
         </main>
     </div>
 
@@ -82,6 +84,7 @@
         window.rects = {{rects_json|safe}};
         console.log(rects);
         window.image_id = {{img_id}};
+        
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

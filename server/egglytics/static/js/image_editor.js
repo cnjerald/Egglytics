@@ -41,8 +41,9 @@ $(document).ready(function () {
     // Set initial egg count
     uiManager.setEggCount(totalEggs);
 
-    // In your main editor file
+    // This sets on what is displayed on the screen..
     function redrawAll() {
+        
         if(isPointAnnotate){
             pointManager.redraw();    // draw points on top
         } else if (isRecalibrate){
@@ -262,6 +263,7 @@ $(document).ready(function () {
     $("#point-btn").on("click", function () {
         isPointAnnotate = true;
         isRectAnnotate = false;
+        isRecalibrate = false;
 
         uiManager.setMode("Point");
         uiManager.clearList();
@@ -274,6 +276,7 @@ $(document).ready(function () {
     $("#rect-btn").on("click", function () {
         isPointAnnotate = false;
         isRectAnnotate = true;
+        isRecalibrate = false;
 
         uiManager.setMode("Rectangle");
         uiManager.clearList();
@@ -306,8 +309,8 @@ $(document).ready(function () {
 
         uiManager.setMode("Recalibrate")
         uiManager.clearList();
+        rectManager.hideAll();
 
-        redrawAll();
     });
 
     // Close modal if clicking outside content

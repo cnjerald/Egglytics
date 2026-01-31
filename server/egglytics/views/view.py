@@ -102,14 +102,16 @@ def edit(request, image_id):
         "base.html",
         {
             "included_template": "editor.html",
-            "image_name": image.image_name,                # filename only
-            "points_json": json.dumps(list(annotations)), # list of dicts for JS
+            "image_name": image.image_name,
+            "image_version": image.image_version,
+            "points_json": json.dumps(list(annotations)),
             "rects_json": json.dumps(list(rectangles)),
             "total_eggs": json.dumps(image.total_eggs),
             "img_id": json.dumps(image_id),
-            "MEDIA_URL": settings.MEDIA_URL,              # add MEDIA_URL for template
+            "MEDIA_URL": settings.MEDIA_URL,
         }
     )
+
 
 def edit_batch_name(request, batch_id):
     if request.method == "POST":

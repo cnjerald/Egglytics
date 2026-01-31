@@ -168,6 +168,11 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     except ImageDetails.DoesNotExist:
         print("Image record missing during recalibration")
         return
+    
+    # ------------- GET BATCH ID FROM IMAGE RECORD
+    batch = image_record.batch
+    batch.total_eggs = max(0, batch.total_eggs - image_record.total_eggs + egg_count)
+    batch.save()
 
     # --------------- PURGE OLD ANNOTATIONS ---------------
     AnnotationPoints.objects.filter(image=image_record).delete()
@@ -200,6 +205,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     # --------------- UPDATE COUNTS ---------------
     image_record.total_eggs = egg_count
     image_record.is_processed = True
+    image_record.image_version += 1
     image_record.save()
 
     print("Recalibration complete for image:", image_id)
