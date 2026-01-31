@@ -96,8 +96,8 @@ def export_dataset(request):
         return HttpResponse("Model required", status=400)
 
     # ---- Filter images ----
-    # Filter images that allows collection
-    qs = ImageDetails.objects.filter(model_used=model,allow_collection = True)
+    # Filter images
+    qs = ImageDetails.objects.filter(model_used=model)
 
     # Filter images that were validated by the user
     if verified:

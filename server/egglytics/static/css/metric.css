@@ -1,12 +1,38 @@
 /* METRICS CARD */
+.card-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #000000;
+    padding-top: 8px;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+}
+
 .model-card {
     border: 1px solid #ccc;
     border-radius: 12px;
     padding: 16px;
-    width: 75%;
+    width: 50%;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     background: #fff;
     font-family: Arial, sans-serif;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between; /* This pushes label left, value right */
+    align-items: center;
+    padding: 4px 0;
+}
+
+.metric-row span {
+    font-size: 0.9rem;
+    color: #000000; /* Dimmer label color */
+}
+
+.metric-row strong {
+    font-size: 1rem;
+    color: #000000;
 }
 
 .model-card h3 {
@@ -16,7 +42,7 @@
 
 .metric-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin: 12px 0;
 }

@@ -25,23 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = selectedOptions.map(m => "model=" + encodeURIComponent(m)).join("&");
 
         fetch(`${ajaxUrl}?${params}`)
-            .then(res => res.json())
-            .then(data => {
-                container.innerHTML = ""; 
-                data.comparison.forEach(r => {
-                    const clone = template.content.cloneNode(true);
-                    
-                    clone.querySelector(".js-model-name").textContent = r.model;
-                    clone.querySelector(".js-images").textContent = r.total_images;
-                    clone.querySelector(".js-preds").textContent = r.total_model_predictions;
-                    clone.querySelector(".js-tp").textContent = `TP: ${r.TP}`;
-                    clone.querySelector(".js-fp").textContent = `FP: ${r.FP}`;
-                    clone.querySelector(".js-fn").textContent = `FN: ${r.FN}`;
-                    clone.querySelector(".js-precision").textContent = r.precision;
-                    clone.querySelector(".js-recall").textContent = r.recall;
-
-                    container.appendChild(clone);
-                });
-            });
+            .then(res => res.text())
+            .then(html => {
+                container.innerHTML = html;
+            })
+            .catch(err => console.error("Error fetching metrics:", err));
     });
 });

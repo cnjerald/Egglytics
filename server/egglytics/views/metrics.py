@@ -116,7 +116,7 @@ def metric_ajax(request):
     """Returns only the JSON data."""
     selected_models = request.GET.getlist("model")
     if not selected_models:
-        return JsonResponse({"error": "No model selected"}, status=400)
+        return HttpResponse('<p class="placeholder">Select a model to begin.</p>')
 
     comparison = [get_model_stats(m) for m in selected_models]
-    return JsonResponse({"comparison": comparison})
+    return render(request, "metric_templates/model_card.html", {"comparison": comparison})

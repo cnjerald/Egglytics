@@ -1,0 +1,95 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <link rel="stylesheet" href="{% static 'css/editor.css' %}">
+<head>
+    <meta charset="UTF-8">
+    <title>Egglytics</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+</head>
+<body>
+
+    <header class="toolbar">
+        <button id="sidebarToggle" class="menu-btn">☰</button>
+        {% include 'editor_templates/modal_instructions.html' %}
+        
+        <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
+    </header>
+
+    <div class="app">
+        <aside id="sidebar" class="sidebar">
+            <h3>
+                Current Mode:
+                <span id="current-mode" style="color:#6cff6c;">Point</span>
+            </h3>
+            <h3>Tools</h3>
+
+            <div class = "sidebar-controls">
+                <button type="button" class="tools-button" id="point-btn">
+                    <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
+                </button>
+
+                <button type="button" class="tools-button" id="rect-btn">
+                    <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
+                </button>
+
+                <button type="button" class="tools-button" id="grid-btn">
+                    <img src="{% static 'img/grid.png' %}" alt="grids" class="button-photo">
+                </button>
+            </div>
+
+            <div>
+                <h4>Annotations</h4>
+                <ul id="annotation-list" class="annotation-list"></ul>
+            </div>
+            <div>
+                <button id="recalibrate-btn"> Recalibrate Results </button>
+            </div>
+        </aside>
+
+        <!--  MAIN WRAPPER -->
+        <main class="main">
+            <!-- optional top controls later -->
+
+            <!--  viewer lives here -->
+
+            <div id="viewer"
+                data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
+            </div>
+        </main>
+    </div>
+
+    
+    <div id="recalibrate-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="warning">⚠ WARNING!</h3>
+            <p>Recalibration will erase all current annotations. Your progress will not be saved.
+            Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="recalibrate-yes">Yes, Recalibrate for New Annotations</button>
+                <button id="recalibrate-no">No, Keep Annotations</button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- LOAD VARIABLES (NO ERROR FOR DJANGO) -->
+    <script>
+        window.points = {{ points_json|safe }};
+        window.total_egg_count = {{ total_eggs }};
+        window.rects = {{rects_json|safe}};
+        console.log(rects);
+        window.image_id = {{img_id}};
+        
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/image_editor/interactions.js' %}"></script>
+    <script type="module" src="{% static 'js/image_editor.js' %}"></script>
+
+</body>
+</html>

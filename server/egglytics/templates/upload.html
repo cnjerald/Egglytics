@@ -1,5 +1,6 @@
 {% load static %}
 <link href="{% static 'css/upload.css' %}" rel="stylesheet" />
+<link href="{% static 'css/upload_assets/text_switch' %}" rel="stylesheet" />
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
 
@@ -120,17 +121,12 @@ id = myfile
             <th>Name</th>
             <th>Size</th>
             <th>Micro / Macro <br />
-              <label>
-                <input type="radio" id = "all_micro" name="global-mode" value="micro"> Micro
-              </label>
-              <label>
-                <input type="radio" id = "all_macro" name="global-mode" value="macro"> Macro
-              </label>
-            </th>
-            <th>Data Sharing <br />
-              <label class="switch">
-                <input type="checkbox" id="all_share">
-                <span class="slider round"></span>
+              <label class="text-switch">
+                <input type="checkbox" id="all_mode_toggle">
+                <span class="text-slider">
+                  <span class="text-micro">Micro</span>
+                  <span class="text-macro">Macro</span>
+                </span>
               </label>
             </th>
             <th>Crop</th>
