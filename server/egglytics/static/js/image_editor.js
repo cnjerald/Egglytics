@@ -43,7 +43,7 @@ $(document).ready(function () {
 
     // This sets on what is displayed on the screen..
     function redrawAll() {
-        
+        rectManager.hideAll();
         if(isPointAnnotate){
             pointManager.redraw();    // draw points on top
         } else if (isRecalibrate){
@@ -53,10 +53,8 @@ $(document).ready(function () {
         }
     }
         
-
     // Setup canvas resize and redraw
     setupCanvasResize(viewer, canvas, () => redrawAll());
-
 
 
     // Setup mouse tracker
@@ -153,7 +151,7 @@ $(document).ready(function () {
                 uiManager.renderRectList(viewer, rectManager);
             }
         } else if (isRecalibrate) {
-
+            // Joaquin CLEAN THESE UP TY - JERALD [1]
             // Try to close polygon first
             const closed = polygonManager.tryClosePolygon(pos.x, pos.y);
 
@@ -162,12 +160,13 @@ $(document).ready(function () {
 
                 // Last polygon added
                 const polygons = polygonManager.getPolygons();
-                const lastPolygon = polygons[polygons.length - 1];
-
+                uiManager.renderAnnotationUI(viewer,polygonManager);
+                // You might need this so i left it here 
                 let averagePixels = polygonManager.getAverageAreaOfPolygons()
 
                 if(polygons.length == 3){
-                    recalibrateImage(imageId,averagePixels);
+                    document.getElementById("submit-recalibration").disabled = false;
+                    //recalibrateImage(imageId,averagePixels);
                 }
                 
                 return;
@@ -176,12 +175,44 @@ $(document).ready(function () {
             // Otherwise add new vertex
             polygonManager.addPoint(pos.x, pos.y);
             polygonManager.redraw();
+            
 
             console.log("Polygon edge added");
         }
+    });
+    // Joaquin CLEAN THESE UP TY - JERALD [2]
+    document.addEventListener("keydown", (e) => {
+        // THIS IS FOR RECALIB ONLY!
+        if (!isRecalibrate) return;
 
+        // ESC → Cancel current polygon
+        if (e.key === "Escape") {
+            polygonManager.cancelCurrentPolygon();
+            console.log("Polygon drawing cancelled");
+        }
+
+        // Backspace → Undo last vertex
+        if (e.key === "Backspace") {
+            e.preventDefault(); // prevent browser back
+            polygonManager.removeLastPoint();
+            console.log("Last vertex removed");
+        }
+
+        // Delete → Remove last completed polygon
+        if (e.key === "b") {
+            polygonManager.removeLastPolygon();
+            console.log("Last polygon erased");
+        }
     });
 
+
+    // This is the event listener for the submit button
+    $("#submit-recalibration").on("click", function () {
+        const averagePixels = polygonManager.getAverageAreaOfPolygons()
+        recalibrateImage(imageId,averagePixels);
+    });
+
+    // This sends the request to the server to recalibrate.
     function recalibrateImage(imageId, averagePixels){
         $.ajax({
             url: "/recalibrate/",
@@ -196,7 +227,8 @@ $(document).ready(function () {
                 "X-CSRFToken": getCSRFToken(),
             },
             success: function (response) {
-                console.log("Recalibration success:", response);
+                console.log("Received image! Redirecting..:", response);
+                window.location.href = "/view/";  
             },
             error: function (xhr) {
                 console.error("Failed:", xhr.responseText);
@@ -253,17 +285,28 @@ $(document).ready(function () {
     window.addEventListener("keydown", (e) => {
         if (e.key.toLowerCase() !== FILL_CELL_KEY) return;
 
-        const pos = getMouseImagePosition(viewer, lastMousePos);
-        if (!pos) return;
+        if(gridManager.isVisible()){
+            const pos = getMouseImagePosition(viewer, lastMousePos);
+            if (!pos) return;
+            gridManager.toggleCell(pos.x, pos.y);
+        }
 
-        gridManager.toggleCell(pos.x, pos.y);
+
     });
 
+
+    // Joaquin CLEAN THESE UP TY - JERALD [3] uhh too meany repetitions here...
     // Mode buttons
     $("#point-btn").on("click", function () {
         isPointAnnotate = true;
         isRectAnnotate = false;
         isRecalibrate = false;
+        document.getElementById("annotation-msg").textContent = "Annotations";
+        document.getElementById("recalibrate-btn").hidden = false;
+        document.getElementById("submit-recalibration").hidden = true;
+
+        totalEggs = pointManager.getPoints().length;
+        uiManager.setEggCount(totalEggs)
 
         uiManager.setMode("Point");
         uiManager.clearList();
@@ -277,6 +320,12 @@ $(document).ready(function () {
         isPointAnnotate = false;
         isRectAnnotate = true;
         isRecalibrate = false;
+        document.getElementById("annotation-msg").textContent = "Annotations";
+        document.getElementById("recalibrate-btn").hidden = false;
+        document.getElementById("submit-recalibration").hidden = true;
+
+        totalEggs = rectManager.getRects().length
+        uiManager.setEggCount(totalEggs)
 
         uiManager.setMode("Rectangle");
         uiManager.clearList();
@@ -285,6 +334,32 @@ $(document).ready(function () {
         rectManager.restoreAll();
         pointManager.setVisible(false);
     });
+
+    $("#recalibrate-yes").on("click", function () {
+        $("#recalibrate-modal").addClass("hidden");
+        
+        // Activate recalibration mode
+        isRecalibrate = true;
+        isPointAnnotate = false;
+        isRectAnnotate = false;
+
+        uiManager.setEggCount(0)
+
+        document.getElementById("annotation-msg").textContent = 
+        "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE";
+
+        document.getElementById("recalibrate-btn").hidden = true;
+        document.getElementById("submit-recalibration").hidden = false;
+
+
+        uiManager.setMode("Recalibrate")
+        uiManager.clearList();
+        rectManager.hideAll();
+
+    });
+
+    // CLEAN END
+
 
     $("#grid-btn").on("click", function () {
         const isVisible = gridManager.isVisible();
@@ -299,19 +374,6 @@ $(document).ready(function () {
         $("#recalibrate-modal").removeClass("is-visible");
     });
 
-    $("#recalibrate-yes").on("click", function () {
-        $("#recalibrate-modal").addClass("hidden");
-        
-        // Activate recalibration mode
-        isRecalibrate = true;
-        isPointAnnotate = false;
-        isRectAnnotate = false;
-
-        uiManager.setMode("Recalibrate")
-        uiManager.clearList();
-        rectManager.hideAll();
-
-    });
 
     // Close modal if clicking outside content
     $("#recalibrate-modal").on("click", function (e) {
@@ -322,25 +384,6 @@ $(document).ready(function () {
     });
 
 
-
-    // Fill grid cell (S key)
-    window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() !== "s") return;
-
-        // Open popup with warning
-        // If no, - go back to what annotation mode user is using
-        // Otherwise go to this mode
-        isPointAnnotate = false
-        isRectAnnotate = false
-        isRecalibrate = true
-
-        if(isRecalibrate){
-            // Require user to select at least 3 polygons
-            // Toolbar becomes submit and CANCEL
-            // If submit then recalibrate it with the specifics
-            // Otherwise do case no.
-        }
-    });
 
     function getCSRFToken() {
         const name = 'csrftoken';

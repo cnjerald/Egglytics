@@ -226,4 +226,36 @@ export class PolygonManager {
         // This avoids double-drawing
         this.updatePreview(x, y);
     }
+
+    // Remove last vertex while drawing
+    removeLastPoint() {
+        if (this.currentPolygon.length > 0) {
+            this.currentPolygon.pop();
+            this.redraw();
+        }
+    }
+
+    // Remove last completed polygon
+    removeLastPolygon() {
+        if (this.polygons.length > 0) {
+            this.polygons.pop();
+            this.redraw();
+        }
+    }
+
+    highlightPolygon(poly) {
+        this.highlighted = poly;
+        this.redraw();
+    }
+
+    clearHighlight() {
+        this.highlighted = null;
+        this.redraw();
+    }
+
+    removePolygon(poly) {
+        this.polygons = this.polygons.filter(p => p !== poly);
+        this.redraw();
+    }
+
 }

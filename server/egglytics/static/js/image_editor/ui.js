@@ -50,7 +50,6 @@ export class UIManager {
                 panToImageCoordinates(viewer, p.x, p.y);
                 pointManager.setSelectedPoint(p);
 
-                redrawAll(); // redraw everything
             };
 
 
@@ -75,6 +74,7 @@ export class UIManager {
 
         const rects = rectManager.getRectsReversed();
 
+        const li = document.createElement("li");
         rects.forEach(r => {
             const li = document.createElement("li");
             li.textContent = `Rect: X=${r.x}, Y=${r.y}, W=${r.width}, H=${r.height}`;
@@ -110,6 +110,61 @@ export class UIManager {
             this.listEl.appendChild(li);
         });
     }
+
+    renderAnnotationUI(viewer, polygonManager) {
+        this.clearList();
+
+        const polygons = [...polygonManager.getPolygons()].reverse();
+
+        polygons.forEach((poly, index) => {
+            const li = document.createElement("li");
+
+            const area = polygonManager._polygonArea(poly).toFixed(0);
+            li.textContent = `Polygon ${polygons.length - index}  •  Area: ${area}px²`;
+            li.style.cursor = "pointer";
+
+            /* ---------------------------
+            CLICK → PAN TO CENTER
+            ---------------------------- */
+            li.onclick = () => {
+                let cx = 0, cy = 0;
+                poly.forEach(p => {
+                    cx += p.x;
+                    cy += p.y;
+                });
+                cx /= poly.length;
+                cy /= poly.length;
+
+                panToImageCoordinates(viewer, cx, cy);
+
+                viewer.viewport.zoomTo(
+                    Math.min(viewer.viewport.getMaxZoom(), viewer.viewport.getZoom() * 1.3)
+                );
+            };
+
+            /* ---------------------------
+            HOVER → HIGHLIGHT POLYGON
+            ---------------------------- */
+            li.onmouseenter = () => {
+                polygonManager.highlightPolygon(poly);
+            };
+
+            li.onmouseleave = () => {
+                polygonManager.clearHighlight();
+            };
+
+            /* ---------------------------
+            DOUBLE CLICK → DELETE
+            ---------------------------- */
+            li.ondblclick = () => {
+                polygonManager.removePolygon(poly);
+                this.renderAnnotationUI(viewer, polygonManager);
+            };
+
+            this.listEl.appendChild(li);
+        });
+    }
+
 
     setupScrollPagination(pointManager) {
         this.listEl.addEventListener("scroll", () => {

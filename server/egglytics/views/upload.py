@@ -184,7 +184,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
             image=image_record,
             x=p[0],
             y=p[1],
-            is_original=False  # recalibrated result
+            is_original=True # recalibrated result remains true since it is the machine predictions..
         )
 
     print("New annotations saved")
