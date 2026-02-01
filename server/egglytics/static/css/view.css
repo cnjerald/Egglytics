@@ -306,3 +306,14 @@
 .pagination-controls button:hover {
     background: #e2e6ea;
 }
+
+.rows-per-page label {
+    font-size: 14px;
+    margin-right: 5px;
+}
+
+#rowsPerPageSelect {
+    padding: 4px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}

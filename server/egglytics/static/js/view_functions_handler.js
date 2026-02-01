@@ -1,12 +1,12 @@
 // FOR PAGINATION
 let currentPage = 1;
-const rowsPerPage = 5;
+let rowsPerPage = 5;
 
 function paginateTable() {
     const allRows = Array.from(document.querySelectorAll("#batchTable tbody tr"));
     const visibleRows = allRows.filter(row => row.getAttribute('data-filtered-out') !== 'true');
     
-    const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
+    const totalPages = Math.ceil(visibleRows.length / rowsPerPage) || 1;
     
     if (currentPage < 1) currentPage = 1;
     if (currentPage > totalPages) currentPage = totalPages;
@@ -20,8 +20,19 @@ function paginateTable() {
         row.style.display = "";
     });
 
-    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages || 1}`;
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
+
+    document.getElementById("prevPage").disabled = (currentPage === 1);
+    document.getElementById("nextPage").disabled = (currentPage === totalPages);
 }
+
+document.getElementById("rowsPerPageSelect").addEventListener("change", function() {
+    const value = this.value;
+    rowsPerPage = parseInt(value, 10);
+    
+    currentPage = 1; // Reset to first page
+    paginateTable();
+});
 
 document.getElementById("prevPage").addEventListener("click", () => {
     currentPage--;
