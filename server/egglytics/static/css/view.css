@@ -285,3 +285,24 @@
                 background-color: #dc3545;
                 color: white;
             }
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding-bottom: 40px;
+}
+
+.pagination-controls button {
+    padding: 8px 15px;
+    cursor: pointer;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.pagination-controls button:hover {
+    background: #e2e6ea;
+}

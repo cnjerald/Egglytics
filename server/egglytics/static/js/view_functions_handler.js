@@ -1,3 +1,38 @@
+// FOR PAGINATION
+let currentPage = 1;
+const rowsPerPage = 5;
+
+function paginateTable() {
+    const allRows = Array.from(document.querySelectorAll("#batchTable tbody tr"));
+    const visibleRows = allRows.filter(row => row.getAttribute('data-filtered-out') !== 'true');
+    
+    const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
+    
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    allRows.forEach(row => row.style.display = "none");
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    
+    visibleRows.slice(start, end).forEach(row => {
+        row.style.display = "";
+    });
+
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages || 1}`;
+}
+
+document.getElementById("prevPage").addEventListener("click", () => {
+    currentPage--;
+    paginateTable();
+});
+
+document.getElementById("nextPage").addEventListener("click", () => {
+    currentPage++;
+    paginateTable();
+});
+
 $("#notice-box").hide();
     let flag = JSON.parse(localStorage.getItem("flag"));
     let totalHatched = 0;
@@ -238,11 +273,21 @@ $("#notice-box").hide();
             const matchesImages = totalImages >= imagesMin && totalImages <= imagesMax;
             const matchesEggs = totalEggs >= eggsMin && totalEggs <= eggsMax;
 
+            const isMatch = matchesName && matchesDate && matchesImages && matchesEggs;
+
             // Show only rows that match all conditions
-            row.style.display = matchesName && matchesDate && matchesImages && matchesEggs ? "" : "none";
+            if (isMatch) {
+                row.setAttribute('data-filtered-out', 'false');
+            } else {
+                row.setAttribute('data-filtered-out', 'true');
+            }
         });
+        currentPage = 1; // Reset to page 1 when filtering
+        paginateTable();
         recalcTotals();
     }
+
+    document.addEventListener("DOMContentLoaded", paginateTable);
 
     document.querySelectorAll(".delete-btn").forEach(btn => {
         btn.addEventListener("click", (event) => {
@@ -521,12 +566,6 @@ $("#notice-box").hide();
 
         input.addEventListener("blur", save);
     });
-
-
-
-
-
-
 
 
 
