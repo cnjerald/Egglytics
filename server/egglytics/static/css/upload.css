@@ -62,7 +62,6 @@ table {
   background: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   border-radius: 6px;
-  overflow: hidden;
 }
 
 th,
@@ -149,6 +148,44 @@ label {
     height: 40px;
     margin: 0 auto 10px;
     animation: spin 0.8s linear infinite;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+  cursor: help;
+}
+
+.tooltiptext {
+  visibility: hidden;
+  width: 240px;
+  background-color: #333;
+  color: #fff;
+  text-align: Left;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  left: 110%;
+
+  font-size: 12px;
+}
+
+.tooltiptext::after {
+  content: " ";
+  position: absolute;
+  top: 18%;
+  right: 100%; /* To the left of the tooltip */
+  margin-top: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent black transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
 }
 
 @keyframes spin {
