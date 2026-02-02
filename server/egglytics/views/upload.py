@@ -124,6 +124,16 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     data = None
     status_code = None
 
+        # --------------- GET EXISTING IMAGE RECORD ---------------
+    try:
+        image_record = ImageDetails.objects.get(image_id=image_id)
+    except ImageDetails.DoesNotExist:
+        print("Image record missing during recalibration")
+        return
+    
+    image_record.is_processed = False
+    image_record.save()
+
     # ---------------- AI CALL ----------------
     try:
         match model:
@@ -162,13 +172,6 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     print(f"[Recalibrate] Points: {len(points)}, Eggs: {egg_count}")
 
-    # --------------- GET EXISTING IMAGE RECORD ---------------
-    try:
-        image_record = ImageDetails.objects.get(image_id=image_id)
-    except ImageDetails.DoesNotExist:
-        print("Image record missing during recalibration")
-        return
-    
     # ------------- GET BATCH ID FROM IMAGE RECORD
     batch = image_record.batch
     batch.total_eggs = max(0, batch.total_eggs - image_record.total_eggs + egg_count)

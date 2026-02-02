@@ -126,4 +126,6 @@ export class GridManager {
     isVisible() {
         return this.visible;
     }
+
+    
 }

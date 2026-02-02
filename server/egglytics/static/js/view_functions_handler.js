@@ -175,6 +175,7 @@ $("#notice-box").hide();
             const editBatchBtn = document.getElementById("edit-batch-btn");
             const popupImage = document.getElementById("popup-image");
             const popupDetails = document.getElementById("popup-details");
+            
 
             // Set popup header
             popup.dataset.batchId = batchId; // store batch id in popup
@@ -202,19 +203,28 @@ $("#notice-box").hide();
                             <tr class="image-details" 
                                 data-image-name="${img.image_name}" 
                                 data-image-id="${img.image_id}">
+                                
                                 <td>${img.image_name}</td>
                                 <td>${img.total_eggs}</td>
+                                
                                 <td class="editable-hatched"
                                     data-image-id="${img.image_id}">
                                     ${img.total_hatched}
                                 </td>
+                                
                                 <td>${img.img_type}</td>
+                                
                                 <td>
-                                    <button class="edit-btn" 
-                                        onclick="event.stopPropagation(); window.location.href='/editor/${img.image_id}/'">
-                                        Edit
-                                    </button>
+                                    ${
+                                        img.is_processed
+                                            ? `<button class="edit-btn"
+                                                onclick="event.stopPropagation(); window.location.href='/editor/${img.image_id}/'">
+                                                Edit
+                                            </button>`
+                                            : `<h5 style="margin:0;color:#888;">IN PROCESS</h5>`
+                                    }
                                 </td>
+                                
                                 <td>
                                     <button class="delete-btn">
                                         <i class="fas fa-trash"></i>
@@ -223,6 +233,7 @@ $("#notice-box").hide();
                             </tr>
                         `;
                     });
+
 
                     popupDetails.innerHTML = rowsHTML;
                 })

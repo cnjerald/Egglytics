@@ -57,6 +57,7 @@ def batch_images(request, batch_id):
             "total_eggs": img.total_eggs,
             "img_type": img.img_type,
             "total_hatched": img.total_hatched,
+            "is_processed": img.is_processed
         })
 
     return JsonResponse(data, safe=False)
