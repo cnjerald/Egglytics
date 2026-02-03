@@ -8,12 +8,41 @@
     <title>Egglytics</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
 </head>
+
 <body>
 
     <header class="toolbar">
         <button id="sidebarToggle" class="menu-btn">☰</button>
-        {% include 'editor_templates/modal_instructions.html' %}
+
         
+        <div id="instructions-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span> 
+                <h3>Editor Shortcuts & Controls</h3>
+                <div class="keyboard-panel">
+                    <div class="instruction-line">
+                        <span class="key-hint">Q</span> - DEBUG PIXEL LOC
+                    </div>
+                    <div class="instruction-line">
+                        <span class="key-hint">W</span> - MARK GRID AS DONE/UNDONE
+                    </div>
+                    <div class="instruction-line">
+                        <span class="key-hint">E</span> - CREATE DOT
+                    </div>
+                    <div class="instruction-line">
+                        <span class="key-hint">R</span> - REMOVE DOT
+                    </div>
+                    
+                    <div class="instruction-line pan-line">
+                        <span class="key-hint">RMB</span> + DRAG - PAN IMAGE
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button id="open-instructions" class="btn btn-info">
+            Instructions
+        </button>
         <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
     </header>
 
@@ -76,8 +105,7 @@
 
 
 
-
-
+    
     <!-- LOAD VARIABLES (NO ERROR FOR DJANGO) -->
     <script>
         window.points = {{ points_json|safe }};
@@ -85,7 +113,7 @@
         window.rects = {{rects_json|safe}};
         console.log(rects);
         window.image_id = {{img_id}};
-        
+
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

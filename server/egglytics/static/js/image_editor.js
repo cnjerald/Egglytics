@@ -383,6 +383,22 @@ $(document).ready(function () {
         }
     });
 
+    $("#open-instructions").on("click", function () {
+        $("#instructions-modal").addClass("is-visible");
+    });
+
+    $("#instructions-modal .close-button").on("click", function () {
+        $("#instructions-modal").removeClass("is-visible");
+    });
+
+    // Click outside to close
+    $(window).on("click", function (e) {
+        if (e.target.id === "instructions-modal") {
+            $("#instructions-modal").removeClass("is-visible");
+        }
+    });
+
+
 
 
     function getCSRFToken() {
