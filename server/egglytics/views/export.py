@@ -183,3 +183,52 @@ def export_dataset(request):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
     return response
+
+
+def export_dataset_csv(request):
+    model = request.GET.get("model")
+    verified = request.GET.get("verified") == "1"
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+
+    if not model:
+        return HttpResponse("Model required", status=400)
+
+    # ---- Filter images ----
+    qs = ImageDetails.objects.filter(model_used=model)
+
+    if verified:
+        qs = qs.filter(is_validated=True)
+
+    if date_from:
+        qs = qs.filter(date_uploaded__date__gte=parse_date(date_from))
+    if date_to:
+        qs = qs.filter(date_uploaded__date__lte=parse_date(date_to))
+
+    if not qs.exists():
+        return HttpResponse("No data to export", status=404)
+
+    # ---- Create CSV response ----
+    response = HttpResponse(content_type="text/csv")
+    filename = f"export_{model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    # Write CSV header
+    writer.writerow(["ImageName", "DATE", "total_Eggs", "Total_HATCHED"])
+
+    for image in qs:
+        # Count total eggs
+        total_eggs = AnnotationPoints.objects.filter(image_id=image).count()
+        # Count total hatched eggs
+
+
+
+        writer.writerow([
+            image.image_name,
+            image.date_uploaded.strftime("%Y-%m-%d"),
+            total_eggs,
+            image.total_hatched
+        ])
+
+    return response

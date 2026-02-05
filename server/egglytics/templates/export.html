@@ -56,8 +56,8 @@
                 </div>
             </div>
         </div>
-
-        <button id="export-btn">Download Dataset</button>
+        <button id="export-btn-user"class="export-btn">Download Dataset for Users</button>
+        <button id="export-btn" class="export-btn">Download Dataset for Developers</button>
     </div>
 
 <script>
@@ -170,6 +170,26 @@ document.getElementById("export-btn").addEventListener("click", function () {
     if (dateTo) params.append("date_to", dateTo);
 
     window.location.href = `/export/download/?${params.toString()}`;
+});
+
+document.getElementById("export-btn-user").addEventListener("click", function () {
+    const model = document.getElementById("model-select").value;
+    const verified = document.getElementById("include_verified").checked;
+    const dateFrom = document.getElementById("dateFrom").value;
+    const dateTo = document.getElementById("dateTo").value;
+
+    if (!model) {
+        alert("Select a model first");
+        return;
+    }
+
+    let params = new URLSearchParams({ model });
+
+    if (verified) params.append("verified", "1");
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+
+    window.location.href = `/export/download_csv/?${params.toString()}`;
 });
 </script>
 </body>

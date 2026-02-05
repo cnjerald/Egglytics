@@ -4,14 +4,14 @@ let index_holder = null;
 
 // Model Names
 const models = [
-  { value: "polyegg_heatmap", label: "PolyEgg_Heatmap" },
-  { value: "free_annotate", label: "Upload without a model (Free Annotate)" },
+  { value: "polyegg_heatmap", label: "Points" },
+  { value: "free_annotate", label: "Free Annotate" },
   { value: "reserved", label: "RESERVED SLOT FOR DEVS" }
 ];
 
 // Load Model names into HTML header
 
-  const $allModel = $("#all_model");
+const $allModel = $("#all_model");
   // Populate options
   $.each(models, function (i, model) {
     $allModel.append(
@@ -20,7 +20,9 @@ const models = [
   });
 
   // Default value
-  $allModel.val("polyegg_heatmap");
+$allModel.val("polyegg_heatmap");
+
+
 
 // Global func..
 function performSave(index) {
@@ -90,6 +92,27 @@ $(document).ready(function () {
             submitButton.style.display = 'none';
         }
     }
+
+    // Set the default batch name
+    const now = new Date();
+    const datePart = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0');
+
+    const timePart = String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+    const millis = String(now.getMilliseconds()).padStart(3, '0');
+    const batchValue = datePart + "_" + timePart + "_" + millis;
+    $("#batch_name").val(batchValue);
+
+    // Set the username, the previous value.
+    $(function () {
+        const savedUser = localStorage.getItem("username");
+        if (savedUser) {
+            $("#user_name").val(savedUser);
+        }
+    });
 
     // <-- These section handles the effects of the upload -->
     // Drag hover styling
@@ -330,7 +353,6 @@ $(document).ready(function () {
         }
     });
     function showDeleteConfirmation(index) {
-        console.log("HELLO!");
         const mainContent = document.querySelector(".main-content");
         if (!mainContent) {
             console.error("Main content container not found!");
@@ -414,7 +436,6 @@ $(document).ready(function () {
 
 
 
-    
     $("#upload-btn").on("click", function (e) {
         e.preventDefault();
 
@@ -423,54 +444,85 @@ $(document).ready(function () {
         $("#upload-table tbody tr").each(function(index) {
             const $row = $(this);
 
-            // Get the file
             const file = fileArray[index];
-            if (!file) return; // safety
+            if (!file) return;
 
             formData.append("myfiles", file);
 
-            // Get the selected model for this row
             const model = $row.find('select[data-row-model="true"]').val();
             formData.append(`model_${index}`, model);
 
-            // Get Micro/Macro choice
             const isMacro = $row.find('.mode-toggle').is(":checked");
             const mode = isMacro ? "macro" : "micro";
             formData.append(`mode_${index}`, mode);
-
         });
 
-        // Optional: include total number of files (This might be useful in the future..)
+        // --- Append user ---
+        const user = $("#user_name").val().trim().toLowerCase();
+        const name = $("#batch_name").val().trim().toLowerCase();
+        formData.append("username", user);
+
+        // Optional: save to localStorage for next time
+        localStorage.setItem("username", user);
+
         formData.append("file_count", fileArray.length);
+        formData.append("user",user);
+        formData.append("batch_name",name);
+
+        console.log(user,name)
+
+        // Show progress bar
+        $("#upload-progress-container").show();
+        $("#upload-progress").css("width", "0%");
+        // Save the username.
+
+
+
 
 
         $.ajax({
             url: "/",
             type: "POST",
             data: formData,
-            // Things related to sending formData which is best set to false to
-            // avoid problems with regards to encoding.
             processData: false,
             contentType: false,
             headers: {
                 "X-CSRFToken": getCSRFToken(),
+            },
+            xhr: function() {
+                const xhr = new window.XMLHttpRequest();
+                xhr.upload.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        const percentComplete = Math.round((evt.loaded / evt.total) * 100);
+                        $("#upload-progress").css("width", percentComplete + "%");
+                        $("#upload-progress").text(percentComplete + "%");
+                    }
+                }, false);
+                return xhr;
             },
             success: function (response) {
                 console.log("Uploaded files:", response.filenames);
 
                 fileArray = []; 
                 document.querySelector("#upload-table tbody").innerHTML = "";
-                updateSubmitButtonVisibility()
-                // This flag acts as a way to send a message to the /view, where it will tell the user that there is an ongoing computation.
+                updateSubmitButtonVisibility();
+
+                // Hide progress bar
+                $("#upload-progress-container").hide();
+                $("#upload-progress").css("width", "0%");
+
                 localStorage.setItem("flag", JSON.stringify({ processingActive: true }));
-                // Redirect after successful upload
                 window.location.href = "/view";
             },
             error: function (xhr, status, error) {
                 console.error("Upload failed:", error);
+                alert("Upload failed. Please try again.");
+                $("#upload-progress-container").hide();
+                $("#upload-progress").css("width", "0%");
             }
         });
     });
+
 
 
 

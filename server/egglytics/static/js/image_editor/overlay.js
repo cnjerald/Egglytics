@@ -20,7 +20,29 @@ export function addOverlay(viewer, element, vpRect, overlayId = null) {
     viewer.addOverlay(config);
 }
 
+export function addOverlayWithMinimap(viewer, element, vpRect, overlayId = null) {
+    // Add to main viewer
+    addOverlay(viewer, element, vpRect, overlayId);
+    
+    // Add to minimap/navigator
+    if (viewer.navigator) {
+        const minimapElement = element.cloneNode(true);
+        viewer.navigator.addOverlay({
+            element: minimapElement,
+            location: vpRect
+        });
+        
+        // Store reference to minimap element for removal later
+        element._minimapElement = minimapElement;
+    }
+}
+
 export function removeOverlay(viewer, elementOrId) {
+    // Remove from minimap first if it exists
+    if (typeof elementOrId === 'object' && elementOrId._minimapElement && viewer.navigator) {
+        viewer.navigator.removeOverlay(elementOrId._minimapElement);
+    }
+    
     viewer.removeOverlay(elementOrId);
 }
 

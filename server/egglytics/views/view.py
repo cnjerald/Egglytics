@@ -12,9 +12,9 @@ from ._imports import *
 
 # This is where user can see what was uploaded..
 def view(request):
-    # Get incognito batches, sorted by date_updated descending
+    # Get batches, sorted by date_updated descending
     batches = (
-        BatchDetails.objects.filter(owner="incognito")
+        BatchDetails.objects
         .prefetch_related("imagedetails_set")
         .order_by("-date_updated")
     )
@@ -46,8 +46,8 @@ def batch_images(request, batch_id):
         # If using ImageField:
         # image_url = img.image.url
         
-        # If using just a filename (string) stored in image_name:
-        image_url = f"{settings.MEDIA_URL}uploads/{img.image_name}"
+        # If using just a filename (string) stored in path:
+        image_url = f"{settings.MEDIA_URL}uploads/{img.file_path}"
         print(image_url)
 
         data.append({
@@ -63,14 +63,14 @@ def batch_images(request, batch_id):
     return JsonResponse(data, safe=False)
 
 def batch_status(request):
-    batches = BatchDetails.objects.filter(owner="incognito").values(
+    batches = BatchDetails.objects.values(
         "id", "total_eggs", "total_images", "is_complete","has_fail_present"
     )
     return JsonResponse(list(batches), safe=False)
 
 def batch_status_latest(request):
     # Get the latest batch by id (or by a timestamp if you have one)
-    latest_batch = BatchDetails.objects.filter(owner="incognito").order_by('-id').values(
+    latest_batch = BatchDetails.objects.order_by('-id').values(
         "id", "total_eggs", "total_images", "is_complete", "has_fail_present"
     ).first()  # returns a dict or None
 
@@ -161,7 +161,7 @@ def delete_image(request, image_id):
             batch.total_eggs -= image.total_eggs
             
             # Delete the actual file from MEDIA_ROOT/uploads/
-            image_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image.image_name)
+            image_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image.file_path)
             if os.path.exists(image_path):
                 os.remove(image_path)
 

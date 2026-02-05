@@ -34,6 +34,7 @@ urlpatterns = [
     path("export/date-range/", export.export_date_range, name="export_date_range"),
     path("export/export_image_count/", export.export_image_count, name="export_image_count"),
     path("export/download/", export.export_dataset, name="export_dataset"),
+    path("export/download_csv/", export.export_dataset_csv, name="export_dataset_user"),
 
     # RECALIBRATION
     # RECALIBRATION

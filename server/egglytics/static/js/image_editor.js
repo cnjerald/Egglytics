@@ -22,7 +22,7 @@ $(document).ready(function () {
     let totalEggs = window.total_egg_count;
 
     // Get elements
-    const annotationListEl = document.getElementById("annotation-list");
+    const messageEl = document.getElementById("messages");
     const modeEl = document.getElementById("current-mode");
     const eggCountEl = document.getElementById("egg_count");
     const imageUrl = document.getElementById("viewer").dataset.imageUrl;
@@ -36,7 +36,7 @@ $(document).ready(function () {
     const rectManager = new RectAnnotationManager(viewer);
     const polygonManager = new PolygonManager(viewer, canvas);
     const gridManager = new GridManager(viewer, 512);
-    const uiManager = new UIManager(annotationListEl, modeEl, eggCountEl);
+    const uiManager = new UIManager(messageEl, modeEl, eggCountEl);
 
     // Set initial egg count
     uiManager.setEggCount(totalEggs);
@@ -82,9 +82,6 @@ $(document).ready(function () {
 
         console.log("Image size:", viewer.world.getItemAt(0).getContentSize());
         console.log("Sample point:", pointManager.getPoints()[0]);
-
-        uiManager.renderPointsList(viewer, pointManager, true);
-        uiManager.setupScrollPagination(pointManager);
     });
 
     // Canvas click handler
@@ -122,7 +119,6 @@ $(document).ready(function () {
             }
 
             pointManager.redraw();
-            uiManager.renderPointsList(viewer, pointManager, true);
 
         } else if (isRectAnnotate) {
             const edgeCount = rectManager.addEdge(pos.x, pos.y);
@@ -148,7 +144,6 @@ $(document).ready(function () {
                 }
 
                 rectManager.clearEdges();
-                uiManager.renderRectList(viewer, rectManager);
             }
         } else if (isRecalibrate) {
             // Joaquin CLEAN THESE UP TY - JERALD [1]
@@ -160,7 +155,7 @@ $(document).ready(function () {
 
                 // Last polygon added
                 const polygons = polygonManager.getPolygons();
-                uiManager.renderAnnotationUI(viewer,polygonManager);
+
                 // You might need this so i left it here 
                 let averagePixels = polygonManager.getAverageAreaOfPolygons()
 
@@ -255,7 +250,6 @@ $(document).ready(function () {
                 }
 
                 pointManager.redraw();
-                uiManager.renderPointsList(viewer, pointManager, true);
             }
 
         } else if (isRectAnnotate) {
@@ -294,69 +288,73 @@ $(document).ready(function () {
 
     });
 
+    // Central function to set annotation mode
+    function setAnnotationMode({ point = false, rect = false, modeName = "Point" }) {
+        // Update mode flags
+        isPointAnnotate = point;
+        isRectAnnotate = rect;
+        isRecalibrate = modeName === "Recalibrate";
 
-    // Joaquin CLEAN THESE UP TY - JERALD [3] uhh too meany repetitions here...
-    // Mode buttons
-    $("#point-btn").on("click", function () {
-        isPointAnnotate = true;
-        isRectAnnotate = false;
-        isRecalibrate = false;
-        document.getElementById("annotation-msg").textContent = "Annotations";
-        document.getElementById("recalibrate-btn").hidden = false;
-        document.getElementById("submit-recalibration").hidden = true;
+        // Update UI elements
+        const annotationMsg = document.getElementById("annotation-msg");
+        const recalibrateBtn = document.getElementById("recalibrate-btn");
+        const cancelBtn = document.getElementById("cancel-recalibration");
+        const submitBtn = document.getElementById("submit-recalibration");
 
-        totalEggs = pointManager.getPoints().length;
-        uiManager.setEggCount(totalEggs)
+        annotationMsg.textContent = modeName === "Recalibrate"
+            ? "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE"
+            : "Annotations";
 
-        uiManager.setMode("Point");
+        recalibrateBtn.hidden = modeName === "Recalibrate";
+        cancelBtn.hidden = modeName !== "Recalibrate";
+        submitBtn.hidden = modeName !== "Recalibrate";
+
+        // Count eggs/rects if not recalibration
+        const total = point ? pointManager.getPoints().length
+                    : rect ? rectManager.getRects().length
+                    : 0;
+        uiManager.setEggCount(total);
+
+        // Set mode and clear annotation list
+        uiManager.setMode(modeName);
         uiManager.clearList();
-        
-        pointManager.setVisible(true);
-        uiManager.renderPointsList(viewer, pointManager, true);
-        rectManager.hideAll();
-    });
 
-    $("#rect-btn").on("click", function () {
-        isPointAnnotate = false;
-        isRectAnnotate = true;
-        isRecalibrate = false;
-        document.getElementById("annotation-msg").textContent = "Annotations";
-        document.getElementById("recalibrate-btn").hidden = false;
-        document.getElementById("submit-recalibration").hidden = true;
+        // Show/hide annotation objects
+        pointManager.setVisible(point);
+        rect ? rectManager.restoreAll() : rectManager.hideAll();
 
-        totalEggs = rectManager.getRects().length
-        uiManager.setEggCount(totalEggs)
+        // Optionally hide tools in recalibration mode
+        if (modeName === "Recalibrate"){
+            hideTools();
+        } else{
+            showTools();
+        }
+    }
 
-        uiManager.setMode("Rectangle");
-        uiManager.clearList();
-        
-        uiManager.renderRectList(viewer, rectManager);
-        rectManager.restoreAll();
-        pointManager.setVisible(false);
-    });
+    // ------------------- Bind annotation buttons -------------------
+    $("#point-btn").on("click", () => setAnnotationMode({ point: true, modeName: "Point" }));
+    $("#rect-btn").on("click", () => setAnnotationMode({ rect: true, modeName: "Rectangle" }));
 
-    $("#recalibrate-yes").on("click", function () {
-        $("#recalibrate-modal").addClass("hidden");
-        
-        // Activate recalibration mode
-        isRecalibrate = true;
-        isPointAnnotate = false;
-        isRectAnnotate = false;
+    // ------------------- Recalibration -------------------
+    $("#recalibrate-yes").on("click", () => setAnnotationMode({ modeName: "Recalibrate" }));
 
-        uiManager.setEggCount(0)
-
-        document.getElementById("annotation-msg").textContent = 
-        "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE";
-
-        document.getElementById("recalibrate-btn").hidden = true;
-        document.getElementById("submit-recalibration").hidden = false;
+    // Cancel recalibration
+    $("#cancel-recalibration").on("click", () => setAnnotationMode({ point: true, modeName: "Point" }));
 
 
-        uiManager.setMode("Recalibrate")
-        uiManager.clearList();
-        rectManager.hideAll();
+    function hideTools(){
+        document.getElementById("toolsText").hidden = true;
+        document.getElementById("point-btn").style.display = "none";
+        document.getElementById("rect-btn").style.display = "none";
+        document.getElementById("grid-btn").style.display = "none";
+    }
 
-    });
+    function showTools(){
+        document.getElementById("toolsText").hidden = false;
+        document.getElementById("point-btn").style.display = "inline-block";
+        document.getElementById("rect-btn").style.display = "inline-block";
+        document.getElementById("grid-btn").style.display = "inline-block";
+    }
 
     // CLEAN END
 

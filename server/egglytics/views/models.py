@@ -25,6 +25,7 @@ class ImageDetails(models.Model):
         db_column="batch_id"   # link to batch_details table
     )
     image_name = models.CharField(max_length=255)
+    file_path = models.CharField(max_length=255)
     total_eggs = models.IntegerField()
     total_hatched = models.IntegerField()
     date_uploaded = models.DateTimeField(auto_now_add=True)
@@ -38,6 +39,7 @@ class ImageDetails(models.Model):
     is_validated = models.BooleanField()
     model_used = models.CharField(max_length = 255)
     image_version = models.IntegerField(default=1)
+    
 
     class Meta:
         db_table = "image_details"  # TABLE NAME.

@@ -54,7 +54,7 @@ $("#notice-box").hide();
     if (flag?.processingActive) {
         $("#notice-box").html(`
             <h5>
-                Your images are being processed. The results are updated every 30 seconds.<br>
+                Your images are being processed. The results are updated every 5 seconds.<br>
                 Processing Status: <i class="fas fa-spinner fa-spin" style="color: orange;"></i>
             </h5>
         `).show();
@@ -62,7 +62,7 @@ $("#notice-box").hide();
 
     // Periodic batch status update
     updateBatchStatus(); // immediate call
-    const poller = setInterval(updateBatchStatus, 15000);
+    const poller = setInterval(updateBatchStatus, 5000);
     
     function updateBatchStatus() {
         fetch('/batch/status/latest/')
@@ -101,7 +101,7 @@ $("#notice-box").hide();
                         localStorage.removeItem("flag");
                     } else {
                         statusCell.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
-                        $("#notice-box").html("<h5>Your images are being processed. The results are updated every 30 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
+                        $("#notice-box").html("<h5>Your images are being processed. The results are updated every 5 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
                     }
                 }
             })
@@ -204,7 +204,7 @@ $("#notice-box").hide();
                                 data-image-name="${img.image_name}" 
                                 data-image-id="${img.image_id}">
                                 
-                                <td>${img.image_name}</td>
+                                <td class="filename">${img.image_name}</td>
                                 <td>${img.total_eggs}</td>
                                 
                                 <td class="editable-hatched"

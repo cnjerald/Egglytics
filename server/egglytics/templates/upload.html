@@ -111,6 +111,13 @@ id = myfile
     </div>
   </div>
 
+  <div class="userDetails">
+      <label for="batch_name">Batch:</label>
+      <input type="text" id="batch_name">
+      <label for="user_name">User:</label>
+      <input type="text" id="user_name">
+  </div>
+
   <div id="view-area">
     <div id="entry-container">
       <table id="upload-table">
@@ -150,11 +157,18 @@ id = myfile
         <tbody></tbody>
       </table>
     </div>
+  </div>
 
     <div class="submit-btn-container">
-      <button type="button" id="upload-btn">Submit</button>
+      <button type="button" id="upload-btn">Submit   
+        <div id="upload-progress-container" style="display:none; margin-top: 10px;">
+          <div id="upload-progress" style="width: 0%; height: 20px; background-color: #4caf50;">
+        </div>
+      </div> 
+    </button>
     </div>
-  </div>
+  
+
 
   <!-- Hidden form just to inject CSRF cookie -->
   <form style="display: none">{% csrf_token %}</form>

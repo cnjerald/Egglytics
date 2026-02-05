@@ -376,9 +376,9 @@ CROPPER MODAL
 
 .modal-content {
   background: white;
-  margin: 2% auto;
-  padding: 0;
-  width: 95%;
+  margin: 2.5% auto;
+  padding: 2.5%;
+  width: 90%;
   max-width: 1200px;
   height: auto;
   max-height: 90vh;
@@ -396,12 +396,13 @@ CROPPER MODAL
   display: flex;
   justify-content: space-between;
   align-items: center;
+  text-align: center;
 }
 
 .modal-title {
   margin: 0;
   color: #333;
-  font-size: 24px;
+  font-size: 24px;  
 }
 
 .close-btn {
@@ -426,7 +427,7 @@ CROPPER MODAL
 }
 
 .modal-body {
-  padding: 30px;
+  padding: 0px;
   flex: 1;
   overflow-y: auto;
   text-align: center;
@@ -473,6 +474,11 @@ CROPPER MODAL
   z-index: 10;
 }
 
+.bar:before {
+    content: "";
+    position: absolute;
+    left: -5px; right: -5px; top: -5px; bottom: -5px;
+}
 .bar:hover {
   background: #0056b3;
   opacity: 1;
@@ -582,4 +588,11 @@ DELETE MODAL
   gap: 10px;
 }
 
+
+.userDetails{
+  display: flex;
+  height: auto;
+  padding: auto;
+  margin: auto;
+}
 
