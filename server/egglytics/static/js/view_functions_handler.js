@@ -325,6 +325,7 @@ $("#notice-box").hide();
                 }).then(response => {
                     if (response.ok) {
                         btn.closest("tr").remove();
+                        recalcTotals();
                     } else {
                         alert("Failed to delete batch.");
                     }
@@ -430,6 +431,7 @@ $("#notice-box").hide();
                 batchRow.find("td:nth-child(3)").text(data.new_total_images);
                 batchRow.find("td:nth-child(4)").text(data.new_total_eggs);
             }
+            recalcTotals();
         })
         .catch(err => console.error(err));
     });
