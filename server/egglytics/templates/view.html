@@ -125,6 +125,18 @@
                 <button class="close-btn" onclick="closePopup()">Close</button>
             </div>
         </div>
+
+        <!-- Selection Option -->
+        <div id="custom-context-menu" style="display:none; position: fixed; z-index: 10000; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); min-width: 150px;">
+            <ul style="list-style: none; margin: 0; padding: 5px; font-family: Arial, sans-serif;">
+                <li id="menu-rename" style="padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <i class="fas fa-edit" style="margin-right: 8px;"></i> Rename Batch
+                </li>
+                <li id="menu-delete" style="padding: 8px 12px; cursor: pointer; color: #dc3545; transition: background 0.2s;">
+                    <i class="fas fa-trash" style="margin-right: 8px;"></i> Delete Batch
+                </li>
+            </ul>
+        </div>
     </body>
 
 

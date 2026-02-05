@@ -444,9 +444,10 @@ $("#notice-box").hide();
     editBatchBtn.addEventListener("click", () => {
         const currentName = popupBatchName.textContent;
         
+        editBatchBtn.style.display = "none";
         // Replace text with input
         popupBatchName.innerHTML = `
-            <input type="text" id="batch-name-input" value="${currentName}" />
+            <input type="text" id="batch-name-input" value="${currentName}" style="display: inline-block;"/>
             <span id="batch-name-edit-controls">
                 <button class="save-btn">&#10003;</button>
                 <button class="cancel-btn">&#10005;</button>
@@ -481,7 +482,8 @@ $("#notice-box").hide();
             .then(data => {
                 if (data.success) {
                     popupBatchName.textContent = newName;
-
+                    // Explicitly show the edit button again
+                    editBatchBtn.style.display = "inline-block";
                     // Also update main batch table
                     const batchRow = document.querySelector(`#batchTable tbody tr[data-batch-id="${batchId}"]`);
                     batchRow.children[0].textContent = newName;
@@ -495,6 +497,9 @@ $("#notice-box").hide();
         // Cancel editing
         cancelBtn.addEventListener("click", () => {
             popupBatchName.textContent = currentName;
+
+            // Explicitly show the edit button again
+            editBatchBtn.style.display = "inline-block";
         });
     });
 
@@ -582,7 +587,6 @@ $("#notice-box").hide();
         });
     }
 
-
     input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") save();
             if (e.key === "Escape") cell.textContent = oldValue;
@@ -590,6 +594,139 @@ $("#notice-box").hide();
 
         input.addEventListener("blur", save);
     });
+
+    // Context Menu for Batch Table Right-Click
+    (function() {
+        const contextMenu = document.getElementById('custom-context-menu');
+        let targetBatchId = null;
+        let targetRow = null;
+
+        // 1. Intercept Right-Click on Table Rows
+        document.querySelector("#batchTable tbody").addEventListener("contextmenu", function(e) {
+            const row = e.target.closest("tr");
+            if (!row) return;
+
+            // Stop the default browser right-click menu
+            e.preventDefault(); 
+            
+            targetBatchId = row.getAttribute("data-batch-id");
+            targetRow = row;
+
+            // Show and position the custom menu at the mouse cursor
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.style.top = `${e.clientY}px`;
+        });
+
+        // 2. Hide Menu when clicking elsewhere
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+        // 3. Handle the "Rename" Action
+        document.getElementById('menu-rename').addEventListener('click', () => {
+            if (!targetRow || !targetBatchId) return;
+            
+            const batchNameCell = targetRow.children[0]; // First column is batch name
+            const currentName = batchNameCell.textContent.trim();
+            
+            // Prevent multiple inputs
+            if (batchNameCell.querySelector("input")) return;
+            
+            // Create input field
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = currentName;
+            input.style.width = "100%";
+            input.style.padding = "4px";
+            input.style.fontSize = "14px";
+            
+            // Replace cell content with input
+            batchNameCell.textContent = "";
+            batchNameCell.appendChild(input);
+            input.focus();
+            input.select();
+            
+            let saved = false;
+            
+            function saveBatchName() {
+                if (saved) return;
+                saved = true;
+                
+                const newName = input.value.trim();
+                
+                // If empty or unchanged, revert
+                if (!newName || newName === currentName) {
+                    batchNameCell.textContent = currentName;
+                    return;
+                }
+                
+                // Update via API
+                fetch(`/edit-batch-name/${targetBatchId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                    body: JSON.stringify({ batch_name: newName }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        batchNameCell.textContent = newName;
+                    } else {
+                        alert("Failed to update batch name: " + (data.message || "Unknown error"));
+                        batchNameCell.textContent = currentName;
+                    }
+                })
+                .catch(err => {
+                    console.error("Error updating batch name:", err);
+                    alert("Failed to update batch name");
+                    batchNameCell.textContent = currentName;
+                });
+            }
+            
+            // Save on Enter, cancel on Escape
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") saveBatchName();
+                if (e.key === "Escape") {
+                    batchNameCell.textContent = currentName;
+                    saved = true; // Prevent blur from saving
+                }
+            });
+            
+            // Save on blur (clicking outside)
+            input.addEventListener("blur", saveBatchName);
+        });
+
+        // 4. Handle the "Delete" Action
+        document.getElementById('menu-delete').addEventListener('click', () => {
+            if (!targetBatchId || !targetRow) return;
+
+            if (confirm("Are you sure you want to delete this entire batch?")) {
+                fetch(`/delete-batch/${targetBatchId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                }).then(response => {
+                    if (response.ok) {
+                        targetRow.remove(); // Remove row from UI
+                        if (typeof recalcTotals === "function") recalcTotals();
+                    } else {
+                        alert("Failed to delete batch.");
+                    }
+                }).catch(err => console.error("Error:", err));
+            }
+        });
+
+        // Hover effect for menu items
+        contextMenu.querySelectorAll('li').forEach(item => {
+            item.onmouseover = () => item.style.backgroundColor = "#f1f1f1";
+            item.onmouseout = () => item.style.backgroundColor = "transparent";
+        });
+    })();
 
 
 
@@ -604,4 +741,3 @@ $("#notice-box").hide();
         }
         return '';
     }
-
