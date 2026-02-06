@@ -336,7 +336,39 @@ $(document).ready(function () {
     $("#rect-btn").on("click", () => setAnnotationMode({ rect: true, modeName: "Rectangle" }));
 
     // ------------------- Recalibration -------------------
-    $("#recalibrate-yes").on("click", () => setAnnotationMode({ modeName: "Recalibrate" }));
+    $("#recalibrate-yes").on("click", () => {
+        // Check if user has chosen to not show the guide again
+        const dontShowGuide = localStorage.getItem('hideRecalibrateGuide') === 'true';
+        
+        if (!dontShowGuide) {
+            // Show the guide modal
+            $("#recalibrate-guide-modal").addClass("is-visible");
+        } else {
+            // Directly enter recalibration mode
+            setAnnotationMode({ modeName: "Recalibrate" });
+        }
+    });
+
+    // Handle "Got it!" button in guide modal
+    $("#recalibrate-guide-ok").on("click", function () {
+        // Check if "don't show again" is checked
+        const dontShowAgain = $("#dont-show-recalibrate-guide").is(":checked");
+        
+        if (dontShowAgain) {
+            localStorage.setItem('hideRecalibrateGuide', 'true');
+        }
+        
+        // Hide the guide modal
+        $("#recalibrate-guide-modal").removeClass("is-visible");
+        
+        // Enter recalibration mode
+        setAnnotationMode({ modeName: "Recalibrate" });
+    });
+
+    // Handle close button on guide modal
+    $("#recalibrate-guide-modal .close-button").on("click", function () {
+        $("#recalibrate-guide-modal").removeClass("is-visible");
+    });
 
     // Cancel recalibration
     $("#cancel-recalibration").on("click", () => setAnnotationMode({ point: true, modeName: "Point" }));
