@@ -24,6 +24,9 @@ urlpatterns = [
     path("remove_egg_from_db_point/<int:image_id>/", editor.remove_egg_from_db_point, name="remove_egg_from_db_point"),
     path("add_egg_to_db_rect/<int:image_id>/", editor.add_egg_to_db_rect, name="add_egg_to_db_rect"),
     path("remove_egg_from_db_rect/<int:image_id>/", editor.remove_egg_from_db_rect, name="remove_egg_from_db_rect"),
+    # Grids
+    path("toggleGrid/<int:image_id>/",editor.toggleGrid, name = "toggleGrid"),
+
 
     # METRICS PAGE
     path("metric/",metrics.metric,name="metric"),
@@ -37,8 +40,9 @@ urlpatterns = [
     path("export/download_csv/", export.export_dataset_csv, name="export_dataset_user"),
 
     # RECALIBRATION
-    # RECALIBRATION
     path("recalibrate/", upload.recalibrate, name="recalibrate"),
+
+    
 
 
 ]

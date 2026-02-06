@@ -117,3 +117,28 @@ export async function removeRectFromServer(imageId, x1, y1, x2, y2) {
         return false;
     }
 }
+
+export async function saveGridToServer(image_id,x,y){
+    console.log("sgfs",image_id,x,y);
+    try{
+        const response = await fetch(`/toggleGrid/${image_id}/`,{
+            method:"POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            body: JSON.stringify({ x,y })
+        }) 
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Server says:", data.message || data.STATUS);
+        return true;
+    } catch (err){
+        console.warn("Saving failed",err);
+        return false;
+    }
+}

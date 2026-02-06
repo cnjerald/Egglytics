@@ -6,16 +6,43 @@
 // 
 // 
 
+import { saveGridToServer } from './api.js';
 import { addOverlay, addOverlayWithMinimap, removeOverlay, createGridLineOverlay, createGridCellOverlay } from './overlay.js';
 
 export class GridManager {
-    constructor(viewer, gridSize = 512) {
+    constructor(viewer, gridSize = 512,img_id) {
         this.viewer = viewer;
         this.gridSize = gridSize;
         this.gridOverlays = [];
         this.filledCells = new Map();
         this.visible = false;
+        this.img_id = img_id;
     }
+
+    loadGrid(gridArray) {
+        
+        if (!Array.isArray(gridArray)) return;
+
+        // Clear existing (prevents duplicates when switching images)
+
+        gridArray.forEach(g => {
+            const col = parseInt(g.x);
+            const row = parseInt(g.y);
+            const key = `${col},${row}`;
+
+
+            const { element, vpRect } = createGridCellOverlay(
+                this.viewer,
+                col,
+                row,
+                this.gridSize
+            );
+            this.filledCells.set(key, element);
+        });
+
+
+    }
+
 
     drawGrid() {
         this.clearGrid();
@@ -68,9 +95,13 @@ export class GridManager {
         const row = Math.floor(y / this.gridSize);
         const key = `${col},${row}`;
 
+        // This is already boolean so it checks if it exists or not in the server.
+        saveGridToServer(this.img_id,col,row);
+
         if (this.filledCells.has(key)) {
             removeOverlay(this.viewer, this.filledCells.get(key));
             this.filledCells.delete(key);
+
             return false;
         } else {
             const { element, vpRect } = createGridCellOverlay(

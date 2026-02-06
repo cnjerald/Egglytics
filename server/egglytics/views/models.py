@@ -44,6 +44,22 @@ class ImageDetails(models.Model):
     class Meta:
         db_table = "image_details"  # TABLE NAME.
 
+class VerifiedGrids(models.Model):
+    grid_id = models.AutoField(primary_key=True)
+
+    image = models.ForeignKey(
+        ImageDetails,
+        on_delete=models.CASCADE,
+        db_column="image_id"
+    )
+
+    x = models.PositiveIntegerField()
+    y = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = "verified_grids"
+        unique_together = ("image", "x", "y")  # prevents duplicate grids
+
 class AnnotationPoints(models.Model):
     point_id = models.AutoField(primary_key=True)
     image = models.ForeignKey(
@@ -77,4 +93,6 @@ class AnnotationRect(models.Model):
     is_deleted = models.BooleanField(default=False)
     class Meta:
         db_table = "annotation_rects"
+
+
 

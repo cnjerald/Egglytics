@@ -164,3 +164,25 @@ def normalize_rect(x1, y1, x2, y2):
         max(x1, x2),
         max(y1, y2),
     )
+
+def toggleGrid(request, image_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            print("DEBUG POST DATA:", data)
+
+            x = data.get("x")
+            y = data.get("y")
+
+            print(image_id, x,y)
+            grid_exists = VerifiedGrids.objects.filter(image_id = image_id, x=x, y=y).first()
+            if(grid_exists):
+                grid_exists.delete()
+            else:
+                newGrid = VerifiedGrids.objects.create(image_id = image_id, x = x, y = y)
+            return JsonResponse({"STATUS": "OK"})    
+        except Exception as e:
+            return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
+
+    return JsonResponse({"STATUS": "Invalid request"}, status=400)
+

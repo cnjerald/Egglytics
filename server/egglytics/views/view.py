@@ -98,6 +98,10 @@ def edit(request, image_id):
         "rect_id","x_init","y_init","x_end","y_end"
     )
 
+    grids = VerifiedGrids.objects.filter(image=image).values(
+        "x", "y"
+    )
+
     return render(
         request,
         "base.html",
@@ -108,6 +112,7 @@ def edit(request, image_id):
             "points_json": json.dumps(list(annotations)),
             "rects_json": json.dumps(list(rectangles)),
             "total_eggs": json.dumps(image.total_eggs),
+            "grids_json" : json.dumps(list(grids)),
             "img_id": json.dumps(image_id),
             "MEDIA_URL": settings.MEDIA_URL,
         }

@@ -27,7 +27,7 @@ $(document).ready(function () {
     const eggCountEl = document.getElementById("egg_count");
     const imageUrl = document.getElementById("viewer").dataset.imageUrl;
     const imageId = window.image_id;
-    console.log(imageId);
+    const savedGrids = window.grids
 
     // Initialize managers
     const viewer = initializeViewer(imageUrl);
@@ -35,12 +35,11 @@ $(document).ready(function () {
     const pointManager = new PointAnnotationManager(viewer, canvas);
     const rectManager = new RectAnnotationManager(viewer);
     const polygonManager = new PolygonManager(viewer, canvas);
-    const gridManager = new GridManager(viewer, 512);
+    const gridManager = new GridManager(viewer, 512, imageId);
     const uiManager = new UIManager(messageEl, modeEl, eggCountEl);
 
     // Set initial egg count
     uiManager.setEggCount(totalEggs);
-
     // This sets on what is displayed on the screen..
     function redrawAll() {
         rectManager.hideAll();
@@ -82,6 +81,8 @@ $(document).ready(function () {
 
         console.log("Image size:", viewer.world.getItemAt(0).getContentSize());
         console.log("Sample point:", pointManager.getPoints()[0]);
+
+        gridManager.loadGrid(savedGrids);
     });
 
     // Canvas click handler
@@ -427,8 +428,6 @@ $(document).ready(function () {
             $("#instructions-modal").removeClass("is-visible");
         }
     });
-
-
 
 
     function getCSRFToken() {
