@@ -53,6 +53,7 @@ def batch_images(request, batch_id):
         data.append({
             "image_id": img.image_id,
             "image_name": img.image_name,
+            "image_path": img.file_path,
             "image_url": image_url,
             "total_eggs": img.total_eggs,
             "img_type": img.img_type,
@@ -107,7 +108,7 @@ def edit(request, image_id):
         "base.html",
         {
             "included_template": "editor.html",
-            "image_name": image.image_name,
+            "image_name": image.file_path,
             "image_version": image.image_version,
             "points_json": json.dumps(list(annotations)),
             "rects_json": json.dumps(list(rectangles)),
@@ -215,4 +216,24 @@ def update_hatched(request, image_id):
             return JsonResponse({"success": False, "error": str(e)}, status=400)
 
     return JsonResponse({"success": False}, status=405)
+
+def update_image_name(request, image_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_name = data.get("image_name", "").strip()
+
+            if not new_name:
+                return JsonResponse({"success": False, "message": "Empty name"})
+
+            image = ImageDetails.objects.get(image_id=image_id)  # ✅ SAME MODEL
+            image.image_name = new_name
+            image.save()
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False}, status=405)
+
     

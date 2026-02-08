@@ -27,7 +27,7 @@ import uuid
 # Third Party
 import numpy as np
 import requests
-from PIL import Image
+from PIL import Image, ImageFile
 
 # Local Models
 from .models import BatchDetails, ImageDetails, AnnotationPoints,AnnotationRect, VerifiedGrids

@@ -9,6 +9,13 @@
 #
 
 from ._imports import *
+import warnings
+
+# Disable the DecompressionBombError and Warning
+Image.MAX_IMAGE_PIXELS = None 
+
+# Suppress the warning if it still appears in certain contexts
+warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
 def upload(request):
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
@@ -190,42 +197,35 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     print("New annotations saved")
 
+
     # --------------- UPDATE IMAGE FILE ---------------
     if image_b64:
-                    # Remove header if present
-                    if "," in image_b64:
-                        image_b64 = image_b64.split(",")[1]
+        if "," in image_b64:
+            image_b64 = image_b64.split(",")[1]
 
-                    # Decode base64
-                    img_data = base64.b64decode(image_b64)
+        img_data = base64.b64decode(image_b64)
+        image = Image.open(BytesIO(img_data))
 
-                    # Open with Pillow
-                    image = Image.open(BytesIO(img_data))
+        print("Resolution:", image.size)
 
-                    # Keep original resolution
-                    print("Resolution:", image.size)
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
 
-                    # Convert to RGB if needed (PNG with alpha → JPEG compatible)
-                    if image.mode in ("RGBA", "P"):
-                        image = image.convert("RGB")
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
 
-                    # Prepare folder
-                    upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
-                    os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, image_record.file_path)
 
-                    file_path = os.path.join(upload_dir, image_record.file_path)
+        image.save(
+            file_path,
+            format="JPEG",
+            quality=65,
+            optimize=True,
+            progressive=True
+        )
 
-                    # SAVE WITH COMPRESSION
-                    image.save(
-                        file_path,
-                        format="JPEG",
-                        quality=65,       # sweet spot
-                        optimize=True,
-                        progressive=True
-                    )
-
-                    print("Saved:", file_path)
-                    print("New size (KB):", os.path.getsize(file_path) / 1024)
+        print("Saved:", file_path)
+        print("New size (KB):", os.path.getsize(file_path) / 1024)
 
     # --------------- UPDATE COUNTS ---------------
     image_record.total_eggs = egg_count
