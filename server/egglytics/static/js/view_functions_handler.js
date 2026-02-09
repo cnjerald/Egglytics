@@ -65,45 +65,50 @@ $("#notice-box").hide();
     const poller = setInterval(updateBatchStatus, 5000);
     
     function updateBatchStatus() {
-        fetch('/batch/status/latest/')
+        fetch('/batch/status/')
             .then(res => res.json())
-            .then(batch => {
-                if (!batch || !batch.id) {
+            .then(batches => {
+                if (!batches || batches.length === 0) {
                     $("#notice-box").html("<h5>No batches found</h5>").show();
                     return;
                 }
 
-                const row = document.querySelector(`#batchTable tbody tr[data-batch-id="${batch.id}"]`);
-                if (row) {
-                    const totalEggsCell = row.children[3]; // 4th column
-                    totalEggsCell.textContent = batch.total_eggs;
+                // Update ALL batch rows with current status
+                batches.forEach(batch => {
+                    const row = document.querySelector(`#batchTable tbody tr[data-batch-id="${batch.id}"]`);
+                    if (row) {
+                        const totalEggsCell = row.children[3]; // 4th column - eggs
+                        totalEggsCell.textContent = batch.total_eggs;
 
-                    const statusCell = row.children[4]; // 5th column
-                    if (batch.is_complete && !batch.has_fail_present) {
-                        statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Complete! All images have been processed successfully</h5>").show();
+                        const statusCell = row.children[4]; // 5th column - status
+                        
+                        if (batch.is_complete && !batch.has_fail_present) {
+                            statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Complete! All images have been processed successfully</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else if (batch.is_complete) {
+                            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: red;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Complete! Some images have failed processing</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else if (batch.has_fail_present) {
+                            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Ongoing! Some images have failed processing</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else {
+                            statusCell.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
+                            $("#notice-box").html("<h5>Your images are being processed. The results are updated every 5 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
                         }
-                        clearInterval(poller); 
-                        localStorage.removeItem("flag");
-                    } else if (batch.is_complete) {
-                        statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: red;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Complete! Some images have failed processing</h5>").show();
-                        }
-                        clearInterval(poller); 
-                        localStorage.removeItem("flag");
-                    } else if (batch.has_fail_present) {
-                        statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Ongoing! Some images have failed processing</h5>").show();
-                        }
-                        localStorage.removeItem("flag");
-                    } else {
-                        statusCell.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
-                        $("#notice-box").html("<h5>Your images are being processed. The results are updated every 5 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
                     }
-                }
+                });
+                
+                // Recalculate header totals
+                recalcTotals();
             })
             .catch(err => console.error(err));
     }
