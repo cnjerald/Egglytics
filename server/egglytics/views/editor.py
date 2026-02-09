@@ -10,82 +10,76 @@
 
 
 from ._imports import *
-
+@transaction.atomic
 def add_egg_to_db_point(request, image_id):
-    if request.method == "POST":
-        try:
-            
-            data = json.loads(request.body.decode("utf-8"))
-            print("DEBUG POST DATA:", data)  # 👈 see what came in
-            x = data.get("x")
-            y = data.get("y")
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid method"}, status=405)
 
-            # Fetch the image entry
-            image = get_object_or_404(ImageDetails, image_id=image_id)
-            batch = image.batch
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        x = data.get("x")
+        y = data.get("y")
 
-            # Increment total eggs
-            image.total_eggs = (image.total_eggs or 0) + 1
-            image.save()
-            batch.total_eggs = (batch.total_eggs or 0) + 1
-            batch.save()
+        # 🔒 LOCK ROWS
+        image = ImageDetails.objects.select_for_update().get(image_id=image_id)
+        batch = BatchDetails.objects.select_for_update().get(id=image.batch_id)
 
-            point = AnnotationPoints.objects.create(
-                image_id=image_id,
-                x=x,
-                y=y,
-                is_original=False
-            )
+        # ✅ Create point FIRST (source of truth)
+        AnnotationPoints.objects.create(
+            image=image,
+            x=x,
+            y=y,
+            is_original=False
+        )
 
-            return JsonResponse({
-                "STATUS" : "HI"
-            })
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+        # ✅ Atomic increments (NO RACE CONDITION)
+        ImageDetails.objects.filter(pk=image.pk).update(total_eggs=F("total_eggs") + 1)
+        BatchDetails.objects.filter(pk=batch.pk).update(total_eggs=F("total_eggs") + 1)
 
-    return JsonResponse({"error": "Invalid method"}, status=405)
+        return JsonResponse({"STATUS": "Added"})
 
-
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+@transaction.atomic
 def remove_egg_from_db_point(request, image_id):
-    if request.method == "POST":
-        print("HIT!")
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            print("DEBUG POST DATA:", data)
+    if request.method != "POST":
+        return JsonResponse({"STATUS": "Invalid request"}, status=400)
 
-            x = data.get("x")
-            y = data.get("y")
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        x = data.get("x")
+        y = data.get("y")
 
-            # Try to get the point
-            point = AnnotationPoints.objects.filter(image_id = image_id, x=x, y=y).first()
+        # 🔒 Lock image & batch rows
+        image = ImageDetails.objects.select_for_update().get(image_id=image_id)
+        batch = BatchDetails.objects.select_for_update().get(id=image.batch_id)
 
-            if not point:
-                return JsonResponse({"STATUS": "Point not found"}, status=404)
+        point = AnnotationPoints.objects.select_for_update().filter(
+            image_id=image_id, x=x, y=y
+        ).first()
 
-            # Fetch the image entry
-            image = get_object_or_404(ImageDetails, image_id=image_id)
-            batch = image.batch
+        if not point:
+            return JsonResponse({"STATUS": "Point not found"}, status=404)
 
-            # Decrement total eggs
-            image.total_eggs = (image.total_eggs or 0) - 1
-            image.save()
-            batch.total_eggs = (batch.total_eggs or 0) - 1
-            batch.save()
+        # Handle delete logic
+        if point.is_original:
+            point.is_deleted = True
+            point.save()
+        else:
+            point.delete()
 
-            if point.is_original:
-                # mark as deleted instead of removing
-                print("[DEBUG]: CASE 1")
-                point.is_deleted = True
-                point.save()
-                return JsonResponse({"STATUS": "Deleted"})
-            else:
-                # actually remove the row
-                AnnotationPoints.objects.filter(image_id=image_id, x=x, y=y).delete()
-                return JsonResponse({"STATUS": "Deleted"})
-            
+        # Prevent negative counts
+        ImageDetails.objects.filter(pk=image.pk).update(
+            total_eggs=F("total_eggs") - 1
+        )
+        BatchDetails.objects.filter(pk=batch.pk).update(
+            total_eggs=F("total_eggs") - 1
+        )
 
-        except Exception as e:
-            return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
+        return JsonResponse({"STATUS": "Deleted"})
+
+    except Exception as e:
+        return JsonResponse({"STATUS": f"Error: {str(e)}"}, status=500)
 
     return JsonResponse({"STATUS": "Invalid request"}, status=400)
 def add_egg_to_db_rect(request, image_id):

@@ -143,14 +143,30 @@ def delete_batch(request, batch_id):
         try:
             batch = BatchDetails.objects.get(id=batch_id)
             images = ImageDetails.objects.filter(batch=batch)
+
+            # DELETE IMAGE FILES FROM DISK FIRST
+            for image in images:
+                if image.file_path:  # make sure path exists in DB
+                    image_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image.file_path)
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+
+            # Delete annotations
             AnnotationPoints.objects.filter(image__in=images).delete()
+
+            # Delete image records
             images.delete()
+
+            # Delete batch
             batch.delete()
+
             return JsonResponse({"success": True})
+
         except BatchDetails.DoesNotExist:
             return JsonResponse({"error": "Batch not found"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+
     return JsonResponse({"error": "Invalid method"}, status=405)
 
 def delete_image(request, image_id):
