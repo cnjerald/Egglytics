@@ -77,10 +77,10 @@ $("#notice-box").hide();
                 batches.forEach(batch => {
                     const row = document.querySelector(`#batchTable tbody tr[data-batch-id="${batch.id}"]`);
                     if (row) {
-                        const totalEggsCell = row.children[3]; // 4th column - eggs
+                        const totalEggsCell = row.children[4]; // 5th column - eggs
                         totalEggsCell.textContent = batch.total_eggs;
 
-                        const statusCell = row.children[4]; // 5th column - status
+                        const statusCell = row.children[5]; // 6th column - status
                         
                         if (batch.is_complete && !batch.has_fail_present) {
                             statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
@@ -177,7 +177,6 @@ $("#notice-box").hide();
             const popup = document.getElementById("popup");
             const popupText = document.getElementById("popup-text");
             const popupBatchName = document.getElementById("popup-batch-name");
-            const editBatchBtn = document.getElementById("edit-batch-btn");
             const popupImage = document.getElementById("popup-image");
             const popupDetails = document.getElementById("popup-details");
             
@@ -264,6 +263,7 @@ $("#notice-box").hide();
     // Advanced filtering: search + range filters
     const inputs = [
     "batchSearch",
+    "ownerSearch",
     "dateFrom",
     "dateTo",
     "imagesMin",
@@ -277,7 +277,8 @@ $("#notice-box").hide();
     });
 
     function applyFilters() {
-        const searchQuery = document.getElementById("batchSearch").value.toLowerCase();
+        const batchQuery = document.getElementById("batchSearch").value.toLowerCase();
+        const ownerQuery = document.getElementById("ownerSearch").value.toLowerCase();
         const dateFrom = document.getElementById("dateFrom").value ? new Date(document.getElementById("dateFrom").value) : null;
         const dateTo = document.getElementById("dateTo").value ? new Date(document.getElementById("dateTo").value) : null;
         const imagesMin = parseFloat(document.getElementById("imagesMin").value) || 0;
@@ -291,21 +292,23 @@ $("#notice-box").hide();
             const cells = row.children;
             const batchName = cells[0].textContent.toLowerCase();
             const dateText = cells[1].textContent.trim();
-            const totalImages = parseFloat(cells[2].textContent.trim()) || 0;
-            const totalEggs = parseFloat(cells[3].textContent.trim()) || 0;
+            const ownerName = cells[2].textContent.toLowerCase();
+            const totalImages = parseFloat(cells[3].textContent.trim()) || 0;
+            const totalEggs = parseFloat(cells[4].textContent.trim()) || 0;
 
             // Parse date (supports MM/DD/YYYY)
             const dateParts = dateText.split('/');
             const rowDate = new Date(`${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`);
 
             // Check filters
-            const matchesName = batchName.includes(searchQuery);
+            const matchesName = batchName.includes(batchQuery);
+            const matchesOwner = ownerName.includes(ownerQuery);
             const matchesDate =
             (!dateFrom || rowDate >= dateFrom) && (!dateTo || rowDate <= dateTo);
             const matchesImages = totalImages >= imagesMin && totalImages <= imagesMax;
             const matchesEggs = totalEggs >= eggsMin && totalEggs <= eggsMax;
 
-            const isMatch = matchesName && matchesDate && matchesImages && matchesEggs;
+            const isMatch = matchesName && matchesDate && matchesImages && matchesEggs && matchesOwner;
 
             // Show only rows that match all conditions
             if (isMatch) {
@@ -519,8 +522,8 @@ $("#notice-box").hide();
 
         document.querySelectorAll("#batchTable tbody tr").forEach(row => {
             if (row.style.display !== "none") {
-                totalImages += parseInt(row.children[2].innerText, 10) || 0;
-                totalEggs += parseInt(row.children[3].innerText, 10) || 0;
+                totalImages += parseInt(row.children[3].innerText, 10) || 0;
+                totalEggs += parseInt(row.children[4].innerText, 10) || 0;
             }
         });
 

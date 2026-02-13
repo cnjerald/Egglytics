@@ -75,9 +75,14 @@ def get_model_stats(model_name):
 
     MAE = total_abs_error / valid_image_count if valid_image_count else 0
 
+    count_accuracy = round(
+        (1 - abs(total_ground_truth - total_model_predictions) / total_ground_truth) * 100,
+        2
+    )
     return {
         "model": model_name,
         "total_images": total_images,
+        "count_accuracy" : count_accuracy,
         "total_ground_truth": total_ground_truth,
         "total_model_predictions": total_model_predictions,
         "TP": TP, "FP": FP, "FN": FN,
@@ -87,30 +92,6 @@ def get_model_stats(model_name):
         "MAE": round(MAE, 4),
     }
 
-def model_summary_view(request):
-    # Get all unique model names for the dropdown
-    models = EvaluationResult.objects.values_list('model_name', flat=True).distinct()
-    return render(request, 'metrics.html', {'models': models})
-
-def metric_ajax_view(request):
-    selected_names = request.GET.getlist('model')
-    results = EvaluationResult.objects.filter(model_name__in=selected_names)
-
-    comparison = []
-    for r in results:
-        comparison.append({
-            'model': r.model_name,
-            'total_images': r.total_images,
-            'total_ground_truth': r.gt_count,
-            'total_model_predictions': r.pred_count,
-            'TP': r.tp, 'FP': r.fp, 'FN': r.fn,
-            'precision': f"{r.precision:.2f}",
-            'recall': f"{r.recall:.2f}",
-            'f1_score': f"{r.f1:.2f}",
-            'MAE': f"{r.mae:.2f}"
-        })
-
-    return JsonResponse({'comparison': comparison})
 
 def metric_ajax(request):
     """Returns only the JSON data."""

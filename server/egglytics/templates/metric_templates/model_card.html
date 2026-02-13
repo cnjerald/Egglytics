@@ -10,8 +10,16 @@
             <strong>{{ stats.total_images }}</strong>
         </div>
         <div class="metric-row">
-            <span>Predictions</span>
+            <span> True Count</span>
+            <strong>{{ stats.total_ground_truth }}</strong>
+        </div>
+        <div class="metric-row">
+            <span> Model Count</span>
             <strong>{{ stats.total_model_predictions }}</strong>
+        </div>
+        <div class="metric-row">
+            <span> Count Accuracy </span>
+            <strong>{{ stats.count_accuracy }}%</strong>
         </div>
         <div class="metric-row">
             <span>Precision</span>

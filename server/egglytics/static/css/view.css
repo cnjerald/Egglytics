@@ -257,7 +257,6 @@
                 display: inline-block;
                 padding-right: 30px;
             }
-
             #edit-batch-btn {
                 display: inline-block;
                 position: static;
@@ -345,4 +344,11 @@
 #custom-context-menu li i {
     width: 20px;
     text-align: center;
+}
+
+.truncate {
+    max-width: 10px;      /* adjust width */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
