@@ -14,60 +14,45 @@
     <header class="toolbar">
         <button id="sidebarToggle" class="menu-btn">☰</button>
 
+        {% include 'editor_templates/modal_instructions.html' %}
         
-        <div id="instructions-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-button">&times;</span> 
-                <h3>Editor Shortcuts & Controls</h3>
-                <div class="keyboard-panel">
-                    <div class="instruction-line">
-                        <span class="key-hint">Q</span> - DEBUG PIXEL LOC
-                    </div>
-                    <div class="instruction-line">
-                        <span class="key-hint">W</span> - MARK GRID AS DONE/UNDONE
-                    </div>
-                    <div class="instruction-line">
-                        <span class="key-hint">E</span> - CREATE DOT
-                    </div>
-                    <div class="instruction-line">
-                        <span class="key-hint">R</span> - REMOVE DOT
-                    </div>
-                    
-                    <div class="instruction-line pan-line">
-                        <span class="key-hint">RMB</span> + DRAG - PAN IMAGE
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <button id="open-instructions" class="btn btn-info">
-            Instructions
-        </button>
         <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
     </header>
 
     <div class="app">
         <aside id="sidebar" class="sidebar">
-            <h3>
-                Current Mode:
-                <span id="current-mode" style="color:#6cff6c;">Point</span>
-            </h3>
-            <button id="cancel-recalibration" hidden> Cancel Recalibration </button>
-            <h3 id="toolsText">Tools [CENTER THIS]</h3>
 
+            <button id="open-instructions" class="instructions-button">
+                <h2>CONTROLS</h2>
+            </button>
+
+            <div class="annotation-mode">
+                <h3>
+                    Current Mode:<br>
+                    <span id="current-mode" style="color:#6cff6c;">Point</span>
+                </h3>
+            </div>
+
+            <button id="cancel-recalibration" hidden> Cancel Recalibration </button>
+            <hr class="sidebar-divider">
+            <h3 id="toolsText">Annotation Modes</h3>
             <div class = "sidebar-controls">
                 <button type="button" class="tools-button" id="point-btn">
                     <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
+                    <span class="button-text">Points</span>
                 </button>
 
                 <button type="button" class="tools-button" id="rect-btn">
                     <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
+                    <span class="button-text">Boxes</span>
                 </button>
             </div>
-            <h3 id = "annotation-msg">Grid Tools[MEE TOO and those buttons below!]</h4>
+            <hr class="sidebar-divider">
+            <h3 id = "annotation-msg">Grid Tools</h4>
             <div class = "sidebar-controls">
                 <button type="button" class="tools-button" id="grid-btn">
                     <img src="{% static 'img/grid.png' %}" alt="grids" class="button-photo">
+                    <span class="button-text">Show Grids</span>
                 </button>
                 <ul id="messages" class="annotation-list"></ul>
             </div>
@@ -83,8 +68,7 @@
 
             <!--  viewer lives here -->
 
-            <div id="viewer"
-                data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
+            <div id="viewer" data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
             </div>
         </main>
     </div>

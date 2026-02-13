@@ -348,8 +348,7 @@ $(document).ready(function () {
         const targetRow = rows[index_holder];
 
         if (targetRow) {
-            // Add a green highlight (e.g., light green background)
-            targetRow.style.backgroundColor = "#c8e6c9"; // soft green tone
+            targetRow.style.backgroundColor = "#c8e6c9";
         }
     });
     function showDeleteConfirmation(index) {
@@ -359,15 +358,12 @@ $(document).ready(function () {
             return;
         }
 
-        // Remove any existing modal first (just in case)
         const existingModal = mainContent.querySelector(".confirm-modal");
         if (existingModal) existingModal.remove();
 
-        // Create modal
         const confirmModal = document.createElement("div");
         confirmModal.classList.add("confirm-modal");
 
-        // Build inner content with unique scoped elements (no IDs)
         const content = document.createElement("div");
         content.classList.add("confirm-content");
         content.innerHTML = `
@@ -380,7 +376,6 @@ $(document).ready(function () {
         confirmModal.appendChild(content);
         mainContent.appendChild(confirmModal);
 
-        // Attach event handlers safely
         const yesBtn = content.querySelector(".confirm-yes");
         const cancelBtn = content.querySelector(".confirm-cancel");
 
