@@ -5,7 +5,7 @@ import { GridManager } from './image_editor/grid.js';
 import { UIManager } from './image_editor/ui.js';
 import { addPointToServer, removePointFromServer, addRectToServer, removeRectFromServer } from './image_editor/api.js';
 import { PolygonManager } from './image_editor/polygonManager.js';
-import { KEYBINDS } from './other/keybinds.js';
+import { KEYBINDS } from './config/keybinds.js';
 
 $(document).ready(function () {
     // State
