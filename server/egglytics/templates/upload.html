@@ -64,7 +64,6 @@ id = myfile
       <div class="modal-footer">
         <button
           class="btn btn-secondary"
-          onclick="resetBars()"
           id="resetBtn"
           style="display: none"
         >
@@ -72,7 +71,6 @@ id = myfile
         </button>
         <button
           class="btn btn-secondary"
-          onclick="resetImage()"
           id="resetPhotoBtn"
           style="display: none"
         >
@@ -80,7 +78,6 @@ id = myfile
         </button>
         <button
           class="btn btn-primary"
-          onclick="performCrop()"
           id="cropBtn"
           style="display: none"
         >
@@ -144,7 +141,7 @@ id = myfile
             </th>
             <th>Crop</th>
               <th>
-                Mode
+                Predictions:
                 <label class="selection">
                   <select id="all_model" class="limited-width-select">
                     <!-- populated by JS -->
@@ -174,6 +171,5 @@ id = myfile
   <form style="display: none">{% csrf_token %}</form>
 </div>
 
-<script src="{% static 'js/image_upload_handler.js' %}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-<script src="{% static 'js/upload_crop_handler.js' %}"></script>
+<script type="module" src="{% static 'js/image_upload_handler.js' %}"></script>
+

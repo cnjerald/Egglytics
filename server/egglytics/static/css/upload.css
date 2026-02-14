@@ -6,7 +6,7 @@
   background-color: #ffffff;
   padding: 30px;
 
-  height: 90vh;
+  height: auto;
   box-sizing: border-box;
 }
 
@@ -16,8 +16,8 @@
   font-family: Arial;
   color: #666;
   margin: 1%;
-  min-width: 50vw;
-  min-height: 25vh;
+  min-width: 45vw;
+  min-height: 20vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
