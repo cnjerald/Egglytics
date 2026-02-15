@@ -9,15 +9,20 @@
 #
 
 from ._imports import *
+import warnings
+
+# Disable the DecompressionBombError and Warning
+Image.MAX_IMAGE_PIXELS = None 
+
+# Suppress the warning if it still appears in certain contexts
+warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
 def upload(request):
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
         # Get the current time now, creating a unique key
-        header = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # By now this is set to incognito
-        owner = request.user.username if request.user.is_authenticated else 'incognito'
-        # This just concats a unique key
-        batch_name = f"{header}_{owner}"
+        batch_name = request.POST.get("batch_name")
+        owner = request.POST.get("user")
+
         date = timezone.now()
 
         # This is the total images
@@ -82,7 +87,7 @@ def recalibrate(request):
             image_path = os.path.join(
                 settings.MEDIA_ROOT,      # /full/system/path/media
                 "uploads",                # your folder
-                image_obj.image_name      # filename from DB
+                image_obj.file_path      # filename from DB
             )
 
             model = image_obj.model_used
@@ -124,6 +129,16 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     data = None
     status_code = None
 
+        # --------------- GET EXISTING IMAGE RECORD ---------------
+    try:
+        image_record = ImageDetails.objects.get(image_id=image_id)
+    except ImageDetails.DoesNotExist:
+        print("Image record missing during recalibration")
+        return
+    
+    image_record.is_processed = False
+    image_record.save()
+
     # ---------------- AI CALL ----------------
     try:
         match model:
@@ -162,13 +177,6 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     print(f"[Recalibrate] Points: {len(points)}, Eggs: {egg_count}")
 
-    # --------------- GET EXISTING IMAGE RECORD ---------------
-    try:
-        image_record = ImageDetails.objects.get(image_id=image_id)
-    except ImageDetails.DoesNotExist:
-        print("Image record missing during recalibration")
-        return
-    
     # ------------- GET BATCH ID FROM IMAGE RECORD
     batch = image_record.batch
     batch.total_eggs = max(0, batch.total_eggs - image_record.total_eggs + egg_count)
@@ -184,23 +192,40 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
             image=image_record,
             x=p[0],
             y=p[1],
-            is_original=False  # recalibrated result
+            is_original=True # recalibrated result remains true since it is the machine predictions..
         )
 
     print("New annotations saved")
 
+
     # --------------- UPDATE IMAGE FILE ---------------
     if image_b64:
+        if "," in image_b64:
+            image_b64 = image_b64.split(",")[1]
+
         img_data = base64.b64decode(image_b64)
+        image = Image.open(BytesIO(img_data))
+
+        print("Resolution:", image.size)
+
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+
         upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
         os.makedirs(upload_dir, exist_ok=True)
 
-        file_path = os.path.join(upload_dir, image_record.image_name)
+        file_path = os.path.join(upload_dir, image_record.file_path)
 
-        with open(file_path, "wb") as f_out:
-            f_out.write(img_data)
+        image.save(
+            file_path,
+            format="JPEG",
+            quality=65,
+            optimize=True,
+            progressive=True
+        )
 
-        print("Image file replaced")
+        print("Saved:", file_path)
+        print("New size (KB):", os.path.getsize(file_path) / 1024)
 
     # --------------- UPDATE COUNTS ---------------
     image_record.total_eggs = egg_count
@@ -226,10 +251,11 @@ def process_images(batch, files_data, header):
 
             # Params:
             # File name (STRING) ->  The name of the file saved on media/uploads\
-            # image_name (STRING) -> The name of the image (NOTE TO JERALD PLS CHANGE THIS SO USER CAN RENAME FILES IN FUTURE)
+            # image_name (STRING) -> The name of the image 
             # encoded (STRING) -> Image in base64
             # mode (Binary STRING) -> If Micro or Macro
-            file_name = f"{header}_{i}"
+                # Force JPEG output (smaller)
+            file_name = f"{header}_{uuid.uuid4().hex}"
             image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
 
@@ -240,6 +266,7 @@ def process_images(batch, files_data, header):
             image_record = ImageDetails.objects.create(
                 batch = batch,
                 image_name = image_name,
+                file_path = image_name,
                 total_eggs = 0,
                 total_hatched = 0,
                 img_type = mode,
@@ -294,12 +321,40 @@ def process_images(batch, files_data, header):
             image_record.save()
             
             if image_b64:
+                # Remove header if present
+                if "," in image_b64:
+                    image_b64 = image_b64.split(",")[1]
+
+                # Decode base64
                 img_data = base64.b64decode(image_b64)
+
+                # Open with Pillow
+                image = Image.open(BytesIO(img_data))
+
+                # Keep original resolution
+                print("Resolution:", image.size)
+
+                # Convert to RGB if needed (PNG with alpha → JPEG compatible)
+                if image.mode in ("RGBA", "P"):
+                    image = image.convert("RGB")
+
+                # Prepare folder
                 upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
                 os.makedirs(upload_dir, exist_ok=True)
-                file_path = os.path.join(upload_dir, image_record.image_name)
-                with open(file_path, "wb") as f_out:
-                    f_out.write(img_data)
+
+                file_path = os.path.join(upload_dir, image_name)
+
+                # SAVE WITH COMPRESSION
+                image.save(
+                    file_path,
+                    format="JPEG",
+                    quality=65,       # sweet spot
+                    optimize=True,
+                    progressive=True
+                )
+
+                print("Saved:", file_path)
+                print("New size (KB):", os.path.getsize(file_path) / 1024)
 
             #  Download processed image from S3
             #s3_output_path = data.get("s3_output_path")  # processed image path

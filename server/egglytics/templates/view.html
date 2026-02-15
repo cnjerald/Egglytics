@@ -14,6 +14,8 @@
         <div class="table-controls">
             <div class="filter-group">
                 <input type="text" id="batchSearch" placeholder="Search Batch Name..." />
+                <input type="text" id="ownerSearch" placeholder="Search Batch Owner..." />
+
 
                 <div class="filter-item">
                 <label>Date Updated:</label>
@@ -39,6 +41,7 @@
                 <tr>
                     <th>Batch Name</th>
                     <th>Date Updated</th>
+                    <th>Created By</th>
                     <th id="total-images-header">Total Images: 0</th>
                     <th id="total-eggs-header">Total Eggs: 0</th>
                     <th>Processing Status</th>
@@ -48,8 +51,9 @@
             <tbody>
                 {% for batch in batches %}
                 <tr data-batch-id="{{ batch.id }}">
-                    <td>{{ batch.batch_name }}</td>
+                    <td class="truncate">{{ batch.batch_name }}</td>
                     <td>{{ batch.date_updated|date:"m/d/Y" }}</td>
+                    <td>{{ batch.owner}}</td>
                     <td>{{ batch.total_images }}</td>
                     <td>{{ batch.total_eggs }}</td>
                     <td>
@@ -71,42 +75,71 @@
             </tbody>
         </table>
 
+        <div class="pagination-controls">
+            <button id="prevPage">Previous</button>
+            <span id="pageInfo"></span>
+            <button id="nextPage">Next</button>
+        </div>
+        <div class="pagination-controls">
+            <div class="rows-per-page">
+                <label for="rowsPerPageSelect">Rows per page:</label>
+                <select id="rowsPerPageSelect">
+                    <option value="5" selected>5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Popup Modal -->
         <div class="popup" id="popup">
-        <div class="popup-content">
-            <h3 id="popup-text">
-                Image Details for: 
-                <span id="popup-batch-name-container">
-                    <span id="popup-batch-name"></span>
-                    <button id="edit-batch-btn">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </span>
-            </h3>
-            <div class="popup-holder">
-            <div class="half">
-                <img id="popup-image" src="" alt="Image Preview" class="button-photo">
+            <div class="popup-content">
+                <h3 id="popup-text">
+                    Image Details for: 
+                    <span id="popup-batch-name-container">
+                        <span id="popup-batch-name"></span>
+                        <button id="edit-batch-btn">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </span>
+                </h3>
+                <div class="popup-holder">
+                <div class="half">
+                    <img id="popup-image" src="" alt="Image Preview" class="popup-photo">
+                </div>
+                <div class="half text-side">
+                    <table id="popup-table">
+                    <thead>
+                        <tr>
+                        <th data-column="image_name">Image</th>
+                        <th data-column="total_eggs" id="eggs-header"> Eggs </th>
+                        <th data-column="total_hatched" id="hatched-header"> Hatched </th>
+                        <th data-column="img_type">Type</th>
+                        <th>Edit</th>
+                        <th>Delete</th> <!-- New column -->
+                        </tr>
+                    </thead>
+                    <tbody id="popup-details">
+                        <!-- JS will fill this -->
+                    </tbody>
+                    </table>
+                </div>
+                </div>
+                <button class="close-btn" onclick="closePopup()">Close</button>
             </div>
-            <div class="half text-side">
-                <table id="popup-table">
-                <thead>
-                    <tr>
-                    <th data-column="image_name">Image</th>
-                    <th data-column="total_eggs" id="eggs-header"> Eggs </th>
-                    <th data-column="total_hatched" id="hatched-header"> Hatched </th>
-                    <th data-column="img_type">Type</th>
-                    <th>Edit</th>
-                    <th>Delete</th> <!-- New column -->
-                    </tr>
-                </thead>
-                <tbody id="popup-details">
-                    <!-- JS will fill this -->
-                </tbody>
-                </table>
-            </div>
-            </div>
-            <button class="close-btn" onclick="closePopup()">Close</button>
         </div>
+
+        <!-- Selection Option -->
+        <div id="custom-context-menu" style="display:none; position: fixed; z-index: 10000; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); min-width: 150px;">
+            <ul style="list-style: none; margin: 0; padding: 5px; font-family: Arial, sans-serif;">
+                <li id="menu-rename" style="padding: 8px 12px; cursor: pointer; transition: background 0.2s;">
+                    <i class="fas fa-edit" style="margin-right: 8px;"></i> Rename Batch
+                </li>
+                <li id="menu-delete" style="padding: 8px 12px; cursor: pointer; color: #dc3545; transition: background 0.2s;">
+                    <i class="fas fa-trash" style="margin-right: 8px;"></i> Delete Batch
+                </li>
+            </ul>
         </div>
     </body>
 

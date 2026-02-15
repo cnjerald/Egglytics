@@ -17,3 +17,5 @@ Thumbs.db
 
 # Static File
 server/egglytics/static/uploads
+
+venv

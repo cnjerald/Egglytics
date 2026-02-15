@@ -17,13 +17,17 @@ urlpatterns = [
     path('edit-batch-name/<int:batch_id>/', view.edit_batch_name, name='edit_batch_name'),
     path("update-hatched/<int:image_id>/", view.update_hatched, name="update_hatched"),
     path("editor/<int:image_id>/", view.edit, name="edit"),
-    
+    path("update-image-name/<int:image_id>/", view.update_image_name, name="update_image_name"),
+
 
     # EDITOR FUNCTION PAGE
     path("add_egg_to_db_point/<int:image_id>/", editor.add_egg_to_db_point, name="add_egg_to_db_point"),
     path("remove_egg_from_db_point/<int:image_id>/", editor.remove_egg_from_db_point, name="remove_egg_from_db_point"),
     path("add_egg_to_db_rect/<int:image_id>/", editor.add_egg_to_db_rect, name="add_egg_to_db_rect"),
     path("remove_egg_from_db_rect/<int:image_id>/", editor.remove_egg_from_db_rect, name="remove_egg_from_db_rect"),
+    # Grids
+    path("toggleGrid/<int:image_id>/",editor.toggleGrid, name = "toggleGrid"),
+
 
     # METRICS PAGE
     path("metric/",metrics.metric,name="metric"),
@@ -34,10 +38,12 @@ urlpatterns = [
     path("export/date-range/", export.export_date_range, name="export_date_range"),
     path("export/export_image_count/", export.export_image_count, name="export_image_count"),
     path("export/download/", export.export_dataset, name="export_dataset"),
+    path("export/download_csv/", export.export_dataset_csv, name="export_dataset_user"),
 
     # RECALIBRATION
-    # RECALIBRATION
     path("recalibrate/", upload.recalibrate, name="recalibrate"),
+
+    
 
 
 ]

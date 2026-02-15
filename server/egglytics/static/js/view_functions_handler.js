@@ -1,3 +1,49 @@
+// FOR PAGINATION
+let currentPage = 1;
+let rowsPerPage = 5;
+
+function paginateTable() {
+    const allRows = Array.from(document.querySelectorAll("#batchTable tbody tr"));
+    const visibleRows = allRows.filter(row => row.getAttribute('data-filtered-out') !== 'true');
+    
+    const totalPages = Math.ceil(visibleRows.length / rowsPerPage) || 1;
+    
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    allRows.forEach(row => row.style.display = "none");
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    
+    visibleRows.slice(start, end).forEach(row => {
+        row.style.display = "";
+    });
+
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
+
+    document.getElementById("prevPage").disabled = (currentPage === 1);
+    document.getElementById("nextPage").disabled = (currentPage === totalPages);
+}
+
+document.getElementById("rowsPerPageSelect").addEventListener("change", function() {
+    const value = this.value;
+    rowsPerPage = parseInt(value, 10);
+    
+    currentPage = 1; // Reset to first page
+    paginateTable();
+});
+
+document.getElementById("prevPage").addEventListener("click", () => {
+    currentPage--;
+    paginateTable();
+});
+
+document.getElementById("nextPage").addEventListener("click", () => {
+    currentPage++;
+    paginateTable();
+});
+
 $("#notice-box").hide();
     let flag = JSON.parse(localStorage.getItem("flag"));
     let totalHatched = 0;
@@ -8,7 +54,7 @@ $("#notice-box").hide();
     if (flag?.processingActive) {
         $("#notice-box").html(`
             <h5>
-                Your images are being processed. The results are updated every 30 seconds.<br>
+                Your images are being processed. The results are updated every 5 seconds.<br>
                 Processing Status: <i class="fas fa-spinner fa-spin" style="color: orange;"></i>
             </h5>
         `).show();
@@ -16,48 +62,53 @@ $("#notice-box").hide();
 
     // Periodic batch status update
     updateBatchStatus(); // immediate call
-    const poller = setInterval(updateBatchStatus, 15000);
+    const poller = setInterval(updateBatchStatus, 5000);
     
     function updateBatchStatus() {
-        fetch('/batch/status/latest/')
+        fetch('/batch/status/')
             .then(res => res.json())
-            .then(batch => {
-                if (!batch || !batch.id) {
+            .then(batches => {
+                if (!batches || batches.length === 0) {
                     $("#notice-box").html("<h5>No batches found</h5>").show();
                     return;
                 }
 
-                const row = document.querySelector(`#batchTable tbody tr[data-batch-id="${batch.id}"]`);
-                if (row) {
-                    const totalEggsCell = row.children[3]; // 4th column
-                    totalEggsCell.textContent = batch.total_eggs;
+                // Update ALL batch rows with current status
+                batches.forEach(batch => {
+                    const row = document.querySelector(`#batchTable tbody tr[data-batch-id="${batch.id}"]`);
+                    if (row) {
+                        const totalEggsCell = row.children[4]; // 5th column - eggs
+                        totalEggsCell.textContent = batch.total_eggs;
 
-                    const statusCell = row.children[4]; // 5th column
-                    if (batch.is_complete && !batch.has_fail_present) {
-                        statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Complete! All images have been processed successfully</h5>").show();
+                        const statusCell = row.children[5]; // 6th column - status
+                        
+                        if (batch.is_complete && !batch.has_fail_present) {
+                            statusCell.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Complete! All images have been processed successfully</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else if (batch.is_complete) {
+                            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: red;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Complete! Some images have failed processing</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else if (batch.has_fail_present) {
+                            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
+                            if (getFlag()?.processingActive) {
+                                $("#notice-box").html("<h5>Processing Ongoing! Some images have failed processing</h5>").show();
+                            }
+                            localStorage.removeItem("flag");
+                        } else {
+                            statusCell.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
+                            $("#notice-box").html("<h5>Your images are being processed. The results are updated every 5 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
                         }
-                        clearInterval(poller); 
-                        localStorage.removeItem("flag");
-                    } else if (batch.is_complete) {
-                        statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: red;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Complete! Some images have failed processing</h5>").show();
-                        }
-                        clearInterval(poller); 
-                        localStorage.removeItem("flag");
-                    } else if (batch.has_fail_present) {
-                        statusCell.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i>';
-                        if (getFlag()?.processingActive) {
-                            $("#notice-box").html("<h5>Processing Ongoing! Some images have failed processing</h5>").show();
-                        }
-                        localStorage.removeItem("flag");
-                    } else {
-                        statusCell.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: orange;"></i>';
-                        $("#notice-box").html("<h5>Your images are being processed. The results are updated every 30 seconds.<br>Processing Status: <i class='fas fa-spinner fa-spin' style='color: orange;'></i></h5>").show();
                     }
-                }
+                });
+                
+                // Recalculate header totals
+                recalcTotals();
             })
             .catch(err => console.error(err));
     }
@@ -126,9 +177,9 @@ $("#notice-box").hide();
             const popup = document.getElementById("popup");
             const popupText = document.getElementById("popup-text");
             const popupBatchName = document.getElementById("popup-batch-name");
-            const editBatchBtn = document.getElementById("edit-batch-btn");
             const popupImage = document.getElementById("popup-image");
             const popupDetails = document.getElementById("popup-details");
+            
 
             // Set popup header
             popup.dataset.batchId = batchId; // store batch id in popup
@@ -155,20 +206,33 @@ $("#notice-box").hide();
                         rowsHTML += `
                             <tr class="image-details" 
                                 data-image-name="${img.image_name}" 
-                                data-image-id="${img.image_id}">
-                                <td>${img.image_name}</td>
+                                data-image-id="${img.image_id}"
+                                data-image-path="${img.image_path}">
+                                
+                                <td class="filename"
+                                    data-image-id="${img.image_id}">
+                                    ${img.image_name}
+                                </td>
                                 <td>${img.total_eggs}</td>
+                                
                                 <td class="editable-hatched"
                                     data-image-id="${img.image_id}">
                                     ${img.total_hatched}
                                 </td>
+                                
                                 <td>${img.img_type}</td>
+                                
                                 <td>
-                                    <button class="edit-btn" 
-                                        onclick="event.stopPropagation(); window.location.href='/editor/${img.image_id}/'">
-                                        Edit
-                                    </button>
+                                    ${
+                                        img.is_processed
+                                            ? `<button class="edit-btn"
+                                                onclick="event.stopPropagation(); window.location.href='/editor/${img.image_id}/'">
+                                                Edit
+                                            </button>`
+                                            : `<h5 style="margin:0;color:#888;">IN PROCESS</h5>`
+                                    }
                                 </td>
+                                
                                 <td>
                                     <button class="delete-btn">
                                         <i class="fas fa-trash"></i>
@@ -177,6 +241,7 @@ $("#notice-box").hide();
                             </tr>
                         `;
                     });
+
 
                     popupDetails.innerHTML = rowsHTML;
                 })
@@ -190,13 +255,15 @@ $("#notice-box").hide();
 
     // Change image on click inside popup
     $(document).on("click", ".image-details", function () {
-        const imageName = $(this).data("image-name");
-        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${imageName}`);
+        const image_path = $(this).attr("data-image-path");
+        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${image_path}`);
     });
+
 
     // Advanced filtering: search + range filters
     const inputs = [
     "batchSearch",
+    "ownerSearch",
     "dateFrom",
     "dateTo",
     "imagesMin",
@@ -210,7 +277,8 @@ $("#notice-box").hide();
     });
 
     function applyFilters() {
-        const searchQuery = document.getElementById("batchSearch").value.toLowerCase();
+        const batchQuery = document.getElementById("batchSearch").value.toLowerCase();
+        const ownerQuery = document.getElementById("ownerSearch").value.toLowerCase();
         const dateFrom = document.getElementById("dateFrom").value ? new Date(document.getElementById("dateFrom").value) : null;
         const dateTo = document.getElementById("dateTo").value ? new Date(document.getElementById("dateTo").value) : null;
         const imagesMin = parseFloat(document.getElementById("imagesMin").value) || 0;
@@ -224,25 +292,37 @@ $("#notice-box").hide();
             const cells = row.children;
             const batchName = cells[0].textContent.toLowerCase();
             const dateText = cells[1].textContent.trim();
-            const totalImages = parseFloat(cells[2].textContent.trim()) || 0;
-            const totalEggs = parseFloat(cells[3].textContent.trim()) || 0;
+            const ownerName = cells[2].textContent.toLowerCase();
+            const totalImages = parseFloat(cells[3].textContent.trim()) || 0;
+            const totalEggs = parseFloat(cells[4].textContent.trim()) || 0;
 
             // Parse date (supports MM/DD/YYYY)
             const dateParts = dateText.split('/');
             const rowDate = new Date(`${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`);
 
             // Check filters
-            const matchesName = batchName.includes(searchQuery);
+            const matchesName = batchName.includes(batchQuery);
+            const matchesOwner = ownerName.includes(ownerQuery);
             const matchesDate =
             (!dateFrom || rowDate >= dateFrom) && (!dateTo || rowDate <= dateTo);
             const matchesImages = totalImages >= imagesMin && totalImages <= imagesMax;
             const matchesEggs = totalEggs >= eggsMin && totalEggs <= eggsMax;
 
+            const isMatch = matchesName && matchesDate && matchesImages && matchesEggs && matchesOwner;
+
             // Show only rows that match all conditions
-            row.style.display = matchesName && matchesDate && matchesImages && matchesEggs ? "" : "none";
+            if (isMatch) {
+                row.setAttribute('data-filtered-out', 'false');
+            } else {
+                row.setAttribute('data-filtered-out', 'true');
+            }
         });
+        currentPage = 1; // Reset to page 1 when filtering
+        paginateTable();
         recalcTotals();
     }
+
+    document.addEventListener("DOMContentLoaded", paginateTable);
 
     document.querySelectorAll(".delete-btn").forEach(btn => {
         btn.addEventListener("click", (event) => {
@@ -258,6 +338,7 @@ $("#notice-box").hide();
                 }).then(response => {
                     if (response.ok) {
                         btn.closest("tr").remove();
+                        recalcTotals();
                     } else {
                         alert("Failed to delete batch.");
                     }
@@ -363,6 +444,7 @@ $("#notice-box").hide();
                 batchRow.find("td:nth-child(3)").text(data.new_total_images);
                 batchRow.find("td:nth-child(4)").text(data.new_total_eggs);
             }
+            recalcTotals();
         })
         .catch(err => console.error(err));
     });
@@ -375,9 +457,10 @@ $("#notice-box").hide();
     editBatchBtn.addEventListener("click", () => {
         const currentName = popupBatchName.textContent;
         
+        editBatchBtn.style.display = "none";
         // Replace text with input
         popupBatchName.innerHTML = `
-            <input type="text" id="batch-name-input" value="${currentName}" />
+            <input type="text" id="batch-name-input" value="${currentName}" style="display: inline-block;"/>
             <span id="batch-name-edit-controls">
                 <button class="save-btn">&#10003;</button>
                 <button class="cancel-btn">&#10005;</button>
@@ -412,7 +495,8 @@ $("#notice-box").hide();
             .then(data => {
                 if (data.success) {
                     popupBatchName.textContent = newName;
-
+                    // Explicitly show the edit button again
+                    editBatchBtn.style.display = "inline-block";
                     // Also update main batch table
                     const batchRow = document.querySelector(`#batchTable tbody tr[data-batch-id="${batchId}"]`);
                     batchRow.children[0].textContent = newName;
@@ -426,6 +510,9 @@ $("#notice-box").hide();
         // Cancel editing
         cancelBtn.addEventListener("click", () => {
             popupBatchName.textContent = currentName;
+
+            // Explicitly show the edit button again
+            editBatchBtn.style.display = "inline-block";
         });
     });
 
@@ -435,8 +522,8 @@ $("#notice-box").hide();
 
         document.querySelectorAll("#batchTable tbody tr").forEach(row => {
             if (row.style.display !== "none") {
-                totalImages += parseInt(row.children[2].innerText, 10) || 0;
-                totalEggs += parseInt(row.children[3].innerText, 10) || 0;
+                totalImages += parseInt(row.children[3].innerText, 10) || 0;
+                totalEggs += parseInt(row.children[4].innerText, 10) || 0;
             }
         });
 
@@ -450,83 +537,203 @@ $("#notice-box").hide();
     function getFlag() {
         return JSON.parse(localStorage.getItem("flag"));
     }
-
     document.addEventListener("dblclick", function (e) {
-    const cell = e.target;
+        const cell = e.target;
 
-    if (!cell.classList.contains("editable-hatched")) return;
+        if (!cell.classList.contains("filename")) return;
 
-    const imageId = cell.dataset.imageId;
-    const oldValue = parseInt(cell.textContent.trim(), 10) || 0;
+        const imageId = cell.dataset.imageId;
+        const oldName = cell.textContent.trim();
 
-    // Prevent multiple inputs
-    if (cell.querySelector("input")) return;
+        if (cell.querySelector("input")) return; // prevent duplicates
 
-    const input = document.createElement("input");
-    input.type = "number";
-    input.min = 0;
-    input.value = oldValue;
-    input.style.width = "60px";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = oldName;
+        input.style.width = "140px";
 
-    cell.textContent = "";
-    cell.appendChild(input);
-    input.focus();
-    input.select();
+        cell.textContent = "";
+        cell.appendChild(input);
+        input.focus();
+        input.select();
 
-    let saved = false;
+        let saved = false;
 
-    function save() {
-        if (saved) return;
-        saved = true;
+        function save() {
+            if (saved) return;
+            saved = true;
 
-        const newValue = input.value;
+            const newName = input.value.trim();
 
-        if (newValue === "" || parseInt(newValue) === oldValue) {
-            cell.textContent = oldValue;
-            return;
+            if (!newName || newName === oldName) {
+                cell.textContent = oldName;
+                return;
+            }
+
+            fetch(`/update-image-name/${imageId}/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify({ image_name: newName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    cell.textContent = newName;
+
+                    // 🔥 Update stored name so preview click still works
+                    cell.closest("tr").dataset.imageName = newName;
+                } else {
+                    alert("Rename failed: " + (data.message || ""));
+                    cell.textContent = oldName;
+                }
+            })
+            .catch(() => cell.textContent = oldName);
         }
 
-        fetch(`/update-hatched/${imageId}/`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCSRFToken(),
-            },
-            body: JSON.stringify({ total_hatched: newValue })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                const newVal = parseInt(newValue, 10);
-
-                cell.textContent = newVal;
-
-                totalHatched = totalHatched - oldValue + newVal;
-                document.getElementById("hatched-header").textContent =
-                    `Hatched (Total: ${totalHatched})`;
-            } else {
-                cell.textContent = oldValue;
-            }
-        })
-        .catch(() => {
-            cell.textContent = oldValue;
-        });
-    }
-
-
-    input.addEventListener("keydown", (e) => {
+        input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") save();
-            if (e.key === "Escape") cell.textContent = oldValue;
+            if (e.key === "Escape") cell.textContent = oldName;
         });
 
         input.addEventListener("blur", save);
     });
 
 
+    // Context Menu for Batch Table Right-Click
+    (function() {
+        const contextMenu = document.getElementById('custom-context-menu');
+        let targetBatchId = null;
+        let targetRow = null;
 
+        // 1. Intercept Right-Click on Table Rows
+        document.querySelector("#batchTable tbody").addEventListener("contextmenu", function(e) {
+            const row = e.target.closest("tr");
+            if (!row) return;
 
+            // Stop the default browser right-click menu
+            e.preventDefault(); 
+            
+            targetBatchId = row.getAttribute("data-batch-id");
+            targetRow = row;
 
+            // Show and position the custom menu at the mouse cursor
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.style.top = `${e.clientY}px`;
+        });
 
+        // 2. Hide Menu when clicking elsewhere
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+        // 3. Handle the "Rename" Action
+        document.getElementById('menu-rename').addEventListener('click', () => {
+            if (!targetRow || !targetBatchId) return;
+            
+            const batchNameCell = targetRow.children[0]; // First column is batch name
+            const currentName = batchNameCell.textContent.trim();
+            
+            // Prevent multiple inputs
+            if (batchNameCell.querySelector("input")) return;
+            
+            // Create input field
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = currentName;
+            input.style.width = "100%";
+            input.style.padding = "4px";
+            input.style.fontSize = "14px";
+            
+            // Replace cell content with input
+            batchNameCell.textContent = "";
+            batchNameCell.appendChild(input);
+            input.focus();
+            input.select();
+            
+            let saved = false;
+            
+            function saveBatchName() {
+                if (saved) return;
+                saved = true;
+                
+                const newName = input.value.trim();
+                
+                // If empty or unchanged, revert
+                if (!newName || newName === currentName) {
+                    batchNameCell.textContent = currentName;
+                    return;
+                }
+                
+                // Update via API
+                fetch(`/edit-batch-name/${targetBatchId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                    body: JSON.stringify({ batch_name: newName }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        batchNameCell.textContent = newName;
+                    } else {
+                        alert("Failed to update batch name: " + (data.message || "Unknown error"));
+                        batchNameCell.textContent = currentName;
+                    }
+                })
+                .catch(err => {
+                    console.error("Error updating batch name:", err);
+                    alert("Failed to update batch name");
+                    batchNameCell.textContent = currentName;
+                });
+            }
+            
+            // Save on Enter, cancel on Escape
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") saveBatchName();
+                if (e.key === "Escape") {
+                    batchNameCell.textContent = currentName;
+                    saved = true; // Prevent blur from saving
+                }
+            });
+            
+            // Save on blur (clicking outside)
+            input.addEventListener("blur", saveBatchName);
+        });
+
+        // 4. Handle the "Delete" Action
+        document.getElementById('menu-delete').addEventListener('click', () => {
+            if (!targetBatchId || !targetRow) return;
+
+            if (confirm("Are you sure you want to delete this entire batch?")) {
+                fetch(`/delete-batch/${targetBatchId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                }).then(response => {
+                    if (response.ok) {
+                        targetRow.remove(); // Remove row from UI
+                        if (typeof recalcTotals === "function") recalcTotals();
+                    } else {
+                        alert("Failed to delete batch.");
+                    }
+                }).catch(err => console.error("Error:", err));
+            }
+        });
+
+        // Hover effect for menu items
+        contextMenu.querySelectorAll('li').forEach(item => {
+            item.onmouseover = () => item.style.backgroundColor = "#f1f1f1";
+            item.onmouseout = () => item.style.backgroundColor = "transparent";
+        });
+    })();
 
 
 
@@ -541,4 +748,3 @@ $("#notice-box").hide();
         }
         return '';
     }
-

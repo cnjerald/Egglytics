@@ -5,14 +5,9 @@ import { GridManager } from './image_editor/grid.js';
 import { UIManager } from './image_editor/ui.js';
 import { addPointToServer, removePointFromServer, addRectToServer, removeRectFromServer } from './image_editor/api.js';
 import { PolygonManager } from './image_editor/polygonManager.js';
+import { KEYBINDS } from './config/keybinds.js';
 
 $(document).ready(function () {
-    // Configuration
-    const ADD_ANNOTATION_KEY = "e";
-    const DELETE_ANNOTATION_KEY = "r";
-    const GRID_TOGGLE_KEY = "";
-    const FILL_CELL_KEY = "w";
-
     // State
     let isPointAnnotate = true;
     let isRectAnnotate = false;
@@ -22,12 +17,12 @@ $(document).ready(function () {
     let totalEggs = window.total_egg_count;
 
     // Get elements
-    const annotationListEl = document.getElementById("annotation-list");
+    const messageEl = document.getElementById("messages");
     const modeEl = document.getElementById("current-mode");
     const eggCountEl = document.getElementById("egg_count");
     const imageUrl = document.getElementById("viewer").dataset.imageUrl;
     const imageId = window.image_id;
-    console.log(imageId);
+    const savedGrids = window.grids
 
     // Initialize managers
     const viewer = initializeViewer(imageUrl);
@@ -35,15 +30,14 @@ $(document).ready(function () {
     const pointManager = new PointAnnotationManager(viewer, canvas);
     const rectManager = new RectAnnotationManager(viewer);
     const polygonManager = new PolygonManager(viewer, canvas);
-    const gridManager = new GridManager(viewer, 512);
-    const uiManager = new UIManager(annotationListEl, modeEl, eggCountEl);
+    const gridManager = new GridManager(viewer, 512, imageId);
+    const uiManager = new UIManager(messageEl, modeEl, eggCountEl);
 
     // Set initial egg count
     uiManager.setEggCount(totalEggs);
-
     // This sets on what is displayed on the screen..
     function redrawAll() {
-        
+        rectManager.hideAll();
         if(isPointAnnotate){
             pointManager.redraw();    // draw points on top
         } else if (isRecalibrate){
@@ -53,10 +47,8 @@ $(document).ready(function () {
         }
     }
         
-
     // Setup canvas resize and redraw
     setupCanvasResize(viewer, canvas, () => redrawAll());
-
 
 
     // Setup mouse tracker
@@ -84,9 +76,9 @@ $(document).ready(function () {
 
         console.log("Image size:", viewer.world.getItemAt(0).getContentSize());
         console.log("Sample point:", pointManager.getPoints()[0]);
+        setAnnotationMode({ point: true, modeName: "Point" })
 
-        uiManager.renderPointsList(viewer, pointManager, true);
-        uiManager.setupScrollPagination(pointManager);
+        gridManager.loadGrid(savedGrids);
     });
 
     // Canvas click handler
@@ -109,7 +101,7 @@ $(document).ready(function () {
 
     // Add annotation (E key)
     document.addEventListener("keydown", async (e) => {
-        if (e.key.toLowerCase() !== ADD_ANNOTATION_KEY) return;
+        if (e.key.toLowerCase() !== KEYBINDS.ADD_ANNOTATION) return;
 
         const pos = getMouseImagePosition(viewer, lastMousePos);
         if (!pos) return;
@@ -124,7 +116,6 @@ $(document).ready(function () {
             }
 
             pointManager.redraw();
-            uiManager.renderPointsList(viewer, pointManager, true);
 
         } else if (isRectAnnotate) {
             const edgeCount = rectManager.addEdge(pos.x, pos.y);
@@ -150,10 +141,8 @@ $(document).ready(function () {
                 }
 
                 rectManager.clearEdges();
-                uiManager.renderRectList(viewer, rectManager);
             }
         } else if (isRecalibrate) {
-
             // Try to close polygon first
             const closed = polygonManager.tryClosePolygon(pos.x, pos.y);
 
@@ -162,26 +151,54 @@ $(document).ready(function () {
 
                 // Last polygon added
                 const polygons = polygonManager.getPolygons();
-                const lastPolygon = polygons[polygons.length - 1];
 
+                // You might need this so i left it here 
                 let averagePixels = polygonManager.getAverageAreaOfPolygons()
 
-                if(polygons.length == 3){
-                    recalibrateImage(imageId,averagePixels);
+                const submitBtn = document.getElementById("submit-recalibration");
+
+                submitBtn.disabled = polygons.length < 3;
+                    return;
                 }
-                
-                return;
-            }
 
             // Otherwise add new vertex
             polygonManager.addPoint(pos.x, pos.y);
             polygonManager.redraw();
+            
 
             console.log("Polygon edge added");
         }
+    });
+    // Joaquin CLEAN THESE UP TY - JERALD [2]
+    document.addEventListener("keydown", (e) => {
+        // THIS IS FOR RECALIB ONLY!
+        if (!isRecalibrate) return;
 
+        if (e.key === KEYBINDS.RECALIBRATE_CANCEL) {
+            polygonManager.cancelCurrentPolygon();
+            console.log("Polygon drawing cancelled");
+        }
+
+        if (e.key === KEYBINDS.RECALIBRATE_UNDO_VERTEX) {
+            e.preventDefault(); // prevent browser back
+            polygonManager.removeLastPoint();
+            console.log("Last vertex removed");
+        }
+
+        if (e.key === KEYBINDS.RECALIBRATE_REMOVE_POLYGON) {
+            polygonManager.removeLastPolygon();
+            console.log("Last polygon erased");
+        }
     });
 
+
+    // This is the event listener for the submit button
+    $("#submit-recalibration").on("click", function () {
+        const averagePixels = polygonManager.getAverageAreaOfPolygons()
+        recalibrateImage(imageId,averagePixels);
+    });
+
+    // This sends the request to the server to recalibrate.
     function recalibrateImage(imageId, averagePixels){
         $.ajax({
             url: "/recalibrate/",
@@ -196,7 +213,8 @@ $(document).ready(function () {
                 "X-CSRFToken": getCSRFToken(),
             },
             success: function (response) {
-                console.log("Recalibration success:", response);
+                console.log("Received image! Redirecting..:", response);
+                window.location.href = "/view/";  
             },
             error: function (xhr) {
                 console.error("Failed:", xhr.responseText);
@@ -207,7 +225,7 @@ $(document).ready(function () {
 
     // Delete annotation (R key)
     document.addEventListener("keydown", async (e) => {
-        if (e.key.toLowerCase() !== DELETE_ANNOTATION_KEY) return;
+        if (e.key.toLowerCase() !== KEYBINDS.DELETE_ANNOTATION) return;
 
         const pos = getMouseImagePosition(viewer, lastMousePos);
         if (!pos) return;
@@ -223,7 +241,6 @@ $(document).ready(function () {
                 }
 
                 pointManager.redraw();
-                uiManager.renderPointsList(viewer, pointManager, true);
             }
 
         } else if (isRectAnnotate) {
@@ -251,40 +268,145 @@ $(document).ready(function () {
 
     // Fill grid cell (F key)
     window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() !== FILL_CELL_KEY) return;
+        if (e.key.toLowerCase() !== KEYBINDS.FILL_CELL) return;
 
-        const pos = getMouseImagePosition(viewer, lastMousePos);
-        if (!pos) return;
+        if(gridManager.isVisible()){
+            const pos = getMouseImagePosition(viewer, lastMousePos);
+            if (!pos) return;
+            gridManager.toggleCell(pos.x, pos.y);
+        }
 
-        gridManager.toggleCell(pos.x, pos.y);
+
     });
 
-    // Mode buttons
-    $("#point-btn").on("click", function () {
-        isPointAnnotate = true;
-        isRectAnnotate = false;
-        isRecalibrate = false;
+    // Central function to set annotation mode
+// Central function to set annotation mode
+    function setAnnotationMode({ point = false, rect = false, modeName = "Point" }) {
+        // Update mode flags
+        isPointAnnotate = point;
+        isRectAnnotate = rect;
+        isRecalibrate = modeName === "Recalibrate";
 
-        uiManager.setMode("Point");
-        uiManager.clearList();
+        // Update UI elements
+        const annotationMsg = document.getElementById("annotation-msg");
+        const recalibrateBtn = document.getElementById("recalibrate-btn");
+        const cancelBtn = document.getElementById("cancel-recalibration");
+        const submitBtn = document.getElementById("submit-recalibration");
+        const pointBtn = document.getElementById("point-btn");
+        const rectBtn = document.getElementById("rect-btn");
+
+        // Remove selected class from all buttons
+        pointBtn.classList.remove("tools-button-selected");
+        rectBtn.classList.remove("tools-button-selected");
+
+        // Add selected class to active button
+        if (point) {
+            pointBtn.classList.add("tools-button-selected");
+        } else if (rect) {
+            rectBtn.classList.add("tools-button-selected");
+        }
+
+        annotationMsg.textContent = modeName === "Recalibrate"
+            ? "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE"
+            : "Grid Tools";
+
+        recalibrateBtn.style.display = modeName === "Recalibrate" ? "none" : "flex";
         
-        pointManager.setVisible(true);
-        uiManager.renderPointsList(viewer, pointManager, true);
-        rectManager.hideAll();
-    });
-
-    $("#rect-btn").on("click", function () {
-        isPointAnnotate = false;
-        isRectAnnotate = true;
-        isRecalibrate = false;
-
-        uiManager.setMode("Rectangle");
-        uiManager.clearList();
+        // Update both hidden and display style for cancel button
+        cancelBtn.hidden = modeName !== "Recalibrate";
+        cancelBtn.style.display = modeName === "Recalibrate" ? "flex" : "none";
         
-        uiManager.renderRectList(viewer, rectManager);
-        rectManager.restoreAll();
-        pointManager.setVisible(false);
+        submitBtn.hidden = modeName !== "Recalibrate";
+        submitBtn.style.display = modeName === "Recalibrate" ? "flex" : "none";
+
+        // Count eggs/rects if not recalibration
+        const total = point ? pointManager.getPoints().length
+                    : rect ? rectManager.getRects().length
+                    : 0;
+        uiManager.setEggCount(total);
+
+        // Set mode and clear annotation list
+        uiManager.setMode(modeName);
+        uiManager.clearList();
+
+        // Show/hide annotation objects
+        pointManager.setVisible(point);
+        rect ? rectManager.restoreAll() : rectManager.hideAll();
+
+        // Optionally hide tools in recalibration mode
+        if (modeName === "Recalibrate"){
+            hideTools();
+        } else{
+            showTools();
+        }
+    }
+
+    // ------------------- Bind annotation buttons -------------------
+    $("#point-btn").on("click", () => setAnnotationMode({ point: true, modeName: "Point" }));
+    $("#rect-btn").on("click", () => setAnnotationMode({ rect: true, modeName: "Rectangle" }));
+
+    // ------------------- Recalibration -------------------
+    $("#recalibrate-yes").on("click", () => {
+        // Check if user has chosen to not show the guide again
+        const dontShowGuide = localStorage.getItem('hideRecalibrateGuide') === 'true';
+        
+        if (!dontShowGuide) {
+            // Show the guide modal
+            $("#recalibrate-guide-modal").addClass("is-visible");
+        } else {
+            // Directly enter recalibration mode
+            setAnnotationMode({ modeName: "Recalibrate" });
+        }
     });
+
+    // Handle "Got it!" button in guide modal
+    $("#recalibrate-guide-ok").on("click", function () {
+        // Check if "don't show again" is checked
+        const dontShowAgain = $("#dont-show-recalibrate-guide").is(":checked");
+        
+        if (dontShowAgain) {
+            localStorage.setItem('hideRecalibrateGuide', 'true');
+        }
+        
+        // Hide the guide modal
+        $("#recalibrate-guide-modal").removeClass("is-visible");
+        
+        // Enter recalibration mode
+        setAnnotationMode({ modeName: "Recalibrate" });
+    });
+
+    // Handle close button on guide modal
+    $("#recalibrate-guide-modal .close-button").on("click", function () {
+        $("#recalibrate-guide-modal").removeClass("is-visible");
+    });
+
+    // Cancel recalibration
+    $("#cancel-recalibration").on("click", () => setAnnotationMode({ point: true, modeName: "Point" }));
+
+
+    function hideTools(){
+        document.getElementById("toolsText").hidden = true;
+        document.getElementById("point-btn").style.display = "none";
+        document.getElementById("rect-btn").style.display = "none";
+        document.getElementById("grid-btn").style.display = "none";
+        document.getElementById("recalibrate-btn").style.display = "none";
+        
+        // Get the first divider (index 0)
+        document.getElementsByClassName("sidebar-divider")[0].style.display = "none";
+    }
+
+    function showTools(){
+        document.getElementById("toolsText").hidden = false;
+        document.getElementById("point-btn").style.display = "flex"; 
+        document.getElementById("rect-btn").style.display = "flex"; 
+        document.getElementById("grid-btn").style.display = "flex";  
+        document.getElementById("recalibrate-btn").style.display = "flex";
+        
+        // Get the first divider (index 0)
+        document.getElementsByClassName("sidebar-divider")[0].style.display = "block";
+    }
+    // CLEAN END
+
 
     $("#grid-btn").on("click", function () {
         const isVisible = gridManager.isVisible();
@@ -299,19 +421,6 @@ $(document).ready(function () {
         $("#recalibrate-modal").removeClass("is-visible");
     });
 
-    $("#recalibrate-yes").on("click", function () {
-        $("#recalibrate-modal").addClass("hidden");
-        
-        // Activate recalibration mode
-        isRecalibrate = true;
-        isPointAnnotate = false;
-        isRectAnnotate = false;
-
-        uiManager.setMode("Recalibrate")
-        uiManager.clearList();
-        rectManager.hideAll();
-
-    });
 
     // Close modal if clicking outside content
     $("#recalibrate-modal").on("click", function (e) {
@@ -321,26 +430,21 @@ $(document).ready(function () {
         }
     });
 
+    $("#open-instructions").on("click", function () {
+        $("#instructions-modal").addClass("is-visible");
+    });
 
+    $("#instructions-modal .close-button").on("click", function () {
+        $("#instructions-modal").removeClass("is-visible");
+    });
 
-    // Fill grid cell (S key)
-    window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() !== "s") return;
-
-        // Open popup with warning
-        // If no, - go back to what annotation mode user is using
-        // Otherwise go to this mode
-        isPointAnnotate = false
-        isRectAnnotate = false
-        isRecalibrate = true
-
-        if(isRecalibrate){
-            // Require user to select at least 3 polygons
-            // Toolbar becomes submit and CANCEL
-            // If submit then recalibrate it with the specifics
-            // Otherwise do case no.
+    // Click outside to close
+    $(window).on("click", function (e) {
+        if (e.target.id === "instructions-modal") {
+            $("#instructions-modal").removeClass("is-visible");
         }
     });
+
 
     function getCSRFToken() {
         const name = 'csrftoken';

@@ -28,7 +28,7 @@ export function initializeViewer(imageUrl) {
         navigatorMaintainSizeRatio: true,
         navigatorBackground: "#000",
         navigatorBorderColor: "#1480ecff",
-        navigatorOpacity: 1
+        navigatorOpacity: 1,
     });
 
     // Disable default OpenSeadragon keys
@@ -37,7 +37,7 @@ export function initializeViewer(imageUrl) {
             event.preventDefaultAction = true;
         }
     });
-
+    
     return viewer;
 }
 

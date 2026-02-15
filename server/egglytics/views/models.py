@@ -25,6 +25,7 @@ class ImageDetails(models.Model):
         db_column="batch_id"   # link to batch_details table
     )
     image_name = models.CharField(max_length=255)
+    file_path = models.CharField(max_length=255)
     total_eggs = models.IntegerField()
     total_hatched = models.IntegerField()
     date_uploaded = models.DateTimeField(auto_now_add=True)
@@ -38,9 +39,26 @@ class ImageDetails(models.Model):
     is_validated = models.BooleanField()
     model_used = models.CharField(max_length = 255)
     image_version = models.IntegerField(default=1)
+    
 
     class Meta:
         db_table = "image_details"  # TABLE NAME.
+
+class VerifiedGrids(models.Model):
+    grid_id = models.AutoField(primary_key=True)
+
+    image = models.ForeignKey(
+        ImageDetails,
+        on_delete=models.CASCADE,
+        db_column="image_id"
+    )
+
+    x = models.PositiveIntegerField()
+    y = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = "verified_grids"
+        unique_together = ("image", "x", "y")  # prevents duplicate grids
 
 class AnnotationPoints(models.Model):
     point_id = models.AutoField(primary_key=True)
@@ -75,4 +93,6 @@ class AnnotationRect(models.Model):
     is_deleted = models.BooleanField(default=False)
     class Meta:
         db_table = "annotation_rects"
+
+
 

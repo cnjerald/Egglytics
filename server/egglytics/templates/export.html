@@ -28,6 +28,16 @@
                 </div>
             </div>
 
+        <div class="form-group">
+            <label><strong>Export Format:</strong></label>
+            <select id="export_format" class="custom-select">
+                <option value="custom">Custom JSON</option>
+                <option value="coco">COCO (JSON)</option>
+                <option value="yolo">YOLO</option>
+            </select>
+        </div>
+
+
             <div class="form-group checkbox-group">
                 <input type="checkbox" id="include_verified" checked>
                 <label for="include_verified">Only download verified results</label>
@@ -42,22 +52,22 @@
 
                  <div class="metrics-list">
                     <div id="total_images">
-                        Total Points: 0
+                        Total Images: 0
                     </div>
                 </div>
 
                 <div class="metric-grid">
-                    <div class="metric-card-small tp">
-                        Points
+                    <div class="metric-card-small tp" id="total_eggs_point">
+                        Points: 0
                     </div>
-                    <div class="metric-card-small fn">
-                        Rectangles
+                    <div class="metric-card-small fn" id="total_eggs_rect">
+                        Rectangles: 0
                     </div>
                 </div>
             </div>
         </div>
-
-        <button id="export-btn">Download Dataset</button>
+        <button id="export-btn-user" class="export-btn">Download Dataset for Users</button>
+        <button id="export-btn" class="export-btn">Download Dataset for Developers</button>
     </div>
 
 <script>
@@ -69,7 +79,12 @@ function updateExportStats() {
 
     if (!model) return;
 
-    let params = new URLSearchParams({ model });
+    const format = document.getElementById("export_format").value;
+
+    let params = new URLSearchParams({ 
+        model,
+        format
+    });
 
     if (verifiedCheckbox.checked) {
         params.append("verified", "1");
@@ -95,10 +110,10 @@ function updateExportStats() {
                 "Total Images: " + data.total_images;
             
             document.getElementById("total_eggs_point").textContent = 
-                "Total Eggs (Point): " + data.total_points;
+                "Points: " + data.total_points;
 
             document.getElementById("total_eggs_rect").textContent = 
-                "Total Eggs (Rect): " + data.total_rects;
+                "Rectangles: " + data.total_rects;
             
         })
         .catch(err => console.error("Count error:", err));
@@ -137,7 +152,6 @@ function updateDateRangeAndStats() {
 /* -----------------------
    Event listeners
 ------------------------ */
-
 // Model change → update date range + stats
 document.getElementById("model-select")
     .addEventListener("change", updateDateRangeAndStats);
@@ -147,12 +161,111 @@ document.getElementById("include_verified")
     .addEventListener("change", updateExportStats);
 
 document.getElementById("dateFrom")
-    .addEventListener("change", updateExportStats);
+    .addEventListener("change", function() {
+        const dateToInput = document.getElementById("dateTo");
+        
+        // Update dateTo min to be at least dateFrom
+        dateToInput.min = this.value;
+        
+        // If dateTo is before dateFrom, adjust it
+        if (dateToInput.value && dateToInput.value < this.value) {
+            dateToInput.value = this.value;
+        }
+        
+        updateExportStats();
+    });
+
+document.getElementById("dateFrom")
+    .addEventListener("input", function() {
+        const dateToInput = document.getElementById("dateTo");
+        
+        // Update dateTo min in real-time
+        if (this.value) {
+            dateToInput.min = this.value;
+            
+            // If dateTo is before dateFrom, adjust it
+            if (dateToInput.value && dateToInput.value < this.value) {
+                dateToInput.value = this.value;
+            }
+        }
+    });
 
 document.getElementById("dateTo")
-    .addEventListener("change", updateExportStats);
+    .addEventListener("change", function() {
+        const dateFromInput = document.getElementById("dateFrom");
+        
+        // Validate: dateTo cannot be before dateFrom
+        if (dateFromInput.value && this.value < dateFromInput.value) {
+            this.value = dateFromInput.value;
+        }
+        
+        updateExportStats();
+    });
 
-document.getElementById("export-btn").addEventListener("click", function () {
+document.getElementById("dateTo")
+    .addEventListener("input", function() {
+        const dateFromInput = document.getElementById("dateFrom");
+        
+        // Validate in real-time
+        if (dateFromInput.value && this.value && this.value < dateFromInput.value) {
+            this.setCustomValidity("End date must be after or equal to start date");
+        } else {
+            this.setCustomValidity("");
+        }
+    });
+
+// Download Dataset for Developers (ZIP with annotations)
+document.getElementById("export-btn").addEventListener("click", async function () {
+    const model = document.getElementById("model-select").value;
+    const verified = document.getElementById("include_verified").checked;
+    const dateFrom = document.getElementById("dateFrom").value;
+    const dateTo = document.getElementById("dateTo").value;
+    const format = document.getElementById("export_format").value;
+
+    if (!model) {
+        alert("Select a model first");
+        return;
+    }
+
+    let params = new URLSearchParams({ model, format });
+
+    if (verified) params.append("verified", "1");
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+
+    // Show loading state
+    const btn = this;
+    const originalText = btn.textContent;
+    btn.textContent = "Exporting...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/export/download/?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Trigger download using the returned URL
+            const link = document.createElement('a');
+            link.href = data.download_url;
+            link.download = data.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            alert(data.error || "Export failed");
+        }
+    } catch (error) {
+        console.error("Export error:", error);
+        alert("An error occurred during export");
+    } finally {
+        // Restore button state
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
+// Download Dataset for Users (CSV)
+document.getElementById("export-btn-user").addEventListener("click", async function () {
     const model = document.getElementById("model-select").value;
     const verified = document.getElementById("include_verified").checked;
     const dateFrom = document.getElementById("dateFrom").value;
@@ -169,8 +282,37 @@ document.getElementById("export-btn").addEventListener("click", function () {
     if (dateFrom) params.append("date_from", dateFrom);
     if (dateTo) params.append("date_to", dateTo);
 
-    window.location.href = `/export/download/?${params.toString()}`;
+    // Show loading state
+    const btn = this;
+    const originalText = btn.textContent;
+    btn.textContent = "Exporting...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/export/download_csv/?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Trigger download using the returned URL
+            const link = document.createElement('a');
+            link.href = data.download_url;
+            link.download = data.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            alert(data.error || "Export failed");
+        }
+    } catch (error) {
+        console.error("Export error:", error);
+        alert("An error occurred during export");
+    } finally {
+        // Restore button state
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 });
+
 </script>
 </body>
 </html>

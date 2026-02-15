@@ -1,6 +1,5 @@
 {% load static %}
 <link href="{% static 'css/upload.css' %}" rel="stylesheet" />
-<link href="{% static 'css/upload_assets/text_switch' %}" rel="stylesheet" />
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
 
@@ -65,7 +64,6 @@ id = myfile
       <div class="modal-footer">
         <button
           class="btn btn-secondary"
-          onclick="resetBars()"
           id="resetBtn"
           style="display: none"
         >
@@ -73,7 +71,6 @@ id = myfile
         </button>
         <button
           class="btn btn-secondary"
-          onclick="resetImage()"
           id="resetPhotoBtn"
           style="display: none"
         >
@@ -81,7 +78,6 @@ id = myfile
         </button>
         <button
           class="btn btn-primary"
-          onclick="performCrop()"
           id="cropBtn"
           style="display: none"
         >
@@ -112,6 +108,13 @@ id = myfile
     </div>
   </div>
 
+  <div class="userDetails">
+      <label for="batch_name">Batch:</label>
+      <input type="text" id="batch_name">
+      <label for="user_name">User:</label>
+      <input type="text" id="user_name">
+  </div>
+
   <div id="view-area">
     <div id="entry-container">
       <table id="upload-table">
@@ -120,7 +123,14 @@ id = myfile
             <th>Image</th>
             <th>Name</th>
             <th>Size</th>
-            <th>Micro / Macro <br />
+            <th>
+              <div class="tooltip">
+                Micro / Macro 
+                <span style="font-size: 12px; color: #333;">&#9432;</span> <span class="tooltiptext">
+                  Allows the application to determine how large or small eggs are based on the image size<br/><br/>
+                  Macro = High resolution uploads <br/>Micro = Low resolution uploads
+                </span>
+              </div> <br />
               <label class="text-switch">
                 <input type="checkbox" id="all_mode_toggle">
                 <span class="text-slider">
@@ -131,7 +141,7 @@ id = myfile
             </th>
             <th>Crop</th>
               <th>
-                Model
+                Predictions:
                 <label class="selection">
                   <select id="all_model" class="limited-width-select">
                     <!-- populated by JS -->
@@ -144,16 +154,22 @@ id = myfile
         <tbody></tbody>
       </table>
     </div>
+  </div>
 
     <div class="submit-btn-container">
-      <button type="button" id="upload-btn">Submit</button>
+      <button type="button" id="upload-btn">Submit   
+        <div id="upload-progress-container" style="display:none; margin-top: 10px;">
+          <div id="upload-progress" style="width: 0%; height: 20px; background-color: #4caf50;">
+        </div>
+      </div> 
+    </button>
     </div>
-  </div>
+  
+
 
   <!-- Hidden form just to inject CSRF cookie -->
   <form style="display: none">{% csrf_token %}</form>
 </div>
 
-<script src="{% static 'js/image_upload_handler.js' %}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-<script src="{% static 'js/upload_crop_handler.js' %}"></script>
+<script type="module" src="{% static 'js/image_upload_handler.js' %}"></script>
+

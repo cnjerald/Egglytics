@@ -8,43 +8,96 @@
     <title>Egglytics</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
 </head>
+
 <body>
+
+        <!-- Recalibration Guide Modal -->
+    <div id="recalibrate-guide-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>How to Recalibrate</h3>
+            
+            <div class="guide-content">
+                <p><strong>Recalibration helps improve annotation accuracy by defining reference areas.</strong></p>
+                
+                <h4>Instructions:</h4>
+                <ol class="guide-steps">
+                    <li><strong>Create 3 Polygons:</strong> Draw at least 3 polygon shapes around reference objects of known size.</li>
+                    <li><strong>Draw Polygons:</strong> 
+                        <ul>
+                            <li>Press <span class="key-hint">E</span> to add each vertex</li>
+                            <li>Click near the first vertex to close the polygon</li>
+                        </ul>
+                    </li>
+                    <li><strong>Keyboard Shortcuts:</strong>
+                        <ul>
+                            <li><span class="key-hint">Esc</span> - Cancel current polygon</li>
+                            <li><span class="key-hint">Backspace</span> - Remove last vertex</li>
+                            <li><span class="key-hint">B</span> - Delete last completed polygon</li>
+                        </ul>
+                    </li>
+                    <li><strong>Submit:</strong> Once you have 3 polygons, click the submit button to recalibrate.</li>
+                </ol>
+                
+                <p class="guide-note">⚠️ <em>Note: THIS PROCESS IS USUALLY DONE ONLY ONCE PER IMAGE.</em></p>
+                
+                <div class="dont-show-container">
+                    <input type="checkbox" id="dont-show-recalibrate-guide">
+                    <label for="dont-show-recalibrate-guide">Don't show this again</label>
+                </div>
+                
+                <button id="recalibrate-guide-ok" class="tools-button guide-ok-button">Got it!</button>
+            </div>
+        </div>
+    </div>
 
     <header class="toolbar">
         <button id="sidebarToggle" class="menu-btn">☰</button>
         {% include 'editor_templates/modal_instructions.html' %}
-        
         <h1 class="egg_count" id="egg_count"> Total Eggs: LOADING </h1>
     </header>
 
     <div class="app">
         <aside id="sidebar" class="sidebar">
-            <h3>
-                Current Mode:
-                <span id="current-mode" style="color:#6cff6c;">Point</span>
-            </h3>
-            <h3>Tools</h3>
+            
+            <button id="open-instructions" class="instructions-button">
+                <h2>CONTROLS</h2>
+            </button>
 
+            <div class="annotation-mode">
+                <h3>
+                    Current Mode:<br>
+                    <span id="current-mode" style="color:#6cff6c;">Point</span>
+                </h3>
+            </div>
+
+            <button class="tools-button" id="cancel-recalibration" style="display: none;"> Cancel Recalibration </button>
+            <hr class="sidebar-divider">
+            <h3 id="toolsText">Annotation Modes</h3>
             <div class = "sidebar-controls">
                 <button type="button" class="tools-button" id="point-btn">
                     <img src="{% static 'img/dot.png' %}" alt="point" class="button-photo">
+                    <span class="button-text">Points</span>
                 </button>
 
                 <button type="button" class="tools-button" id="rect-btn">
                     <img src="{% static 'img/bounding-box.png' %}" alt="bounding-box" class="button-photo">
+                    <span class="button-text">Boxes</span>
                 </button>
-
+            </div>
+            <hr class="sidebar-divider">
+            <h3 id = "annotation-msg">Grid Tools</h4>
+            <div class = "sidebar-controls">
                 <button type="button" class="tools-button" id="grid-btn">
                     <img src="{% static 'img/grid.png' %}" alt="grids" class="button-photo">
+                    <span class="button-text">Show Grids</span>
                 </button>
+                <ul id="messages" class="annotation-list"></ul>
             </div>
-
+            <hr class="sidebar-divider">
             <div>
-                <h4>Annotations</h4>
-                <ul id="annotation-list" class="annotation-list"></ul>
-            </div>
-            <div>
-                <button id="recalibrate-btn"> Recalibrate Results </button>
+                <button class="tools-button" id="recalibrate-btn"> Recalibrate Results </button>
+                <button class="tools-button" id="submit-recalibration" style="display: none" disabled> RECALIBRATE </button>
             </div>
         </aside>
 
@@ -54,8 +107,7 @@
 
             <!--  viewer lives here -->
 
-            <div id="viewer"
-                data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
+            <div id="viewer" data-image-url="{{ MEDIA_URL }}uploads/{{ image_name }}?v={{ image_version }}">
             </div>
         </main>
     </div>
@@ -75,21 +127,23 @@
 
 
 
-
-
+    
     <!-- LOAD VARIABLES (NO ERROR FOR DJANGO) -->
     <script>
         window.points = {{ points_json|safe }};
         window.total_egg_count = {{ total_eggs }};
         window.rects = {{rects_json|safe}};
+        window.grids = {{grids_json|safe}};
         console.log(rects);
         window.image_id = {{img_id}};
-        
+
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{% static 'js/image_editor/interactions.js' %}"></script>
-    <script type="module" src="{% static 'js/image_editor.js' %}"></script>
+    <script type="module" src="{% static 'js/image_editor_handler.js' %}"></script>
+
+
 
 </body>
 </html>
