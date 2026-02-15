@@ -88,101 +88,206 @@ def export_image_count(request):
 
 def export_dataset(request):
     model = request.GET.get("model")
+    format_type = request.GET.get("format", "custom")
     verified = request.GET.get("verified") == "1"
     date_from = request.GET.get("date_from")
     date_to = request.GET.get("date_to")
 
     if not model:
-        return HttpResponse("Model required", status=400)
+        return JsonResponse({"error": "Model required"}, status=400)
 
-    # ---- Filter images ----
-    # Filter images
+    # -------------------------
+    # Filter Images
+    # -------------------------
     qs = ImageDetails.objects.filter(model_used=model)
 
-    # Filter images that were validated by the user
     if verified:
         qs = qs.filter(is_validated=True)
 
-    # Start Date
     if date_from:
         qs = qs.filter(date_uploaded__date__gte=parse_date(date_from))
 
-    # End Date
     if date_to:
         qs = qs.filter(date_uploaded__date__lte=parse_date(date_to))
 
     if not qs.exists():
-        return HttpResponse("No data to export", status=404)
+        return JsonResponse({"error": "No data to export"}, status=404)
 
-    # ---- Create ZIP in memory ----
+    # -------------------------
+    # Create ZIP
+    # -------------------------
     buffer = BytesIO()
     zip_file = zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED)
 
+    #  COCO containers (IMPORTANT — MUST BE BEFORE LOOP)
+    coco_images = []
+    coco_annotations = []
+    annotation_id = 1
+
     for image in qs:
-        # ---------------------
-        # Add image file
-        # ---------------------
-        print(image.image_name)
-        image_path = os.path.join(settings.MEDIA_ROOT, "uploads", image.image_name)
+        
+        image_path = os.path.join(settings.MEDIA_ROOT, "uploads", image.file_path)
 
+        if not os.path.exists(image_path):
+            continue
 
-        if os.path.exists(image_path):
-            print("DEUBG!")
-            zip_file.write(
-                image_path,
-                arcname=f"images/{image.image_name}"
+        zip_file.write(
+            image_path,
+            arcname=f"images/{image.image_name}.jpg"
+        )
+
+        # Get image size
+        with Image.open(image_path) as img:
+            width, height = img.size
+
+        points = AnnotationPoints.objects.filter(image_id=image)
+        rects = AnnotationRect.objects.filter(image_id=image)
+
+        # =========================
+        # CUSTOM FORMAT
+        # =========================
+        if format_type == "custom":
+            annotation_data = []
+
+            for p in points:
+                annotation_data.append({
+                    "label": "Egg",
+                    "type": "point",
+                    "x": p.x,  # Just the center coordinates
+                    "y": p.y,  # No conversion needed
+                })
+
+            for r in rects:
+                annotation_data.append({
+                    "label": "Egg",
+                    "type": "rectangle",
+                    "x": r.x,
+                    "y": r.y,
+                    "width": r.width,
+                    "height": r.height,
+                })
+
+            zip_file.writestr(
+                f"annotations/{image.image_name}.json",
+                json.dumps(annotation_data, indent=2)
             )
 
-        # ---------------------
-        # Add annotations
-        # ---------------------
-        points = AnnotationPoints.objects.filter(image_id=image)
+        # =========================
+        # YOLO FORMAT
+        # =========================
+        elif format_type == "yolo":
 
-        annotation_data = []
-        for p in points:
-            annotation_data.append({
-                "label": "Egg",
-                "x": p.x,
-                "y": p.y,
+            yolo_lines = []
+
+            for r in rects:
+                x_center = (r.x + r.width / 2) / width
+                y_center = (r.y + r.height / 2) / height
+                w = r.width / width
+                h = r.height / height
+                yolo_lines.append(f"0 {x_center} {y_center} {w} {h}")
+
+            for p in points:
+                box_size = 10
+                x_center = p.x / width  # Already center ✓
+                y_center = p.y / height  # Already center ✓
+                w = box_size / width
+                h = box_size / height
+                yolo_lines.append(f"0 {x_center} {y_center} {w} {h}")
+
+            # Write YOLO label file
+            label_name = os.path.splitext(image.image_name)[0] + ".txt"
+            zip_file.writestr(
+                f"labels/{label_name}",
+                "\n".join(yolo_lines)
+            )
+
+        # =========================
+        # COCO FORMAT
+        # =========================
+        elif format_type == "coco":
+
+            image_id = image.image_id
+
+            coco_images.append({
+                "id": image_id,
+                "file_name": image.image_name,
+                "width": width,
+                "height": height
             })
 
-        annotation_json = json.dumps(annotation_data, indent=2)
+            for r in rects:
+                # Rects are already in top-left format
+                coco_annotations.append({
+                    "id": annotation_id,
+                    "image_id": image_id,
+                    "category_id": 1,
+                    "bbox": [r.x, r.y, r.width, r.height],
+                    "area": r.width * r.height,
+                    "iscrowd": 0
+                })
+                annotation_id += 1
 
-        # ---------------------
-        # Add metadata
-        # ---------------------
-        
+            for p in points:
+                box_size = 10
+                # Convert center point to top-left corner for COCO bbox format
+                x_top_left = p.x - (box_size / 2)
+                y_top_left = p.y - (box_size / 2)
+                
+                coco_annotations.append({
+                    "id": annotation_id,
+                    "image_id": image_id,
+                    "category_id": 1,
+                    "bbox": [x_top_left, y_top_left, box_size, box_size],
+                    "area": box_size * box_size,
+                    "iscrowd": 0
+                })
+                annotation_id += 1
+
+    # WRITE COCO FILE AFTER LOOP
+    if format_type == "coco":
+
+        coco_output = {
+            "images": coco_images,
+            "annotations": coco_annotations,
+            "categories": [
+                {
+                    "id": 1,
+                    "name": "Egg",
+                    "supercategory": "object"
+                }
+            ]
+        }
+
         zip_file.writestr(
-            f"annotations/{image.image_name}.json",
-            annotation_json
+            "annotations/instances.json",
+            json.dumps(coco_output, indent=2)
         )
-    
-    today_date_object = datetime.today()
-    metadata = {
-        "model_used": model,
-        "date_downloaded": str(today_date_object),
-        "total_images": qs.count(),
-        "start_date": date_from,
-        "end_date": date_to,
-        "format": "JSON"
-    }
 
-    # Convert metadata to formatted JSON string
-    metadata_text = json.dumps(metadata, indent=2)
-
-    # Write metadata.txt into ZIP
-    zip_file.writestr("metadata.txt", metadata_text)
-
+    # -------------------------
+    # Save ZIP to media folder
+    # -------------------------
     zip_file.close()
     buffer.seek(0)
 
-    # ---- HTTP response ----
     filename = f"export_{model}_{now().strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    # Save to media/exports directory
+    export_dir = os.path.join(settings.MEDIA_ROOT, "exports")
+    os.makedirs(export_dir, exist_ok=True)
+    
+    file_path = os.path.join(export_dir, filename)
+    with open(file_path, 'wb') as f:
+        f.write(buffer.getvalue())
+    
+    # Return JSON with download URL
+    download_url = f"{settings.MEDIA_URL}exports/{filename}"
+    
+    return JsonResponse({
+        "success": True,
+        "filename": filename,
+        "download_url": download_url
+    })
 
-    response = HttpResponse(buffer, content_type="application/zip")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-    return response
 
 
 def export_dataset_csv(request):
@@ -192,7 +297,7 @@ def export_dataset_csv(request):
     date_to = request.GET.get("date_to")
 
     if not model:
-        return HttpResponse("Model required", status=400)
+        return JsonResponse({"error": "Model required"}, status=400)
 
     # ---- Filter images ----
     qs = ImageDetails.objects.filter(model_used=model)
@@ -206,29 +311,35 @@ def export_dataset_csv(request):
         qs = qs.filter(date_uploaded__date__lte=parse_date(date_to))
 
     if not qs.exists():
-        return HttpResponse("No data to export", status=404)
+        return JsonResponse({"error": "No data to export"}, status=404)
 
-    # ---- Create CSV response ----
-    response = HttpResponse(content_type="text/csv")
-    filename = f"export_{model}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # ---- Create CSV file ----
+    filename = f"export_{model}_{now().strftime('%Y%m%d_%H%M%S')}.csv"
+    
+    # Save to media/exports directory
+    export_dir = os.path.join(settings.MEDIA_ROOT, "exports")
+    os.makedirs(export_dir, exist_ok=True)
+    
+    file_path = os.path.join(export_dir, filename)
+    
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["ImageName", "DATE", "total_Eggs", "Total_HATCHED"])
 
-    writer = csv.writer(response)
-    # Write CSV header
-    writer.writerow(["ImageName", "DATE", "total_Eggs", "Total_HATCHED"])
-
-    for image in qs:
-        # Count total eggs
-        total_eggs = AnnotationPoints.objects.filter(image_id=image).count()
-        # Count total hatched eggs
-
-
-
-        writer.writerow([
-            image.image_name,
-            image.date_uploaded.strftime("%Y-%m-%d"),
-            total_eggs,
-            image.total_hatched
-        ])
-
-    return response
+        for image in qs:
+            total_eggs = AnnotationPoints.objects.filter(image_id=image).count()
+            writer.writerow([
+                image.image_name,
+                image.date_uploaded.strftime("%Y-%m-%d"),
+                total_eggs,
+                image.total_hatched
+            ])
+    
+    # Return JSON with download URL
+    download_url = f"{settings.MEDIA_URL}exports/{filename}"
+    
+    return JsonResponse({
+        "success": True,
+        "filename": filename,
+        "download_url": download_url
+    })

@@ -76,6 +76,7 @@ $(document).ready(function () {
 
         console.log("Image size:", viewer.world.getItemAt(0).getContentSize());
         console.log("Sample point:", pointManager.getPoints()[0]);
+        setAnnotationMode({ point: true, modeName: "Point" })
 
         gridManager.loadGrid(savedGrids);
     });
@@ -154,13 +155,11 @@ $(document).ready(function () {
                 // You might need this so i left it here 
                 let averagePixels = polygonManager.getAverageAreaOfPolygons()
 
-                if(polygons.length == 3){
-                    document.getElementById("submit-recalibration").disabled = false;
-                    //recalibrateImage(imageId,averagePixels);
+                const submitBtn = document.getElementById("submit-recalibration");
+
+                submitBtn.disabled = polygons.length < 3;
+                    return;
                 }
-                
-                return;
-            }
 
             // Otherwise add new vertex
             polygonManager.addPoint(pos.x, pos.y);
@@ -281,6 +280,7 @@ $(document).ready(function () {
     });
 
     // Central function to set annotation mode
+// Central function to set annotation mode
     function setAnnotationMode({ point = false, rect = false, modeName = "Point" }) {
         // Update mode flags
         isPointAnnotate = point;
@@ -292,14 +292,32 @@ $(document).ready(function () {
         const recalibrateBtn = document.getElementById("recalibrate-btn");
         const cancelBtn = document.getElementById("cancel-recalibration");
         const submitBtn = document.getElementById("submit-recalibration");
+        const pointBtn = document.getElementById("point-btn");
+        const rectBtn = document.getElementById("rect-btn");
+
+        // Remove selected class from all buttons
+        pointBtn.classList.remove("tools-button-selected");
+        rectBtn.classList.remove("tools-button-selected");
+
+        // Add selected class to active button
+        if (point) {
+            pointBtn.classList.add("tools-button-selected");
+        } else if (rect) {
+            rectBtn.classList.add("tools-button-selected");
+        }
 
         annotationMsg.textContent = modeName === "Recalibrate"
             ? "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE"
             : "Grid Tools";
 
-        recalibrateBtn.hidden = modeName === "Recalibrate";
+        recalibrateBtn.style.display = modeName === "Recalibrate" ? "none" : "flex";
+        
+        // Update both hidden and display style for cancel button
         cancelBtn.hidden = modeName !== "Recalibrate";
+        cancelBtn.style.display = modeName === "Recalibrate" ? "flex" : "none";
+        
         submitBtn.hidden = modeName !== "Recalibrate";
+        submitBtn.style.display = modeName === "Recalibrate" ? "flex" : "none";
 
         // Count eggs/rects if not recalibration
         const total = point ? pointManager.getPoints().length
@@ -371,15 +389,22 @@ $(document).ready(function () {
         document.getElementById("point-btn").style.display = "none";
         document.getElementById("rect-btn").style.display = "none";
         document.getElementById("grid-btn").style.display = "none";
+        document.getElementById("recalibrate-btn").style.display = "none";
+        
+        // Get the first divider (index 0)
+        document.getElementsByClassName("sidebar-divider")[0].style.display = "none";
     }
 
     function showTools(){
         document.getElementById("toolsText").hidden = false;
-        document.getElementById("point-btn").style.display = "inline-block";
-        document.getElementById("rect-btn").style.display = "inline-block";
-        document.getElementById("grid-btn").style.display = "inline-block";
+        document.getElementById("point-btn").style.display = "flex"; 
+        document.getElementById("rect-btn").style.display = "flex"; 
+        document.getElementById("grid-btn").style.display = "flex";  
+        document.getElementById("recalibrate-btn").style.display = "flex";
+        
+        // Get the first divider (index 0)
+        document.getElementsByClassName("sidebar-divider")[0].style.display = "block";
     }
-
     // CLEAN END
 
 
