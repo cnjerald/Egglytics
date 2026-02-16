@@ -164,6 +164,10 @@ $("#notice-box").hide();
     // Click event for each batch row
     document.querySelectorAll("#batchTable tbody tr").forEach((row) => {
         row.addEventListener("click", () => {
+            // Highlight the clicked batch row
+            document.querySelectorAll("#batchTable tbody tr").forEach(r => r.classList.remove("selected"));
+            row.classList.add("selected");
+
             // checks if still processing
             const statusCell = row.children[4]; 
             // if (statusCell.querySelector('.fa-spinner')) {
@@ -202,9 +206,9 @@ $("#notice-box").hide();
                     document.getElementById("hatched-header").textContent = `Hatched (Total: ${totalHatched})`;
 
                     let rowsHTML = ""
-                    data.forEach(img => {
+                    data.forEach((img, index) => {
                         rowsHTML += `
-                            <tr class="image-details" 
+                            <tr class="image-details ${index === 0 ? 'selected' : ''}" 
                                 data-image-name="${img.image_name}" 
                                 data-image-id="${img.image_id}"
                                 data-image-path="${img.image_path}">
@@ -252,13 +256,23 @@ $("#notice-box").hide();
         });
     });
 
-
-    // Change image on click inside popup
+    // Use thumbnail URL
     $(document).on("click", ".image-details", function () {
+        $(".image-details").removeClass("selected");
+        $(this).addClass("selected");
+        
         const image_path = $(this).attr("data-image-path");
-        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${image_path}`);
+        const $popupImage = $("#popup-image");
+        
+        $popupImage.css("opacity", "0.3");
+        
+        const newImage = new Image();
+        newImage.onload = function() {
+            $popupImage.attr("src", `/thumbnail/${image_path}?w=800&h=600`);  // No slash before ?
+            $popupImage.css("opacity", "1");
+        };
+        newImage.src = `/thumbnail/${image_path}?w=800&h=600`;  // No slash before ?
     });
-
 
     // Advanced filtering: search + range filters
     const inputs = [

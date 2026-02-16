@@ -252,4 +252,30 @@ def update_image_name(request, image_id):
 
     return JsonResponse({"success": False}, status=405)
 
+
+from PIL import Image
+from django.http import HttpResponse
+from io import BytesIO
+import os
+
+def serve_thumbnail(request, image_path):
+    width = int(request.GET.get('w', 800))
+    height = int(request.GET.get('h', 600))
     
+    full_path = os.path.join(settings.MEDIA_ROOT, 'uploads', image_path)
+    
+    try:
+        img = Image.open(full_path)
+        img.thumbnail((width, height), Image.LANCZOS)
+        
+        buffer = BytesIO()
+        img.save(buffer, format='JPEG', quality=10, optimize=True)
+        buffer.seek(0)
+        
+        return HttpResponse(buffer, content_type='image/jpeg')
+    except FileNotFoundError:
+        print(f"File not found: {full_path}")  # Debug
+        return HttpResponse(status=404)
+    except Exception as e:
+        print(f"Error serving thumbnail: {e}")  # Debug
+        return HttpResponse(status=500)
