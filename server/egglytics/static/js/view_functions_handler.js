@@ -749,6 +749,271 @@ $("#notice-box").hide();
         });
     })();
 
+    // Context Menu for Image Table Right-Click
+    (function() {
+        const imageContextMenu = document.getElementById('image-context-menu');
+        let targetImageRow = null;
+        let targetImageId = null;
+
+        // 1. Intercept Right-Click on Image Table Rows
+        document.querySelector("#popup-details").addEventListener("contextmenu", function(e) {
+            const row = e.target.closest("tr");
+            if (!row) return;
+
+            e.preventDefault();
+
+            targetImageRow = row;
+            targetImageId = row.dataset.imageId;
+
+            // Show and position the custom menu at the mouse cursor
+            imageContextMenu.style.display = 'block';
+            imageContextMenu.style.left = `${e.clientX}px`;
+            imageContextMenu.style.top = `${e.clientY}px`;
+        });
+
+        // 2. Hide Menu when clicking elsewhere
+        document.addEventListener('click', () => {
+            imageContextMenu.style.display = 'none';
+        });
+
+        // 3. Handle the "Rename Image" Action
+        document.getElementById('image-menu-rename').addEventListener('click', () => {
+            if (!targetImageRow || !targetImageId) return;
+
+            const imageNameCell = targetImageRow.querySelector(".filename");
+            if (!imageNameCell) return;
+
+            const currentName = imageNameCell.textContent.trim();
+
+            // Prevent multiple inputs
+            if (imageNameCell.querySelector("input")) return;
+
+            // Create input field
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = currentName;
+            input.style.width = "140px";
+            input.style.padding = "4px";
+            input.style.fontSize = "14px";
+
+            // Replace cell content with input
+            imageNameCell.textContent = "";
+            imageNameCell.appendChild(input);
+            input.focus();
+            input.select();
+
+            let saved = false;
+
+            function saveImageName() {
+                if (saved) return;
+                saved = true;
+
+                const newName = input.value.trim();
+
+                // If empty or unchanged, revert
+                if (!newName || newName === currentName) {
+                    imageNameCell.textContent = currentName;
+                    return;
+                }
+
+                // Update via API
+                fetch(`/update-image-name/${targetImageId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                    body: JSON.stringify({ image_name: newName }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        imageNameCell.textContent = newName;
+                        targetImageRow.dataset.imageName = newName;
+                    } else {
+                        alert("Failed to update image name: " + (data.message || "Unknown error"));
+                        imageNameCell.textContent = currentName;
+                    }
+                })
+                .catch(err => {
+                    console.error("Error updating image name:", err);
+                    alert("Failed to update image name");
+                    imageNameCell.textContent = currentName;
+                });
+            }
+
+            // Save on Enter, cancel on Escape
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") saveImageName();
+                if (e.key === "Escape") {
+                    imageNameCell.textContent = currentName;
+                    saved = true; // Prevent blur from saving
+                }
+            });
+
+            // Save on blur (clicking outside)
+            input.addEventListener("blur", saveImageName);
+        });
+
+        // 4. Handle the "Change Hatched" Action
+        document.getElementById('image-menu-change-hatched').addEventListener('click', () => {
+            if (!targetImageRow || !targetImageId) return;
+
+            const hatchedCell = targetImageRow.querySelector("td:nth-child(3)");
+            const currentHatched = hatchedCell.textContent.trim();
+
+            // Prevent multiple inputs
+            if (hatchedCell.querySelector("input")) return;
+
+            // Create input field
+            const input = document.createElement("input");
+            input.type = "number";
+            input.value = currentHatched;
+            input.min = "0";
+            input.style.width = "80px";
+            input.style.padding = "4px";
+            input.style.fontSize = "14px";
+
+            // Replace cell content with input
+            hatchedCell.textContent = "";
+            hatchedCell.appendChild(input);
+            input.focus();
+            input.select();
+
+            let saved = false;
+
+            function saveHatched() {
+                if (saved) return;
+                saved = true;
+
+                const newValue = parseInt(input.value, 10);
+
+                // If invalid or unchanged, revert
+                if (isNaN(newValue) || newValue < 0 || newValue.toString() === currentHatched) {
+                    hatchedCell.textContent = currentHatched;
+                    return;
+                }
+
+                // Update via API
+                fetch(`/update-hatched/${targetImageId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken(),
+                    },
+                    body: JSON.stringify({ total_hatched: newValue }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        hatchedCell.textContent = newValue;
+                        
+                        // Update the total hatched count
+                        const difference = newValue - parseInt(currentHatched, 10);
+                        totalHatched += difference;
+                        totalHatched = Math.max(0, totalHatched);
+                        
+                        document.getElementById("hatched-header").textContent =
+                            `Hatched (Total: ${totalHatched})`;
+                    } else {
+                        alert("Failed to update hatched count: " + (data.message || "Unknown error"));
+                        hatchedCell.textContent = currentHatched;
+                    }
+                })
+                .catch(err => {
+                    console.error("Error updating hatched:", err);
+                    alert("Failed to update hatched count");
+                    hatchedCell.textContent = currentHatched;
+                });
+            }
+
+            // Save on Enter, cancel on Escape
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") saveHatched();
+                if (e.key === "Escape") {
+                    hatchedCell.textContent = currentHatched;
+                    saved = true; // Prevent blur from saving
+                }
+            });
+
+            // Save on blur (clicking outside)
+            input.addEventListener("blur", saveHatched);
+        });
+
+        // 5. Handle the "Delete Image" Action
+        document.getElementById('image-menu-delete').addEventListener('click', () => {
+            if (!targetImageRow || !targetImageId) return;
+
+            if (confirm("Are you sure you want to delete this image?")) {
+                const currentPreview = $("#popup-image").attr("src");
+                const imageUrl = targetImageRow.dataset.imageUrl;
+
+                // Read values BEFORE removing the row
+                const eggs = parseInt(targetImageRow.querySelector("td:nth-child(2)").textContent, 10) || 0;
+                const hatched = parseInt(targetImageRow.querySelector("td:nth-child(3)").textContent, 10) || 0;
+
+                fetch(`/delete-image/${targetImageId}/`, {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCSRFToken() },
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert("Failed to delete image: " + data.message);
+                        return;
+                    }
+
+                    // Remove row
+                    targetImageRow.remove();
+
+                    // Update popup totals
+                    totalEggs -= eggs;
+                    totalHatched -= hatched;
+
+                    // Clamp to zero (safety)
+                    totalEggs = Math.max(0, totalEggs);
+                    totalHatched = Math.max(0, totalHatched);
+
+                    document.getElementById("eggs-header").textContent =
+                        `Eggs (Total: ${totalEggs})`;
+
+                    document.getElementById("hatched-header").textContent =
+                        `Hatched (Total: ${totalHatched})`;
+
+                    // Update preview
+                    if (currentPreview === imageUrl) {
+                        const firstRow = $("#popup-details tr").first();
+                        $("#popup-image").attr(
+                            "src",
+                            firstRow.length ? firstRow.data("image-url") : ""
+                        );
+                    }
+
+                    // Update main batch table
+                    if (data.batch_deleted) {
+                        const batchId = $("#popup").data("batch-id");
+                        $(`#batchTable tbody tr[data-batch-id="${batchId}"]`).remove();
+                        closePopup();
+                        alert("Last image deleted. Batch removed.");
+                    } else {
+                        const batchId = $("#popup").data("batch-id");
+                        const batchRow = $(`#batchTable tbody tr[data-batch-id="${batchId}"]`);
+                        batchRow.find("td:nth-child(3)").text(data.new_total_images);
+                        batchRow.find("td:nth-child(4)").text(data.new_total_eggs);
+                    }
+                    recalcTotals();
+                })
+                .catch(err => console.error(err));
+            }
+        });
+
+        // Hover effect for menu items
+        imageContextMenu.querySelectorAll('li').forEach(item => {
+            item.onmouseover = () => item.style.backgroundColor = "#f1f1f1";
+            item.onmouseout = () => item.style.backgroundColor = "transparent";
+        });
+    })();
+
 
 
     function getCSRFToken() {
