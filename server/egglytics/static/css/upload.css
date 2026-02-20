@@ -159,12 +159,12 @@ label {
 
 .tooltiptext {
   visibility: hidden;
-  width: 240px;
+  width: 360px;
   background-color: #333;
   color: #fff;
   text-align: Left;
   border-radius: 6px;
-  padding: 5px;
+  padding: 15px;
   position: absolute;
   z-index: 1;
   top: -5px;
@@ -186,6 +186,31 @@ label {
 
 .tooltip:hover .tooltiptext {
   visibility: visible;
+}
+
+.tooltip-examples {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.tooltip-example-item {
+  text-align: center;
+}
+
+.tooltip-example-image {
+  width: 150px;
+  height: 150px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.tooltip-example-label {
+  font-size: 12px;
+  margin: 6px 0 0 0;
+  font-weight: bold;
 }
 
 @keyframes spin {
