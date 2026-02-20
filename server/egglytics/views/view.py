@@ -269,7 +269,7 @@ def serve_thumbnail(request, image_path):
         img.thumbnail((width, height), Image.LANCZOS)
         
         buffer = BytesIO()
-        img.save(buffer, format='JPEG', quality=10, optimize=True)
+        img.save(buffer, format='JPEG', quality=80, optimize=True)
         buffer.seek(0)
         
         return HttpResponse(buffer, content_type='image/jpeg')
