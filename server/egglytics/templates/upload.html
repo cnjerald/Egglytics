@@ -128,7 +128,19 @@ id = myfile
                 Micro / Macro 
                 <span style="font-size: 12px; color: #333;">&#9432;</span> <span class="tooltiptext">
                   Allows the application to determine how large or small eggs are based on the image size<br/><br/>
-                  Macro = High resolution uploads <br/>Micro = Low resolution uploads
+                  Macro = Zoomed out images <br/>Micro = Zoomed in images
+                  <br/><br/>
+                  <strong>Examples:</strong><br/>
+                  <div class="tooltip-examples">
+                    <div class="tooltip-example-item">
+                      <img src="{% static 'img/Macro.jpg' %}" alt="Macro example" class="tooltip-example-image">
+                      <p class="tooltip-example-label">Macro</p>
+                    </div>
+                    <div class="tooltip-example-item">
+                      <img src="{% static 'img/Micro.jpg' %}" alt="Micro example" class="tooltip-example-image">
+                      <p class="tooltip-example-label">Micro</p>
+                    </div>
+                  </div>
                 </span>
               </div> <br />
               <label class="text-switch">

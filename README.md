@@ -5,10 +5,56 @@
 
 <br>
 
+## What is Egglytics?
+Egglytics is a web application for counting mosquito eggs. Its core feature lets users review and modify annotation results produced by a UNet model from the PolyEgg study for automated detection. This ability to edit annotations creates a feedback loop that extends the study, by generating corrected data for retraining and improving the model.
+
+## Sample Interfaces of the application
+
+<p align="center">
+<h1 align = "center"> Upload Interface </h1>
+<img src="assets/upload.jpg" alt="Banner" width = "100%">
+</p>
+
+
+<p align="center">
+<h1 align = "center"> View Results </h1>
+<img src="assets/view.jpg" alt="Banner" width = "100%">
+</p>
+
+
+<p align="center">
+<h1 align = "center"> Editor Interface </h1>
+<img src="assets/annotate.jpg" alt="Banner" width = "100%">
+</p>
+
+
+
+## Summary Table Of Results
+To Follow
+
+## Links to trained weights
+Redacted
+
+## Comparison Table Against Other Applications
+
+<div align="center">
+
+| Application Name | Method | Requires Manual Configuration | Open Source | Platform |
+| :---: | :-: | :-: | :-: | :-------: |
+| MECVision | Traditional Image Processing | No | Yes | Web
+| Ovitrap Monitor | Traditional Image Processing | Yes | Yes | Web
+| ICount | Unspecified Deep Learning Model | Yes | Yes | Windows
+| EggCountAI | R-CNN | Yes | Yes | Windows
+| **Egglytics** | **U-Net** | **No** | **Yes** | **Web** |
+
+</div>
 
 ## For Developers
-## I. Initial Requirements
+## I. Installation of Requirements
 1. Install [Postgres](https://www.postgresql.org/download/)
+2. Create a Virtual Environment (VENV) on a folder (Root) using "python -m venv ENV_NAME_HERE"
+3. Activate VENV "ENV_NAME_HERE\Scripts\activate.bat"
+4. On folder (Root) clone repository 
 2. Activate Venv and install requirements using "pip install -r requirements.txt" for both web application and compute
 
 ## II. Initial Database Setup

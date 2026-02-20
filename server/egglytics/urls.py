@@ -18,7 +18,7 @@ urlpatterns = [
     path("update-hatched/<int:image_id>/", view.update_hatched, name="update_hatched"),
     path("editor/<int:image_id>/", view.edit, name="edit"),
     path("update-image-name/<int:image_id>/", view.update_image_name, name="update_image_name"),
-
+    path('thumbnail/<path:image_path>', view.serve_thumbnail, name='serve_thumbnail'),  # No trailing slash
 
     # EDITOR FUNCTION PAGE
     path("add_egg_to_db_point/<int:image_id>/", editor.add_egg_to_db_point, name="add_egg_to_db_point"),
