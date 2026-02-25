@@ -8,17 +8,26 @@
 ## What is Egglytics?
 Egglytics is a web application for counting mosquito eggs. Its core feature lets users review and modify annotation results produced by a UNet model from the PolyEgg study for automated detection. This ability to edit annotations creates a feedback loop that extends the study, by generating corrected data for retraining and improving the model.
 
-## Sample Interfaces of the application
+## Interfaces of the application
 
 <p align="center">
 <h1 align = "center"> Upload Interface </h1>
+<h3 align = "center" >
+  On this page, the user can upload images, select the image type, edit images, and choose a model for processing.
+</h2>
 <img src="assets/upload.jpg" alt="Banner" width = "100%">
 </p>
 
 
+
+
 <p align="center">
 <h1 align = "center"> View Results </h1>
+<h3 align="center">
+  On this page, the user can view and filter batches. Users can also edit the batch name, update the number of hatched eggs, and view the details of each individual image.
+</h3>
 <img src="assets/view.jpg" alt="Banner" width = "100%">
+<img src="assets/view_specific.jpg" alt="Banner" width = "100%">
 </p>
 
 
