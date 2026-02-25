@@ -1,13 +1,92 @@
+/**
+ * ImageCropper
+ * ------------
+ * Provides interactive image cropping inside a modal interface.
+ * 
+ * Responsibilities:
+ * - Display crop modal UI
+ * - Allow user-controlled cropping via draggable bars
+ * - Perform canvas-based cropping
+ * - Save cropped images back into the upload pipeline
+ * - Maintain crop state and UI synchronization
+ *
+ * This class integrates with the upload workflow by receiving
+ * external state handlers for file storage.
+ *
+ * External Dependencies (DOM):
+ * - #cropModal
+ * - #cropImage
+ * - #imageContainer
+ * - #cropOverlay
+ * - #uploadArea
+ * - #cropperSection
+ *
+ * Workflow:
+ * Upload → Preview → Crop → Save → Update File Array
+ */
+
 export class ImageCropper {
+     /**
+     * Creates an ImageCropper instance.
+     *
+     * @param {Object} options
+     * @param {Function} options.getFileArray - Returns the current file array.
+     * @param {Function} options.setFile - Updates a file at a specific index.
+     */
+
     constructor({ getFileArray, setFile }) {
+        /**
+         * Callback to retrieve the staged file array.
+         * @type {Function}
+         */
         this.getFileArray = getFileArray;
+
+        /**
+         * Callback to update a file entry.
+         * @type {Function}
+         */
         this.setFile = setFile;
+
+        /**
+         * Crop boundaries stored as percentage offsets.
+         * @type {{top:number,bottom:number,left:number,right:number}}
+         */
         this.crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
+
+        /**
+         * Index of the currently edited image.
+         * @type {number|null}
+         */
         this.index = null;
+
+        /**
+         * Current dragging direction.
+         * @type {string|null}
+         */
         this.dragging = null;
+
+        /**
+         * Crop container element.
+         * @type {HTMLElement|null}
+         */
         this.container = null;
+
+        /**
+         * Modal element for crop UI.
+         * @type {HTMLElement}
+         */
         this.modal = document.getElementById("cropModal");
+        
+        /**
+         * Stores original image source before edits.
+         * @type {string|null}
+         */
         this.originalImage = null;
+
+        /**
+         * Indicates whether crop changes exist.
+         * @type {boolean}
+         */
         this.hasChanges = false;
 
         this.initGlobalListeners();
@@ -15,6 +94,14 @@ export class ImageCropper {
     /* ========================
        PUBLIC METHODS
     ======================== */
+
+    /**
+     * Opens the crop modal for a specific image.
+     *
+     * @param {string} imageSrc - Source URL or dataURL of the image.
+     * @param {number} index - Index of the image in the file array.
+     * @returns {void}
+     */
 
     open(imageSrc, index) {
         this.hasChanges = false;
@@ -25,6 +112,12 @@ export class ImageCropper {
         setTimeout(() => this.loadImage(imageSrc), 100);
     }
 
+    /**
+     * Closes the crop modal.
+     * Prompts the user to save if unsaved changes exist.
+     *
+     * @returns {void}
+     */
     close() {
         if (this.hasChanges) {
             const userConfirmed = confirm(
@@ -40,6 +133,11 @@ export class ImageCropper {
         this.resetInterface();
     }
 
+    /**
+     * Restores the image to its original state.
+     *
+     * @returns {void}
+     */
     resetImage() {
         this.hasChanges = false;
         const img = document.getElementById("cropImage");
@@ -47,7 +145,12 @@ export class ImageCropper {
 
         this.resetBars();
     }
-
+    /**
+     * Performs cropping using HTML canvas.
+     * Converts percentage crop boundaries into pixel coordinates.
+     *
+     * @returns {void}
+     */
     performCrop() {
         const img = document.getElementById("cropImage");
         if (!img) return;
@@ -84,7 +187,12 @@ export class ImageCropper {
             }
         }, 100);
     }
-
+    /**
+     * Saves the cropped image back into the file array.
+     * Converts the canvas dataURL into a File object.
+     *
+     * @returns {void}
+     */
     performSave() {
         const img = document.getElementById("cropImage");
 
@@ -127,13 +235,24 @@ export class ImageCropper {
     /* ========================
        INTERNAL METHODS
     ======================== */
-
+    /**
+     * Loads an image into the cropper UI.
+     *
+     * @param {string} imageSrc
+     * @returns {void}
+     */
     loadImage(imageSrc) {
         const img = document.getElementById("cropImage");
         img.src = imageSrc;
         img.onload = () => this.showCropper();
     }
 
+    /**
+     * Displays crop UI components.
+     * Initializes drag handlers.
+     *
+     * @returns {void}
+     */
     showCropper() {
         document.getElementById("uploadArea").style.display = "none";
         document.getElementById("cropperSection").style.display = "block";
@@ -145,6 +264,11 @@ export class ImageCropper {
         this.setupCropper();
     }
 
+    /**
+     * Resets modal UI to its initial state.
+     *
+     * @returns {void}
+     */
     resetInterface() {
         document.getElementById("uploadArea").style.display = "block";
         document.getElementById("cropperSection").style.display = "none";
@@ -155,7 +279,11 @@ export class ImageCropper {
 
         this.resetBars();
     }
-
+    /**
+     * Initializes draggable crop bars.
+     *
+     * @returns {void}
+     */
     setupCropper() {
         this.container = document.getElementById("imageContainer");
         const bars = this.container.querySelectorAll(".bar");
@@ -167,13 +295,23 @@ export class ImageCropper {
         document.onmousemove = (e) => this.drag(e);
         document.onmouseup = () => this.stopDrag();
     }
-
+    /**
+     * Begins drag interaction.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
     startDrag(e) {
         this.dragging = e.target.dataset.type;
         e.target.classList.add("active");
         e.preventDefault();
     }
-
+    /**
+     * Updates crop bounds during dragging.
+     *
+     * @param {MouseEvent} e
+     * @returns {void}
+     */
     drag(e) {
         if (!this.dragging || !this.container) return;
 
@@ -199,13 +337,23 @@ export class ImageCropper {
         this.updateDisplay();
     }
 
+    /**
+     * Ends drag interaction.
+     *
+     * @returns {void}
+     */
     stopDrag() {
         if (!this.dragging) return;
         const activeBar = this.container.querySelector(".bar.active");
         if (activeBar) activeBar.classList.remove("active");
         this.dragging = null;
     }
-    
+
+    /**
+     * Updates crop overlay display based on crop state.
+     *
+     * @returns {void}
+     */    
     updateDisplay() {
         if (!this.container) return; // <-- early exit if container not ready
         const bars = this.container.querySelectorAll(".bar");
@@ -224,12 +372,23 @@ export class ImageCropper {
         overlay.style.bottom = this.crop.bottom + "%";
     }
 
-
+    /**
+     * Resets crop boundaries to default values.
+     *
+     * @returns {void}
+     */
     resetBars() {
         this.crop = { top: 7.5, bottom: 7.5, left: 7.5, right: 7.5 };
         this.updateDisplay();
     }
 
+    /**
+     * Converts a Base64 dataURL into a File object.
+     *
+     * @param {string} dataUrl
+     * @param {string} filename
+     * @returns {File}
+     */
     dataURLtoFile(dataUrl, filename) {
         const arr = dataUrl.split(",");
         const mime = arr[0].match(/:(.*?);/)[1];
@@ -240,6 +399,12 @@ export class ImageCropper {
         return new File([u8arr], filename, { type: mime });
     }
 
+    /**
+     * Displays loading overlay.
+     *
+     * @param {string} [message="Loading..."]
+     * @returns {void}
+     */
     showLoading(message = "Loading...") {
         let loader = document.getElementById("loadingOverlay");
         if (!loader) {
@@ -255,11 +420,23 @@ export class ImageCropper {
         loader.style.display = "flex";
     }
 
+    /**
+     * Hides loading overlay.
+     *
+     * @returns {void}
+     */
     hideLoading() {
         const loader = document.getElementById("loadingOverlay");
         if (loader) loader.style.display = "none";
     }
 
+    /**
+     * Initializes global listeners:
+     * - Click outside modal
+     * - Escape key close
+     *
+     * @returns {void}
+     */
     initGlobalListeners() {
         window.addEventListener("mousedown", (event) => {
             if (!this.dragging && event.target === this.modal) {

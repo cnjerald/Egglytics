@@ -1,11 +1,69 @@
+/**
+ * UploadHandler
+ * -------------
+ * Manages file intake, validation, upload submission,
+ * and synchronization with the table preview layer.
+ *
+ * Responsibilities:
+ * - Validate selected image files (type + size)
+ * - Maintain the staged upload file array
+ * - Coordinate table updates after file changes
+ * - Submit files and metadata to the backend
+ * - Handle upload progress and success flow
+ *
+ * This module acts as the pipeline controller between:
+ * File Input → TableHandler → Backend Upload API
+ *
+ * External Dependencies (DOM / Libraries):
+ * - #upload-table tbody
+ * - #upload-progress-container
+ * - #upload-progress
+ * - jQuery (AJAX + DOM helpers)
+ * - localStorage
+ *
+ * Workflow:
+ * File Selection → Validation → Table Sync → Upload → Redirect
+ */
+
 export class UploadHandler {
+
+    /**
+     * Creates an UploadHandler instance.
+     *
+     * @param {Object} options
+     * @param {Function} options.getFileArray - Returns the staged file array.
+     * @param {Function} options.setFileArray - Updates the staged file array.
+     * @param {Object} options.tableHandler - TableHandler instance used for UI synchronization.
+     */
+
     constructor({ getFileArray, setFileArray, tableHandler }) {
+        /**
+         * Callback to retrieve the current file array.
+         * @type {Function}
+         */
         this.getFileArray = getFileArray;
+        /**
+         * Callback to update the file array.
+         * @type {Function}
+         */
         this.setFileArray = setFileArray;
+        /**
+         * Table rendering controller.
+         * @type {Object}
+         */
         this.tableHandler = tableHandler;
-        
+
+        /**
+         * Maximum allowed number of files per batch.
+         * @type {number}
+         */        
         // Constants
         this.MAX_FILES = 100;
+
+        /**
+         * Maximum allowed file size per file (bytes).
+         * @type {number}
+         */        
         this.MAX_SIZE_PER_FILE = 500 * 1024 * 1024; // 500 MB
     }
 
@@ -13,6 +71,13 @@ export class UploadHandler {
        PUBLIC METHODS
     ======================== */
 
+    /**
+     * Validates incoming files and appends valid files
+     * to the staged upload array.
+     *
+     * @param {FileList|File[]} files
+     * @returns {void}
+     */
     handleFiles(files) {
         const fileArray = this.getFileArray();
 
@@ -50,6 +115,12 @@ export class UploadHandler {
         this.tableHandler.populateTable();
     }
 
+    /**
+     * Removes a file from the staged array and updates the table.
+     *
+     * @param {number} index
+     * @returns {void}
+     */
     deleteFile(index) {
         const fileArray = this.getFileArray();
         
@@ -68,6 +139,13 @@ export class UploadHandler {
         console.log(`Deleted entry ${index}. Remaining files:`, fileArray.length);
     }
 
+    /**
+     * Submits all staged files and metadata to the server.
+     * Handles progress visualization and redirect on success.
+     *
+     * @async
+     * @returns {Promise<Object>}
+     */
     async submitUpload() {
         const fileArray = this.getFileArray();
         const formData = new FormData();
@@ -136,6 +214,11 @@ export class UploadHandler {
        PRIVATE METHODS
     ======================== */
 
+    /**
+     * Creates an XMLHttpRequest instance with upload progress tracking (This is the progress bar)
+     *
+     * @returns {XMLHttpRequest}
+     */
     createXHRWithProgress() {
         const xhr = new window.XMLHttpRequest();
         xhr.upload.addEventListener("progress", (evt) => {
@@ -148,17 +231,33 @@ export class UploadHandler {
         return xhr;
     }
 
+    /**
+     * Displays the upload progress UI.
+     *
+     * @returns {void}
+     */
     showProgress() {
         $("#upload-progress-container").show();
         $("#upload-progress").css("width", "0%");
         $("#upload-progress").text("0%");
     }
 
+    /**
+     * Hides the upload progress UI.
+     *
+     * @returns {void}
+     */
     hideProgress() {
         $("#upload-progress-container").hide();
         $("#upload-progress").css("width", "0%");
     }
 
+    /**
+     * Handles successful upload completion.
+     * Clears state and redirects to processing view.
+     *
+     * @returns {void}
+     */
     handleUploadSuccess() {
         // Clear files and table
         this.setFileArray([]);
@@ -171,7 +270,12 @@ export class UploadHandler {
         localStorage.setItem("flag", JSON.stringify({ processingActive: true }));
         window.location.href = "/view";
     }
-
+    
+    /**
+     * Extracts CSRF token from browser cookies.
+     *
+     * @returns {string}
+     */
     getCSRFToken() {
         const name = 'csrftoken';
         const cookies = document.cookie.split(';');

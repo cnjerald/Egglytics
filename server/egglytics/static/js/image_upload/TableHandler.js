@@ -1,9 +1,64 @@
+/**
+ * TableHandler
+ * ------------
+ * Manages rendering and interaction of the upload preview table.
+ *
+ * Responsibilities:
+ * - Render file rows from the staged file array
+ * - Provide per-row controls (crop, delete, model selection)
+ * - Synchronize UI state with the upload pipeline
+ * - Maintain row indexing after deletions
+ *
+ * This module acts as the presentation layer between:
+ * UploadHandler → ImageCropper → UI Table
+ *
+ * External Dependencies (DOM):
+ * - #upload-table tbody
+ * - #upload-btn
+ *
+ * Workflow:
+ * File Intake → Table Rendering → Row Actions → Pipeline Updates
+ */
+
 export class TableHandler {
+
+    /**
+     * Creates a TableHandler instance.
+     *
+     * @param {Object} options
+     * @param {Function} options.getFileArray - Returns the staged file array.
+     * @param {Array<Object>} options.models - List of available model configurations.
+     * @param {Object} options.cropper - ImageCropper instance used for editing images.
+     * @param {Function} options.onDelete - Callback triggered when a row is deleted.
+     */
     constructor({ getFileArray, models, cropper, onDelete }) {
+        /**
+         * Callback to retrieve file array.
+         * @type {Function}
+         */
         this.getFileArray = getFileArray;
+        /**
+         * Available prediction models.
+         * @type {Array<Object>}
+         */
         this.models = models;
+
+        /**
+         * Image cropper controller.
+         * @type {Object}
+         */
         this.cropper = cropper;
+
+        /**
+         * Callback executed when a file is removed.
+         * @type {Function}
+         */
         this.onDelete = onDelete;
+
+        /**
+         * Table body element.
+         * @type {HTMLElement}
+         */
         this.tbody = document.querySelector("#upload-table tbody");
     }
 
@@ -11,6 +66,12 @@ export class TableHandler {
        PUBLIC METHODS
     ======================== */
 
+    /**
+     * Updates the visibility of the submit button based on
+     * whether the table contains rows.
+     *
+     * @returns {void}
+     */
     updateSubmitButtonVisibility() {
         const tableBody = document.querySelector('#upload-table tbody');
         const submitButton = document.getElementById('upload-btn');
@@ -25,6 +86,11 @@ export class TableHandler {
         }
     }
 
+    /**
+     * Renders the entire table using the current file array.
+     *
+     * @returns {void}
+     */
     populateTable() {
         const fileArray = this.getFileArray();
         this.tbody.innerHTML = ""; // Clear old rows
@@ -37,6 +103,12 @@ export class TableHandler {
         this.updateSubmitButtonVisibility();
     }
 
+     /**
+     * Reindexes table rows after deletion or reordering.
+     * Also updates button callbacks to match new indices.
+     *
+     * @returns {void}
+     */   
     reindexRows() {
         const rows = this.tbody.querySelectorAll("tr");
         rows.forEach((row, newIndex) => {
@@ -60,6 +132,13 @@ export class TableHandler {
         });
     }
 
+    /**
+     * Updates a specific row when a file is modified.
+     *
+     * @param {number} index - File index.
+     * @param {File} newFile - Updated file object.
+     * @returns {void}
+     */
     updateRow(index, newFile) {
         const row = this.tbody.querySelector(`tr[data-id="${index + 1}"]`);
         if (!row) return;
@@ -77,6 +156,11 @@ export class TableHandler {
         }
     }
 
+    /**
+     * Clears all rows from the table.
+     *
+     * @returns {void}
+     */
     clearTable() {
         this.tbody.innerHTML = "";
         this.updateSubmitButtonVisibility();
@@ -86,6 +170,13 @@ export class TableHandler {
        PRIVATE METHODS
     ======================== */
 
+    /**
+     * Creates a full table row element.
+     *
+     * @param {File} file
+     * @param {number} index
+     * @returns {HTMLTableRowElement}
+     */    
     createTableRow(file, index) {
         const row = document.createElement("tr");
         row.dataset.id = index + 1;
@@ -114,6 +205,12 @@ export class TableHandler {
         return row;
     }
 
+    /**
+     * Creates preview image cell.
+     *
+     * @param {File} file
+     * @returns {HTMLTableCellElement}
+     */
     createImageCell(file) {
         const imgCell = document.createElement("td");
         const img = document.createElement("img");
@@ -124,6 +221,12 @@ export class TableHandler {
         return imgCell;
     }
 
+    /**
+     * Creates filename cell.
+     *
+     * @param {File} file
+     * @returns {HTMLTableCellElement}
+     */
     createNameCell(file) {
         const nameCell = document.createElement("td");
         const nameWrap = document.createElement("div");
@@ -134,12 +237,27 @@ export class TableHandler {
         return nameCell;
     }
 
+    /**
+     * Creates file size cell.
+     *
+     * @param {File} file
+     * @returns {HTMLTableCellElement}
+     */
     createSizeCell(file) {
         const sizeCell = document.createElement("td");
         sizeCell.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
         return sizeCell;
     }
 
+    /**
+     * Creates Micro/Macro mode toggle cell.
+     *
+     * Mode is estimated from file size.
+     *
+     * @param {File} file
+     * @param {number} index
+     * @returns {HTMLTableCellElement}
+     */    
     createModeCell(file, index) {
         const modeCell = document.createElement("td");
         const isMacro = (file.size / (1024 * 1024)) >= 1;
@@ -161,6 +279,12 @@ export class TableHandler {
         return modeCell;
     }
 
+    /**
+     * Creates crop/edit button cell.
+     *
+     * @param {number} index
+     * @returns {HTMLTableCellElement}
+     */
     createEditCell(index) {
         const editCell = document.createElement("td");
         const editBtn = document.createElement("button");
@@ -178,6 +302,12 @@ export class TableHandler {
         return editCell;
     }
 
+    /**
+     * Creates model selection dropdown cell.
+     *
+     * @param {number} index
+     * @returns {HTMLTableCellElement}
+     */
     createModelCell(index) {
         const modelCell = document.createElement("td");
         const modelSelect = document.createElement("select");
@@ -201,6 +331,12 @@ export class TableHandler {
         return modelCell;
     }
 
+    /**
+     * Creates delete button cell.
+     *
+     * @param {number} index
+     * @returns {HTMLTableCellElement}
+     */
     createDeleteCell(index) {
         const deleteCell = document.createElement("td");
         const deleteBtn = document.createElement("button");
@@ -215,7 +351,13 @@ export class TableHandler {
         deleteCell.appendChild(deleteBtn);
         return deleteCell;
     }
-
+    
+    /**
+     * Displays confirmation modal before deleting a file.
+     *
+     * @param {number} index
+     * @returns {void}
+     */
     showDeleteConfirmation(index) {
         const mainContent = document.querySelector(".main-content");
         if (!mainContent) {
