@@ -17,7 +17,33 @@ Image.MAX_IMAGE_PIXELS = None
 # Suppress the warning if it still appears in certain contexts
 warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
+
 def upload(request):
+    """
+    Handles file upload, stores metadata in the database, and launches background processing.
+
+    Workflow:
+    1. Validates that the request is POST and contains files.
+    2. Creates a BatchDetails entry in the database.
+    3. Encodes uploaded files in base64 and collects per-file metadata.
+    4. Launches a separate thread to process images asynchronously.
+    5. Returns a JSON response immediately confirming upload receipt.
+
+    Args:
+        request (HttpRequest): Django request object containing POST data and FILES.
+
+    POST Parameters:
+        batch_name (str): Name of the upload batch.
+        user (str): Owner of the batch.
+        myfiles (list[UploadedFile]): Uploaded image files.
+        model_{i} (str): Model selected for the ith file.
+        mode_{i} (str): Mode for the ith file, either 'micro' or 'macro'.
+        share_{i} (str): Whether the file should be shared ('true'/'false').
+
+    Returns:
+        JsonResponse: If POST with files, returns a confirmation message and batch ID.
+        HttpResponse: If not a POST or no files, renders the upload page.
+    """
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
         # Get the current time now, creating a unique key
         batch_name = request.POST.get("batch_name")
@@ -70,7 +96,32 @@ def upload(request):
         return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
 
     return render(request, "base.html", {'included_template': 'upload.html'})
+
 def recalibrate(request):
+    """
+    Recalibrates an uploaded image by processing it in a background thread.
+
+    Workflow:
+    1. Accepts a POST request with JSON payload containing imageId and averagePixels.
+    2. Retrieves the image record from the database.
+    3. Loads the image file from disk and encodes it as base64.
+    4. Launches a background thread to perform recalibration using the specified model and mode.
+    5. Returns a JSON response immediately.
+
+    Args:
+        request (HttpRequest): Django request object containing JSON body.
+
+    JSON POST Parameters:
+        imageId (str): Unique identifier of the image to recalibrate.
+        averagePixels (float): Average pixel value used for recalibration.
+
+    Returns:
+        JsonResponse: 
+            - {"status": "success"} if recalibration thread started successfully.
+            - {"error": "Image not found"} with 404 status if image ID is invalid.
+            - {"error": "<message>"} with 400 status for other errors.
+            - {"error": "Invalid request"} with 405 status if request method is not POST.
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -119,6 +170,36 @@ def recalibrate(request):
     return JsonResponse({"error": "Invalid request"}, status=405)
 
 def recalibrate_image(image, avg_pixels, model, mode, image_id):
+    """
+    Recalibrates a single image using the specified AI model, updates annotations,
+    and saves a compressed version of the processed image to disk.
+
+    Workflow:
+    1. Retrieves the existing ImageDetails record from the database.
+    2. Sends the image to the AI model for recalibration.
+    3. Falls back to the original image if the AI fails.
+    4. Updates annotation points in AnnotationPoints (deletes old, inserts new).
+    5. Saves the processed image to MEDIA_ROOT/uploads with downsampling 
+       (JPEG, quality=65) to reduce file size.
+    6. Updates egg count and processing flags in the database.
+
+    Args:
+        image (str): Base64-encoded image string.
+        avg_pixels (float): Average pixel value used for recalibration.
+        model (str): Name of the AI model to use (e.g., "polyegg_heatmap").
+        mode (str): Processing mode ("micro" or "macro").
+        image_id (int): ID of the image record in the database.
+
+    Returns:
+        None
+
+    Side Effects:
+        - Updates ImageDetails record: total_eggs, is_processed, image_version.
+        - Updates AnnotationPoints table with recalibrated points.
+        - Saves processed image to MEDIA_ROOT/uploads in compressed JPEG format.
+        - Updates parent BatchDetails with new total egg count.
+    """
+
     payload = {
         "image": image,
         "avg_pixels": avg_pixels,
@@ -200,26 +281,34 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     # --------------- UPDATE IMAGE FILE ---------------
     if image_b64:
+    # Remove header if present
         if "," in image_b64:
             image_b64 = image_b64.split(",")[1]
 
+        # Decode base64
         img_data = base64.b64decode(image_b64)
+
+        # Open with Pillow
         image = Image.open(BytesIO(img_data))
 
+        # Keep original resolution
         print("Resolution:", image.size)
 
+        # Convert to RGB if needed (PNG with alpha → JPEG compatible)
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
 
+        # Prepare folder
         upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
         os.makedirs(upload_dir, exist_ok=True)
 
         file_path = os.path.join(upload_dir, image_record.file_path)
 
+        # SAVE WITH COMPRESSION (quality=75)
         image.save(
             file_path,
             format="JPEG",
-            quality=65,
+            quality=75,       # slightly higher than 65
             optimize=True,
             progressive=True
         )
@@ -242,6 +331,38 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     
 # HELPER FUNCTION TO PROCESS IMAGES
 def process_images(batch, files_data, header):
+    """
+    Processes a batch of uploaded images by sending them to the model for inference,
+    saving results to the database, and writing processed images to disk.
+
+    Workflow:
+    1. Iterates through each uploaded file and creates a DB record.
+    2. Sends the image to the specified model (e.g., 'polyegg_heatmap') or uses
+       a fallback annotation method.
+    3. Extracts results (egg counts, final image, annotation points) from the model response.
+    4. Saves processed images locally with compression.
+    5. Records annotation points in the database.
+    6. Updates batch-level summary (total eggs, completion status, failure flag).
+
+    Args:
+        batch (BatchDetails): The database record representing this batch.
+        files_data (list[dict]): List of dictionaries containing per-file metadata:
+            - name (str): Original filename
+            - data (str): Base64-encoded image
+            - model (str): Model to use for processing
+            - mode (str): "micro" or "macro"
+            - share (bool): Whether to share results (optional)
+        header (str): Prefix to use for generated filenames.
+
+    Returns:
+        None
+
+    Side Effects:
+        - Creates ImageDetails records for each file.
+        - Writes processed images to MEDIA_ROOT/uploads.
+        - Saves annotation points to AnnotationPoints table.
+        - Updates BatchDetails with total eggs, completion status, and fail flags.
+    """
     total_eggs = 0
     total_hatched = 0
     # bucket_name = "egglytics"
@@ -348,7 +469,7 @@ def process_images(batch, files_data, header):
                 image.save(
                     file_path,
                     format="JPEG",
-                    quality=65,       # sweet spot
+                    quality=75,       # sweet spot
                     optimize=True,
                     progressive=True
                 )
