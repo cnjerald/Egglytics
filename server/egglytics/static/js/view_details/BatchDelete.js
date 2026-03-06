@@ -1,8 +1,18 @@
 
 import { Utils } from "./Utils.js";
 
+/**
+ * Handles batch deletion from the table.
+ */
 export class BatchDelete {
+    /**
+     * @param {Function} recalcTotals - Callback to recalculate totals after a batch is deleted.
+     */
     constructor(recalcTotals) {
+        /**
+         * Callback function to recalculate totals after deletion.
+         * @type {Function}
+         */
         this.recalcTotals = recalcTotals;
 
         $(document).on("click", "#batchTable .delete-btn", (e) => {

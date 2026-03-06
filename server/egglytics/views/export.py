@@ -12,6 +12,21 @@ from ._imports import *
 
 
 def export(request):
+
+    """
+    Render the export page with a list of available models.
+
+    Fetches all distinct model names from ImageDetails and passes
+    them to the export template for the user to select from.
+
+    Args:
+        request: GET request
+
+    Returns:
+        Rendered response with template "export.html" and context:
+            - models (QuerySet): Distinct model_used values
+    """
+
     models = (
         ImageDetails.objects
         .values_list("model_used", flat=True)
@@ -28,6 +43,20 @@ def export(request):
     )
 
 def export_date_range(request):
+    """
+    Return the earliest and latest upload dates for a given model.
+
+    Used to populate date range pickers on the export UI.
+
+    Args:
+        request: GET request with query params:
+            - model (str): The model name to query
+
+    Returns:
+        JsonResponse: {"dateFrom": "YYYY-MM-DD", "dateTo": "YYYY-MM-DD"}
+        JsonResponse: {"error": "No model selected"} with status 400
+        JsonResponse: {"error": "No data for model"} with status 404
+    """
     model = request.GET.get("model")
 
     if not model:
@@ -49,6 +78,27 @@ def export_date_range(request):
     })
 
 def export_image_count(request):
+    """
+    Return counts of images, annotation points, and rectangles for a filtered dataset.
+
+    Used to give users a preview of how many records will be included
+    before they trigger a full export.
+
+    Args:
+        request: GET request with query params:
+            - model (str): Model name to filter by
+            - verified (str): "1" to include only validated images
+            - date_from (str, optional): Start date (YYYY-MM-DD)
+            - date_to (str, optional): End date (YYYY-MM-DD)
+
+    Returns:
+        JsonResponse: {
+            "total_images": int,
+            "total_points": int,
+            "total_rects": int
+        }
+        JsonResponse: {"error": "No model selected"} with status 400
+    """
     model = request.GET.get("model")
     verified = request.GET.get("verified") == "1"
     date_from = request.GET.get("date_from")
@@ -87,6 +137,38 @@ def export_image_count(request):
     })
 
 def export_dataset(request):
+    """
+    Export a filtered image dataset as a ZIP file in one of three annotation formats.
+
+    Images are written to an `images/` folder in the ZIP. Annotations are written
+    alongside them in a format-specific structure. The ZIP is saved to
+    `MEDIA_ROOT/exports/` and a download URL is returned.
+
+    Args:
+        request: GET request with query params:
+            - model (str): Model name to filter by (required)
+            - format (str): One of "custom", "yolo", or "coco" (default: "custom")
+            - verified (str): "1" to include only validated images
+            - date_from (str, optional): Start date (YYYY-MM-DD)
+            - date_to (str, optional): End date (YYYY-MM-DD)
+
+    Formats:
+        custom: Per-image JSON files in `annotations/<name>.json`.
+                Points exported as center (x, y); rects as (x, y, width, height).
+        yolo:   Per-image .txt files in `labels/<name>.txt`.
+                All coordinates normalized to [0, 1]. Points get a fixed 10px box.
+        coco:   Single `annotations/instances.json` in COCO format.
+                Rects in top-left bbox format; points converted from center to top-left.
+
+    Returns:
+        JsonResponse: {"success": True, "filename": str, "download_url": str}
+        JsonResponse: {"error": "Model required"} with status 400
+        JsonResponse: {"error": "No data to export"} with status 404
+
+    Notes:
+        - Images missing from disk are silently skipped
+        - Point annotations use a fixed bounding box size of 10px for YOLO and COCO
+    """
     model = request.GET.get("model")
     format_type = request.GET.get("format", "custom")
     verified = request.GET.get("verified") == "1"
@@ -291,6 +373,28 @@ def export_dataset(request):
 
 
 def export_dataset_csv(request):
+    """
+    Export a summary CSV of egg and hatch counts per image.
+
+    Each row contains the image name, upload date, total egg count
+    (from AnnotationPoints), and total hatched count. The CSV is saved
+    to `MEDIA_ROOT/exports/` and a download URL is returned.
+
+    Args:
+        request: GET request with query params:
+            - model (str): Model name to filter by (required)
+            - verified (str): "1" to include only validated images
+            - date_from (str, optional): Start date (YYYY-MM-DD)
+            - date_to (str, optional): End date (YYYY-MM-DD)
+
+    Returns:
+        JsonResponse: {"success": True, "filename": str, "download_url": str}
+        JsonResponse: {"error": "Model required"} with status 400
+        JsonResponse: {"error": "No data to export"} with status 404
+
+    CSV columns:
+        ImageName, DATE, total_Eggs, Total_HATCHED
+    """
     model = request.GET.get("model")
     verified = request.GET.get("verified") == "1"
     date_from = request.GET.get("date_from")

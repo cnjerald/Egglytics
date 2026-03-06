@@ -1,34 +1,62 @@
-//
-// 
-// 
-// RECTANGLE ANNOTATIONS MANAGEMENT
-// 
-// 
-// 
+/**
+ * -----------------------------------------
+ * POINT ANNOTATION MANAGER
+ * -----------------------------------------
+ * Handles creation, rendering, selection,
+ * and storage of point annotations.
+ */
 
 import { addOverlay, removeOverlay, updateOverlay, createOverlayElement } from './overlay.js';
 
 export class RectAnnotationManager {
+    /**
+     * Creates a new RectAnnotationManager instance.
+     * @param {OpenSeadragon.Viewer} viewer - The OpenSeadragon viewer instance.
+     */
     constructor(viewer) {
         this.viewer = viewer;
+        /** @type {Array<Object>} List of rectangle annotations */
         this.rects = [];
+        /** @type {Array<Array<number>>} Temporary edge points for rectangle drawing */
         this.edges = [];
+        /** @type {HTMLElement|null} Preview rectangle overlay */
         this.previewRect = null;
     }
 
+    /**
+     * Adds an edge point for rectangle drawing.
+     * @param {number} x - X coordinate in image space
+     * @param {number} y - Y coordinate in image space
+     * @returns {number} Number of edges currently stored
+     */
     addEdge(x, y) {
         this.edges.push([x, y]);
         return this.edges.length;
     }
 
+    /**
+     * Clears stored edge points.
+     */
     clearEdges() {
         this.edges = [];
     }
 
+    /**
+     * Returns stored edge points.
+     * @returns {Array<Array<number>>}
+     */
     getEdges() {
         return this.edges;
     }
 
+    /**
+     * Updates or creates a preview rectangle during drawing.
+     *
+     * @param {number} x1 - Starting X coordinate (image space)
+     * @param {number} y1 - Starting Y coordinate (image space)
+     * @param {number} x2 - Ending X coordinate (image space)
+     * @param {number} y2 - Ending Y coordinate (image space)
+     */
     updatePreview(x1, y1, x2, y2) {
         const tiledImage = this.viewer.world.getItemAt(0);
 
@@ -61,6 +89,9 @@ export class RectAnnotationManager {
         }
     }
 
+    /**
+     * Hides and removes the preview rectangle.
+    */
     hidePreview() {
         if (this.previewRect) {
             removeOverlay(this.viewer, this.previewRect);
@@ -68,6 +99,18 @@ export class RectAnnotationManager {
         }
     }
 
+    /**
+     * Adds a rectangle annotation to the viewer.
+     *
+     * @param {number} x1 - Starting X coordinate (image space)
+     * @param {number} y1 - Starting Y coordinate (image space)
+     * @param {number} x2 - Ending X coordinate (image space)
+     * @param {number} y2 - Ending Y coordinate (image space)
+     * @param {string} [color="red"] - Border color
+     * @param {number} [lineWidth=2] - Border width
+     * @param {string|null} [rectId=null] - Optional rectangle identifier
+     * @returns {Object} Created rectangle annotation object
+    */
     addRect(x1, y1, x2, y2, color = "red", lineWidth = 2, rectId = null) {
         const minX = Math.min(x1, x2);
         const minY = Math.min(y1, y2);
@@ -107,6 +150,12 @@ export class RectAnnotationManager {
         return rect;
     }
 
+    /**
+     * Loads rectangles from stored data.
+     *
+     * @param {Array<Object>} loadedRects List of rectangles containing
+     * {x_init, y_init, x_end, y_end, rect_id}
+     */
     loadRects(loadedRects) {
         this.rects.length = 0;
 
@@ -115,6 +164,11 @@ export class RectAnnotationManager {
         });
     }
 
+    /**
+     * Removes a rectangle annotation.
+     *
+     * @param {Object} rect Rectangle object to remove
+     */
     removeRect(rect) {
         if (rect.element) {
             removeOverlay(this.viewer, rect.element);
@@ -125,6 +179,13 @@ export class RectAnnotationManager {
         }
     }
 
+    /**
+     * Finds the top-most rectangle containing a given point.
+     *
+     * @param {number} x X coordinate in image space
+     * @param {number} y Y coordinate in image space
+     * @returns {Object|null} Rectangle object or null
+     */
     findRectAtPoint(x, y) {
         for (let i = this.rects.length - 1; i >= 0; i--) {
             const r = this.rects[i];
@@ -135,6 +196,14 @@ export class RectAnnotationManager {
         return null;
     }
 
+    /**
+     * Checks whether a point lies inside a rectangle.
+     *
+     * @param {number} px Point X coordinate
+     * @param {number} py Point Y coordinate
+     * @param {Object} rect Rectangle object
+     * @returns {boolean}
+     */
     isPointInsideRect(px, py, rect) {
         return (
             px >= rect.x &&
@@ -144,6 +213,12 @@ export class RectAnnotationManager {
         );
     }
 
+    /**
+     * Restores hidden rectangles to the viewer.
+     *
+     * @param {string} [color="red"] Border color
+     * @param {number} [lineWidth=2] Border width
+     */
     hideAll() {
         this.rects.forEach(r => {
             if (r.element) {
@@ -153,6 +228,12 @@ export class RectAnnotationManager {
         });
     }
 
+    /**
+     * Restores hidden rectangles to the viewer.
+     *
+     * @param {string} [color="red"] Border color
+     * @param {number} [lineWidth=2] Border width
+     */
     restoreAll(color = "red", lineWidth = 2) {
         const tiledImage = this.viewer.world.getItemAt(0);
 
@@ -182,10 +263,21 @@ export class RectAnnotationManager {
         });
     }
 
+
+    /**
+     * Returns the stored rectangles.
+     * @returns {Array<Object>}
+     */    
     getRects() {
         return this.rects;
     }
-
+    
+    /**
+     * Returns rectangles in reverse order.
+     * Useful when rendering top-most annotations first.
+     *
+     * @returns {Array<Object>}
+     */
     getRectsReversed() {
         return [...this.rects].reverse();
     }

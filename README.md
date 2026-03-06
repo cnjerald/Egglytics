@@ -33,6 +33,9 @@ Egglytics is a web application for counting mosquito eggs. Its core feature lets
 
 <p align="center">
 <h1 align = "center"> Editor Interface </h1>
+<h3 align="center">
+    On this page, users can edit and review the annotations. If the annotations seem incorrect, users may recalibrate them.
+</h3>
 <img src="assets/annotate.jpg" alt="Banner" width = "100%">
 </p>
 

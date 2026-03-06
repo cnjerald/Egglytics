@@ -185,7 +185,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     Args:
         image (str): Base64-encoded image string.
-        avg_pixels (float): Average pixel value used for recalibration.
+        avg_pixels (float): Average pixel value used for recalibration (Given by the user).
         model (str): Name of the AI model to use (e.g., "polyegg_heatmap").
         mode (str): Processing mode ("micro" or "macro").
         image_id (int): ID of the image record in the database.
@@ -324,11 +324,6 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     print("Recalibration complete for image:", image_id)
 
-
-
-                
-
-    
 # HELPER FUNCTION TO PROCESS IMAGES
 def process_images(batch, files_data, header):
     """
