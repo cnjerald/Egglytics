@@ -14,8 +14,6 @@
         <div class="table-controls">
             <div class="filter-group">
                 <input type="text" id="batchSearch" placeholder="Search Batch Name..." />
-                <input type="text" id="ownerSearch" placeholder="Search Batch Owner..." />
-
 
                 <div class="filter-item">
                 <label>Date Updated:</label>
@@ -41,7 +39,6 @@
                 <tr>
                     <th>Batch Name</th>
                     <th>Date Updated</th>
-                    <th>Created By</th>
                     <th id="total-images-header">Total Images: 0</th>
                     <th id="total-eggs-header">Total Eggs: 0</th>
                     <th>Processing Status</th>
@@ -51,9 +48,8 @@
             <tbody>
                 {% for batch in batches %}
                 <tr data-batch-id="{{ batch.id }}">
-                    <td class="truncate">{{ batch.batch_name }}</td>
+                    <td>{{ batch.batch_name }}</td>
                     <td>{{ batch.date_updated|date:"m/d/Y" }}</td>
-                    <td>{{ batch.owner}}</td>
                     <td>{{ batch.total_images }}</td>
                     <td>{{ batch.total_eggs }}</td>
                     <td>
