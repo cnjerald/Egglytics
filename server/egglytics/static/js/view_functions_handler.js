@@ -202,13 +202,9 @@ $("#notice-box").hide();
                         rowsHTML += `
                             <tr class="image-details" 
                                 data-image-name="${img.image_name}" 
-                                data-image-id="${img.image_id}"
-                                data-image-path="${img.image_path}">
+                                data-image-id="${img.image_id}">
                                 
-                                <td class="filename"
-                                    data-image-id="${img.image_id}">
-                                    ${img.image_name}
-                                </td>
+                                <td class="filename">${img.image_name}</td>
                                 <td>${img.total_eggs}</td>
                                 
                                 <td class="editable-hatched"
@@ -251,10 +247,9 @@ $("#notice-box").hide();
 
     // Change image on click inside popup
     $(document).on("click", ".image-details", function () {
-        const image_path = $(this).attr("data-image-path");
-        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${image_path}`);
+        const imageName = $(this).data("image-name");
+        $("#popup-image").attr("src", `${MEDIA_URL}uploads/${imageName}`);
     });
-
 
     // Advanced filtering: search + range filters
     const inputs = [
@@ -529,70 +524,76 @@ $("#notice-box").hide();
     function getFlag() {
         return JSON.parse(localStorage.getItem("flag"));
     }
+
     document.addEventListener("dblclick", function (e) {
-        const cell = e.target;
+    const cell = e.target;
 
-        if (!cell.classList.contains("filename")) return;
+    if (!cell.classList.contains("editable-hatched")) return;
 
-        const imageId = cell.dataset.imageId;
-        const oldName = cell.textContent.trim();
+    const imageId = cell.dataset.imageId;
+    const oldValue = parseInt(cell.textContent.trim(), 10) || 0;
 
-        if (cell.querySelector("input")) return; // prevent duplicates
+    // Prevent multiple inputs
+    if (cell.querySelector("input")) return;
 
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = oldName;
-        input.style.width = "140px";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = 0;
+    input.value = oldValue;
+    input.style.width = "60px";
 
-        cell.textContent = "";
-        cell.appendChild(input);
-        input.focus();
-        input.select();
+    cell.textContent = "";
+    cell.appendChild(input);
+    input.focus();
+    input.select();
 
-        let saved = false;
+    let saved = false;
 
-        function save() {
-            if (saved) return;
-            saved = true;
+    function save() {
+        if (saved) return;
+        saved = true;
 
-            const newName = input.value.trim();
+        const newValue = input.value;
 
-            if (!newName || newName === oldName) {
-                cell.textContent = oldName;
-                return;
-            }
-
-            fetch(`/update-image-name/${imageId}/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken(),
-                },
-                body: JSON.stringify({ image_name: newName })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    cell.textContent = newName;
-
-                    // 🔥 Update stored name so preview click still works
-                    cell.closest("tr").dataset.imageName = newName;
-                } else {
-                    alert("Rename failed: " + (data.message || ""));
-                    cell.textContent = oldName;
-                }
-            })
-            .catch(() => cell.textContent = oldName);
+        if (newValue === "" || parseInt(newValue) === oldValue) {
+            cell.textContent = oldValue;
+            return;
         }
 
-        input.addEventListener("keydown", (e) => {
+        fetch(`/update-hatched/${imageId}/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            body: JSON.stringify({ total_hatched: newValue })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const newVal = parseInt(newValue, 10);
+
+                cell.textContent = newVal;
+
+                totalHatched = totalHatched - oldValue + newVal;
+                document.getElementById("hatched-header").textContent =
+                    `Hatched (Total: ${totalHatched})`;
+            } else {
+                cell.textContent = oldValue;
+            }
+        })
+        .catch(() => {
+            cell.textContent = oldValue;
+        });
+    }
+
+    input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") save();
-            if (e.key === "Escape") cell.textContent = oldName;
+            if (e.key === "Escape") cell.textContent = oldValue;
         });
 
         input.addEventListener("blur", save);
     });
-
 
     // Context Menu for Batch Table Right-Click
     (function() {
