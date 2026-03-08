@@ -13,9 +13,11 @@ from ._imports import *
 def upload(request):
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
         # Get the current time now, creating a unique key
-        batch_name = request.POST.get("batch_name")
-        owner = request.POST.get("user")
-
+        header = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # By now this is set to incognito
+        owner = request.user.username if request.user.is_authenticated else 'incognito'
+        # This just concats a unique key
+        batch_name = f"{header}_{owner}"
         date = timezone.now()
 
         # This is the total images
@@ -80,7 +82,7 @@ def recalibrate(request):
             image_path = os.path.join(
                 settings.MEDIA_ROOT,      # /full/system/path/media
                 "uploads",                # your folder
-                image_obj.file_path      # filename from DB
+                image_obj.image_name      # filename from DB
             )
 
             model = image_obj.model_used
@@ -192,40 +194,16 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     # --------------- UPDATE IMAGE FILE ---------------
     if image_b64:
-                    # Remove header if present
-                    if "," in image_b64:
-                        image_b64 = image_b64.split(",")[1]
+        img_data = base64.b64decode(image_b64)
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
 
-                    # Decode base64
-                    img_data = base64.b64decode(image_b64)
+        file_path = os.path.join(upload_dir, image_record.image_name)
 
-                    # Open with Pillow
-                    image = Image.open(BytesIO(img_data))
+        with open(file_path, "wb") as f_out:
+            f_out.write(img_data)
 
-                    # Keep original resolution
-                    print("Resolution:", image.size)
-
-                    # Convert to RGB if needed (PNG with alpha → JPEG compatible)
-                    if image.mode in ("RGBA", "P"):
-                        image = image.convert("RGB")
-
-                    # Prepare folder
-                    upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
-                    os.makedirs(upload_dir, exist_ok=True)
-
-                    file_path = os.path.join(upload_dir, image_record.file_path)
-
-                    # SAVE WITH COMPRESSION
-                    image.save(
-                        file_path,
-                        format="JPEG",
-                        quality=65,       # sweet spot
-                        optimize=True,
-                        progressive=True
-                    )
-
-                    print("Saved:", file_path)
-                    print("New size (KB):", os.path.getsize(file_path) / 1024)
+        print("Image file replaced")
 
     # --------------- UPDATE COUNTS ---------------
     image_record.total_eggs = egg_count
@@ -251,11 +229,10 @@ def process_images(batch, files_data, header):
 
             # Params:
             # File name (STRING) ->  The name of the file saved on media/uploads\
-            # image_name (STRING) -> The name of the image 
+            # image_name (STRING) -> The name of the image (NOTE TO JERALD PLS CHANGE THIS SO USER CAN RENAME FILES IN FUTURE)
             # encoded (STRING) -> Image in base64
             # mode (Binary STRING) -> If Micro or Macro
-                # Force JPEG output (smaller)
-            file_name = f"{header}_{uuid.uuid4().hex}"
+            file_name = f"{header}_{i}"
             image_name = f"image_{file_name}.jpg"
             encoded = file_dict["data"]
 
@@ -266,7 +243,6 @@ def process_images(batch, files_data, header):
             image_record = ImageDetails.objects.create(
                 batch = batch,
                 image_name = image_name,
-                file_path = image_name,
                 total_eggs = 0,
                 total_hatched = 0,
                 img_type = mode,
@@ -321,40 +297,12 @@ def process_images(batch, files_data, header):
             image_record.save()
             
             if image_b64:
-                # Remove header if present
-                if "," in image_b64:
-                    image_b64 = image_b64.split(",")[1]
-
-                # Decode base64
                 img_data = base64.b64decode(image_b64)
-
-                # Open with Pillow
-                image = Image.open(BytesIO(img_data))
-
-                # Keep original resolution
-                print("Resolution:", image.size)
-
-                # Convert to RGB if needed (PNG with alpha → JPEG compatible)
-                if image.mode in ("RGBA", "P"):
-                    image = image.convert("RGB")
-
-                # Prepare folder
                 upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
                 os.makedirs(upload_dir, exist_ok=True)
-
-                file_path = os.path.join(upload_dir, image_name)
-
-                # SAVE WITH COMPRESSION
-                image.save(
-                    file_path,
-                    format="JPEG",
-                    quality=65,       # sweet spot
-                    optimize=True,
-                    progressive=True
-                )
-
-                print("Saved:", file_path)
-                print("New size (KB):", os.path.getsize(file_path) / 1024)
+                file_path = os.path.join(upload_dir, image_record.image_name)
+                with open(file_path, "wb") as f_out:
+                    f_out.write(img_data)
 
             #  Download processed image from S3
             #s3_output_path = data.get("s3_output_path")  # processed image path

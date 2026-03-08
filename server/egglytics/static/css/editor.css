@@ -464,8 +464,3 @@ body {
     background: #c7d2fe;
     border-color: #000000;     /* highlight on hover */
 }
-
-.navigator .grid-cell {
-    opacity: 0.5;
-    border: none;
-}

@@ -6,7 +6,7 @@
 // 
 // 
 
-import { addOverlay, addOverlayWithMinimap, removeOverlay, createGridLineOverlay, createGridCellOverlay } from './overlay.js';
+import { addOverlay, removeOverlay, createGridLineOverlay, createGridCellOverlay } from './overlay.js';
 
 export class GridManager {
     constructor(viewer, gridSize = 512) {
@@ -80,7 +80,7 @@ export class GridManager {
                 this.gridSize
             );
 
-            addOverlayWithMinimap(this.viewer, element, vpRect); // Changed this line
+            addOverlay(this.viewer, element, vpRect);
             this.filledCells.set(key, element);
             return true;
         }
@@ -104,7 +104,7 @@ export class GridManager {
                     this.gridSize
                 );
 
-                addOverlayWithMinimap(this.viewer, element, vpRect); // Changed this line
+                addOverlay(this.viewer, element, vpRect);
                 this.filledCells.set(key, element);
             }
         });

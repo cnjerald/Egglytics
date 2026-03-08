@@ -237,15 +237,12 @@ function hideLoading() {
 
 
 // Close modal when clicking outside
-window.addEventListener('mousedown', function(event) {
+window.onclick = function(event) {
     const modal = document.getElementById('cropModal');
-    
-    // Only close if mousedown started on the backdrop (not during a drag)
-    if (!dragging && event.target === modal) {
+    if (event.target === modal) {
         closeCropper();
     }
-});
-
+}
 
 // Close modal with Escape key
 document.addEventListener('keydown', function(event) {
