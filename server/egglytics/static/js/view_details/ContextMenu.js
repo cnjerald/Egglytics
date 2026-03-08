@@ -1,32 +1,7 @@
-/**
- * -----------------------------------------
- * CONTEXT MENU BASE CLASS
- * -----------------------------------------
- * Provides a reusable right-click context menu for table rows.
- * Handles menu display, hover effects, and tracking of the clicked row.
- */
-
 export class ContextMenu {
-    /**
-     * @param {string} menuId - The HTML id of the context menu element.
-     * @param {string} triggerSelector - CSS selector for table rows or elements that trigger the menu.
-     */
     constructor(menuId, triggerSelector) {
-        /**
-         * jQuery object for the context menu element.
-         * @type {JQuery<HTMLElement>}
-         */
         this.$menu       = $(`#${menuId}`);
-        /**
-         * The row element that was right-clicked.
-         * @type {HTMLElement|null}
-         */
         this.targetRow   = null;
-        /**
-         * The identifier associated with the target row.
-         * Typically resolved via a subclass implementation of _resolveId.
-         * @type {string|null}
-         */
         this.targetId    = null;
 
         // Show on right-click
@@ -50,13 +25,7 @@ export class ContextMenu {
             .on("mouseout",  (e) => $(e.currentTarget).css("background-color", "transparent"));
     }
 
-    /**
-     * Resolve the ID of the target element from a table row.
-     * Override this in subclasses for custom logic (e.g., batch vs image ID).
-     *
-     * @param {HTMLElement} row - The table row element.
-     * @returns {string|null} The ID associated with the row.
-     */
+    // Override in subclass to resolve target id from row
     _resolveId(row) {
         return $(row).attr("data-batch-id") || $(row).attr("data-image-id");
     }

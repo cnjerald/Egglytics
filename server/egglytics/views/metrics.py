@@ -11,24 +11,7 @@
 from ._imports import *
 
 def metric(request):
-    """
-    Render the metrics comparison page.
-
-    Fetches all distinct model names and computes stats for any models
-    selected via query params. Supports side-by-side comparison of
-    multiple models.
-
-    Args:
-        request: GET request with query params:
-            - model (list[str]): One or more model names to compare
-
-    Returns:
-        Rendered response with template "metric.html" and context:
-            - models (QuerySet): All distinct model_used values
-            - selected_models (list[str]): Models chosen by the user
-            - comparison (list[dict]): Stats dict per selected model (see get_model_stats)
-    """
-
+    """Renders the full page."""
     models = ImageDetails.objects.values_list("model_used", flat=True).distinct()
     selected_models = request.GET.getlist("model")
 
@@ -43,37 +26,7 @@ def metric(request):
     return render(request, "base.html", context)
 
 def get_model_stats(model_name):
-    """
-    Compute detection and counting metrics for a single model.
-
-    Uses validated images only. Annotation points are interpreted as:
-        - TP: original points kept by the reviewer (is_original=True, is_deleted=False)
-        - FP: original points deleted by the reviewer (is_original=True, is_deleted=True)
-        - FN: points added by the reviewer (is_original=False)
-
-    Args:
-        model_name (str): The model_used value to filter ImageDetails by
-
-    Returns:
-        dict: {
-            "model"                  (str):   Model name,
-            "total_images"           (int):   Number of validated images,
-            "count_accuracy"         (float): % accuracy of predicted vs true egg count,
-            "total_ground_truth"     (int):   TP + FN,
-            "total_model_predictions"(int):   TP + FP,
-            "TP"                     (int),
-            "FP"                     (int),
-            "FN"                     (int),
-            "precision"              (float): Rounded to 4 decimal places,
-            "recall"                 (float): Rounded to 4 decimal places,
-            "f1_score"               (float): Rounded to 4 decimal places,
-            "MAE"                    (float): Mean absolute error per image, rounded to 4,
-        }
-
-    Notes:
-        - Images where the true count is 0 are excluded from MAE calculation
-        - All metrics default to 0 when denominators are zero
-    """
+    """A helper function to do all the math in one place."""
     validated_images = ImageDetails.objects.filter(
         is_validated=True,
         model_used=model_name
@@ -141,21 +94,7 @@ def get_model_stats(model_name):
 
 
 def metric_ajax(request):
-    """
-    Return a partial HTML fragment with model stat cards (AJAX endpoint).
-
-    Called by the frontend to refresh the comparison view without a full
-    page reload. Returns a placeholder message if no models are selected.
-
-    Args:
-        request: GET request with query params:
-            - model (list[str]): One or more model names to compare
-
-    Returns:
-        Rendered "metric_templates/model_card.html" with context:
-            - comparison (list[dict]): Stats dict per selected model (see get_model_stats)
-        HttpResponse: Placeholder <p> tag if no models provided
-    """
+    """Returns only the JSON data."""
     selected_models = request.GET.getlist("model")
     if not selected_models:
         return HttpResponse('<p class="placeholder">Select a model to begin.</p>')

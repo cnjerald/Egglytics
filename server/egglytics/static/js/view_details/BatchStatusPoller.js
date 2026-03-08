@@ -1,31 +1,10 @@
 import { Utils } from "./Utils.js";
 
-/**
- * -----------------------------------------
- * BATCH STATUS POLLER
- * -----------------------------------------
- * Periodically polls the server for the status of batches
- * and updates the batch table UI and notice box accordingly.
- * Provides automatic refresh every 5 seconds.
- */
 export class BatchStatusPoller {
-    /**
-     * @param {Function} onUpdate - Optional callback executed after each status update.
-     */
     constructor(onUpdate) {
-        /**
-         * Callback to run after each update.
-         * @type {Function}
-         */
         this.onUpdate = onUpdate;
-        
-        /**
-         * Reference to the setInterval poller.
-         * @type {number|null}
-         */
         this.poller   = null;
     }
-
 
     start() {
         this.update();

@@ -1,35 +1,9 @@
 
 import { Utils } from "./Utils.js";
-/**
- * -----------------------------------------
- * BATCH POPUP MANAGER
- * -----------------------------------------
- * Handles opening, rendering, editing, and deletion
- * of batch images in a popup interface.
- * Supports updating totals, image selection, and
- * batch name editing.
- */
-
 export class BatchPopup {
-    /**
-     * @param {Function} recalcTotals - Callback to recalculate table totals after changes.
-     */
     constructor(recalcTotals) {
-        /**
-         * Callback to recalc totals in main batch table.
-         * @type {Function}
-         */
         this.recalcTotals = recalcTotals;
-        /**
-         * Total number of eggs in the current batch.
-         * @type {number}
-         */
         this.totalEggs    = 0;
-
-        /**
-         * Total hatched eggs in the current batch.
-         * @type {number}
-         */
         this.totalHatched = 0;
 
         this._bindRowClicks();
@@ -40,11 +14,6 @@ export class BatchPopup {
 
     }
 
-    /**
-     * Open popup for a given batch and fetch its images.
-     * @param {number|string} batchId - ID of the batch to open.
-     * @param {string} batchName - Name of the batch to display.
-     */
     open(batchId, batchName) {
         const $popup = $("#popup");
         $popup.data("batchId", batchId);
@@ -93,17 +62,10 @@ export class BatchPopup {
             });
     }
 
-    /**
-     * Close the popup interface.
-     */
     close() {
         $("#popup").hide();
     }
 
-    /**
-     * Bind click events on batch table rows to open popup.
-     * @private
-     */
     _bindRowClicks() {
         $(document).on("click", "#batchTable tbody tr", (e) => {
             const $row = $(e.currentTarget);
@@ -116,11 +78,6 @@ export class BatchPopup {
         });
     }
 
-
-    /**
-     * Bind image row selection to update the main preview image.
-     * @private
-     */
     _bindImageSelection() {
         $(document).on("click", ".image-details", function () {
             $(".image-details").removeClass("selected");
@@ -139,11 +96,6 @@ export class BatchPopup {
         });
     }
 
-    /**
-     * Bind delete button inside the popup to remove images.
-     * Updates totals and table data accordingly.
-     * @private
-     */    
     _bindDeleteInPopup() {
         $(document).on("click", ".popup .delete-btn", (e) => {
             e.stopPropagation();
@@ -195,11 +147,6 @@ export class BatchPopup {
         });
     }
 
-    /**
-     * Bind batch name editing in popup.
-     * Allows inline edit with save and cancel.
-     * @private
-     */
     _bindEditBatchName() {
         $("#edit-batch-btn").on("click", () => {
             const $nameEl      = $("#popup-batch-name");
@@ -250,10 +197,7 @@ export class BatchPopup {
         });
     }
 
-    /**
-     * Bind closing the popup when clicking outside or on close button.
-     * @private
-     */
+
     _bindPopupClose() {
         $("#popup").on("click", (e) => {
             if (!$(e.target).closest(".popup-content").length) this.close();

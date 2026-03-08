@@ -1,34 +1,7 @@
-/**
- * -----------------------------------------
- * BATCH FILTER
- * -----------------------------------------
- * Filters batch table rows based on multiple
- * criteria such as batch name, owner, date range,
- * number of images, and egg counts.
- */
-
 export class BatchFilter {
-    /**
-     * @param {string} tableSelector - jQuery selector for the table to filter.
-     * @param {Object} pagination - Pagination object with a reset() method.
-     * @param {Function} onFilter - Optional callback invoked after filtering.
-     */
     constructor(tableSelector, pagination, onFilter) {
-        /**
-         * Selector for the table.
-         * @type {string}
-         */
         this.tableSelector = tableSelector;
-        /**
-         * Pagination controller.
-         * @type {Object}
-         */
         this.pagination = pagination;
-
-        /**
-         * Callback to run after filtering.
-         * @type {Function|null}
-         */
         this.onFilter = onFilter;
 
         const inputIds = [
@@ -37,12 +10,7 @@ export class BatchFilter {
         ];
         inputIds.forEach(id => $(`#${id}`).on("input", () => this.apply()));
     }
-    
-    /**
-     * Apply filters to all table rows based on user input.
-     * Sets a 'data-filtered-out' attribute on each row
-     * indicating whether it matches the filter criteria.
-     */
+
     apply() {
         const batchQuery  = $("#batchSearch").val().toLowerCase();
         const ownerQuery  = $("#ownerSearch").val().toLowerCase();

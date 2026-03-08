@@ -1,16 +1,4 @@
-/**
- * -----------------------------------------
- * HEADER TOTALS MANAGER
- * -----------------------------------------
- * Calculates and updates the total number of images and eggs
- * displayed in the batch table header.
- */
-
 export class HeaderTotals {
-    /**
-     * Recalculates totals for visible rows in the batch table
-     * and updates the corresponding header elements.
-     */
     recalc() {
         let totalImages = 0;
         let totalEggs   = 0;

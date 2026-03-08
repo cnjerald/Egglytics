@@ -3,47 +3,7 @@ import {
     viewportToPixelCoordinates
 } from "./viewer.js";
 
-/**
- * PolygonManager
- * --------------
- * Manages polygon-based annotations drawn on top of an OpenSeadragon viewer.
- *
- * Responsibilities:
- * - Create polygon annotations by sequentially placing vertices
- * - Detect polygon closure based on screen-space distance
- * - Render completed and in-progress polygons on a canvas overlay
- * - Provide preview "rubber-band" lines while drawing
- * - Support loading, removing, and highlighting polygons
- * - Compute polygon areas for analytical purposes
- *
- * Coordinate Workflow:
- * Image Coordinates → Viewport Coordinates → Pixel Coordinates → Canvas Rendering
- *
- * Data Structures:
- * - polygons: Array of completed polygons
- * - currentPolygon: Array of vertices being drawn
- * - previewPoint: Temporary cursor position used for rubber-band preview
- *
- * Visual States:
- * - Completed polygon: Green outline with semi-transparent fill
- * - Polygon being drawn: Yellow outline
- * - Rubber-band preview: Orange dashed line
- *
- * Dependencies:
- * - viewer.js coordinate conversion utilities
- * - OpenSeadragon viewer instance
- * - Canvas overlay for rendering
- */
-
 export class PolygonManager {
-
-    /**
-     * Creates a new PolygonManager instance.
-     *
-     * @param {Object} viewer - OpenSeadragon viewer instance.
-     * @param {HTMLCanvasElement} canvas - Canvas overlay used for polygon rendering.
-     */
-
     constructor(viewer, canvas) {
         this.viewer = viewer;
         this.canvas = canvas;
@@ -60,29 +20,13 @@ export class PolygonManager {
        POINT / POLYGON CREATION
     ----------------------------- */
 
-    /**
-     * Adds a vertex to the currently drawn polygon.
-     *
-     * @param {number} x - X coordinate in image space.
-     * @param {number} y - Y coordinate in image space.
-     */
     addPoint(x, y) {
         this.currentPolygon.push({
             x: Number(x),
             y: Number(y)
         });
     }
-    /**
-     * Attempts to close the polygon when the cursor is near the first vertex.
-     *
-     * Purpose:
-     * Detects if the user clicked close enough to the starting vertex
-     * to finalize the polygon.
-     *
-     * @param {number} x - Cursor X coordinate in image space.
-     * @param {number} y - Cursor Y coordinate in image space.
-     * @returns {boolean} True if the polygon was closed.
-     */
+
     tryClosePolygon(x, y) {
         if (this.currentPolygon.length < 3) return false;
 
@@ -104,25 +48,11 @@ export class PolygonManager {
         return false;
     }
 
-    /**
-     * Updates the preview point used for the rubber-band drawing effect.
-     *
-     * @param {number} x - Cursor X coordinate in image space.
-     * @param {number} y - Cursor Y coordinate in image space.
-     */
     updatePreview(x, y) {
         this.previewPoint = { x, y };
         this.redraw();
     }
 
-    /**
-     * Finalizes the current polygon.
-     *
-     * Behavior:
-     * - Closes the polygon by repeating the first vertex
-     * - Stores the polygon in the completed polygon list
-     * - Clears the current polygon state
-     */
     finishPolygon() {
         if (this.currentPolygon.length < 3) return;
 
@@ -135,24 +65,15 @@ export class PolygonManager {
         this.redraw();
     }
 
-    /**
-     * Cancels the polygon currently being drawn.
-     */
     cancelCurrentPolygon() {
         this.currentPolygon.length = 0;
         this.previewPoint = null; // Clear preview point
         this.redraw();
     }
 
-    /**
-     * Redraws all polygons and preview elements.
-     *
-     * Rendering Layers:
-     * 1. Completed polygons
-     * 2. In-progress polygon
-     * 3. Vertex markers
-     * 4. Rubber-band preview line
-     */
+    /* ----------------------------
+       DRAWING
+    ----------------------------- */
         redraw() {
         // Always clear the canvas first
         this.clear();
@@ -207,28 +128,14 @@ export class PolygonManager {
         }
     }
 
-    /**
-     * Converts image coordinates to pixel coordinates for canvas drawing.
-     *
-     * @param {number} x - Image X coordinate.
-     * @param {number} y - Image Y coordinate.
-     * @returns {{x:number,y:number}} Pixel coordinates.
-     */
-
+    /* ----------------------------
+    Convert image coords -> pixel coords
+    ----------------------------- */
     toPixel(x, y) {
         const vp = imageToViewportCoordinates(this.viewer, x, y);
         return viewportToPixelCoordinates(this.viewer, vp, true);
     }
 
-    /**
-     * Draws a polygon on the canvas using cached coordinate conversions.
-     *
-     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context.
-     * @param {Array} points - Polygon vertices.
-     * @param {string} fill - Fill color.
-     * @param {string} stroke - Stroke color.
-     * @param {boolean} [isPreview=false] - Whether the polygon is a preview.
-     */
     drawPolygonCached(ctx, points, fill, stroke, isPreview = false) {
         if (points.length < 2) return;
 
@@ -262,40 +169,24 @@ export class PolygonManager {
         }
     }
 
-    /**
-     * Sets the visibility of polygon annotations.
-     *
-     * @param {boolean} visible - Visibility state.
-     */
+    /* ----------------------------
+       VISIBILITY / UTILS
+    ----------------------------- */
 
     setVisible(visible) {
         this.visible = visible;
         this.redraw();
     }
 
-    /**
-     * Clears the canvas overlay.
-     */
     clear() {
         const ctx = this.canvas.getContext("2d");
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    /**
-     * Returns all stored polygons.
-     *
-     * @returns {Array} Array of polygon vertex arrays.
-     */
     getPolygons() {
         return this.polygons;
     }
-
-    /**
-     * Calculates the area of a polygon using the Shoelace Formula.
-     *
-     * @param {Array} points - Polygon vertices.
-     * @returns {number} Polygon area in image coordinate units.
-     */    
+    
     _polygonArea(points) {
         let n = points.length;
         let sum = 0;
@@ -307,11 +198,6 @@ export class PolygonManager {
         return Math.abs(sum / 2);
     }
 
-    /**
-     * Computes the average area of all stored polygons.
-     *
-     * @returns {number} Average polygon area.
-     */
     getAverageAreaOfPolygons() {
         let totalArea = 0;
         for (const poly of this.polygons) {
@@ -320,11 +206,8 @@ export class PolygonManager {
         return totalArea/this.polygons.length;
     }
 
-    /**
-     * Loads polygon annotations from external data.
-     *
-     * @param {Array} polygons - Array of polygon vertex arrays.
-     */
+    
+
     loadPolygons(polygons) {
         this.polygons.length = 0;
         polygons.forEach(p => {
@@ -336,12 +219,6 @@ export class PolygonManager {
         this.redraw();
     }
 
-    /**
-     * Updates the preview line while drawing a polygon.
-     *
-     * @param {number} x - Cursor X coordinate in image space.
-     * @param {number} y - Cursor Y coordinate in image space.
-     */
     drawPreviewTo(x, y) {
         if (this.currentPolygon.length === 0) return;
 
@@ -350,9 +227,7 @@ export class PolygonManager {
         this.updatePreview(x, y);
     }
 
-    /**
-     * Removes the last vertex from the current polygon.
-     */
+    // Remove last vertex while drawing
     removeLastPoint() {
         if (this.currentPolygon.length > 0) {
             this.currentPolygon.pop();
@@ -360,9 +235,7 @@ export class PolygonManager {
         }
     }
 
-    /**
-     * Removes the most recently completed polygon.
-    */
+    // Remove last completed polygon
     removeLastPolygon() {
         if (this.polygons.length > 0) {
             this.polygons.pop();
@@ -370,30 +243,16 @@ export class PolygonManager {
         }
     }
 
-    /**
-     * Highlights a polygon for visual emphasis.
-     *
-     * @param {Array} poly - Polygon to highlight.
-     */
     highlightPolygon(poly) {
         this.highlighted = poly;
         this.redraw();
     }
 
-
-    /**
-     * Clears the currently highlighted polygon.
-     */
     clearHighlight() {
         this.highlighted = null;
         this.redraw();
     }
-    
-    /**
-     * Removes a specific polygon from the manager.
-     *
-     * @param {Array} poly - Polygon to remove.
-     */
+
     removePolygon(poly) {
         this.polygons = this.polygons.filter(p => p !== poly);
         this.redraw();

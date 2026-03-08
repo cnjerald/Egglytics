@@ -1,21 +1,4 @@
-/**
- * -----------------------------------------
- * PAGINATION MANAGER
- * -----------------------------------------
- * Handles pagination of table rows, including:
- *  - Previous/Next navigation
- *  - Rows-per-page selection
- *  - Integration with filtered tables
- */
-
 export class Pagination {
-    /**
-     * @param {string} tableSelector - Selector for the target table.
-     * @param {string} pageInfoId - ID of the element displaying current page info.
-     * @param {string} prevBtnId - ID of the "Previous" button.
-     * @param {string} nextBtnId - ID of the "Next" button.
-     * @param {string} rowsSelectId - ID of the select element controlling rows per page.
-     */
     constructor(tableSelector, pageInfoId, prevBtnId, nextBtnId, rowsSelectId) {
         this.tableSelector = tableSelector;
         this.$pageInfo = $(`#${pageInfoId}`);
@@ -34,10 +17,6 @@ export class Pagination {
         this.$nextBtn.on("click", () => { this.currentPage++; this.render(); });
     }
 
-    /**
-     * Render the table according to current page and rows per page.
-     * Takes into account rows hidden via filtering.
-     */
     render() {
         const allRows = $(`${this.tableSelector} tbody tr`).toArray();
         const visibleRows = allRows.filter(r => $(r).attr('data-filtered-out') !== 'true');
@@ -56,9 +35,6 @@ export class Pagination {
         this.$nextBtn.prop("disabled", this.currentPage === totalPages);
     }
 
-    /**
-     * Reset pagination to the first page and re-render.
-     */
     reset() {
         this.currentPage = 1;
         this.render();

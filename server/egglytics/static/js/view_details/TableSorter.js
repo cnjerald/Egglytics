@@ -1,18 +1,4 @@
-/**
- * -----------------------------------------
- * TABLE SORTER
- * -----------------------------------------
- * Enables click-based sorting for HTML tables.
- * Supports:
- *  - Sorting numeric and string values
- *  - Ascending/descending toggle
- *  - Works with dynamically generated tables (e.g., popup tables)
- */
-
 export class TableSorter {
-    /**
-     * @param {string} tableSelector - Selector for the target table(s) to make sortable.
-     */
     constructor(tableSelector) {
         // Batch table - direct header clicks
         $(`${tableSelector} th`).each(function (index) {

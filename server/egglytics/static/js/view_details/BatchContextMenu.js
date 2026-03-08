@@ -1,47 +1,16 @@
 import { ContextMenu } from "./ContextMenu.js";
 import { Utils } from "./Utils.js";
 
-/**
- * -----------------------------------------
- * BATCH CONTEXT MENU
- * -----------------------------------------
- * Extends the generic ContextMenu to provide
- * rename and delete functionality for batch
- * rows in a table.
- */
-
-/**
- * Context menu for batch table rows with rename/delete options.
- * @extends ContextMenu
- */
 export class BatchContextMenu extends ContextMenu {
-
-    /**
-     * @param {Function} recalcTotals - Callback to recalculate totals after deletion.
-     */
     constructor(recalcTotals) {
         super("custom-context-menu", "#batchTable tbody tr");
-        /**
-         * Callback to recalculate totals when a batch is deleted.
-         * @type {Function}
-         */
         this.recalcTotals = recalcTotals;
         this._bindRename();
         this._bindDelete();
     }
 
-    /**
-     * Resolve the batch ID from a row element.
-     * @private
-     * @param {HTMLElement} row - Table row element.
-     * @returns {string} Batch ID.
-     */
     _resolveId(row) { return $(row).attr("data-batch-id"); }
 
-    /**
-     * Bind rename functionality to the "Rename" menu item.
-     * @private
-     */
     _bindRename() {
         $(`#menu-rename`).on("click", () => {
             if (!this.targetRow) return;
@@ -86,11 +55,7 @@ export class BatchContextMenu extends ContextMenu {
             }).on("blur", save);
         });
     }
-    
-    /**
-     * Bind delete functionality to the "Delete" menu item.
-     * @private
-     */
+
     _bindDelete() {
         $("#menu-delete").on("click", () => {
             if (!this.targetId || !this.targetRow) return;
