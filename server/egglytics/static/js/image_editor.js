@@ -5,9 +5,14 @@ import { GridManager } from './image_editor/grid.js';
 import { UIManager } from './image_editor/ui.js';
 import { addPointToServer, removePointFromServer, addRectToServer, removeRectFromServer } from './image_editor/api.js';
 import { PolygonManager } from './image_editor/polygonManager.js';
-import { KEYBINDS } from './other/keybinds.js';
 
 $(document).ready(function () {
+    // Configuration
+    const ADD_ANNOTATION_KEY = "e";
+    const DELETE_ANNOTATION_KEY = "r";
+    const GRID_TOGGLE_KEY = "";
+    const FILL_CELL_KEY = "w";
+
     // State
     let isPointAnnotate = true;
     let isRectAnnotate = false;
@@ -100,7 +105,7 @@ $(document).ready(function () {
 
     // Add annotation (E key)
     document.addEventListener("keydown", async (e) => {
-        if (e.key.toLowerCase() !== KEYBINDS.ADD_ANNOTATION) return;
+        if (e.key.toLowerCase() !== ADD_ANNOTATION_KEY) return;
 
         const pos = getMouseImagePosition(viewer, lastMousePos);
         if (!pos) return;
@@ -142,6 +147,7 @@ $(document).ready(function () {
                 rectManager.clearEdges();
             }
         } else if (isRecalibrate) {
+            // Joaquin CLEAN THESE UP TY - JERALD [1]
             // Try to close polygon first
             const closed = polygonManager.tryClosePolygon(pos.x, pos.y);
 
@@ -175,18 +181,21 @@ $(document).ready(function () {
         // THIS IS FOR RECALIB ONLY!
         if (!isRecalibrate) return;
 
-        if (e.key === KEYBINDS.RECALIBRATE_CANCEL) {
+        // ESC → Cancel current polygon
+        if (e.key === "Escape") {
             polygonManager.cancelCurrentPolygon();
             console.log("Polygon drawing cancelled");
         }
 
-        if (e.key === KEYBINDS.RECALIBRATE_UNDO_VERTEX) {
+        // Backspace → Undo last vertex
+        if (e.key === "Backspace") {
             e.preventDefault(); // prevent browser back
             polygonManager.removeLastPoint();
             console.log("Last vertex removed");
         }
 
-        if (e.key === KEYBINDS.RECALIBRATE_REMOVE_POLYGON) {
+        // Delete → Remove last completed polygon
+        if (e.key === "b") {
             polygonManager.removeLastPolygon();
             console.log("Last polygon erased");
         }
@@ -226,7 +235,7 @@ $(document).ready(function () {
 
     // Delete annotation (R key)
     document.addEventListener("keydown", async (e) => {
-        if (e.key.toLowerCase() !== KEYBINDS.DELETE_ANNOTATION) return;
+        if (e.key.toLowerCase() !== DELETE_ANNOTATION_KEY) return;
 
         const pos = getMouseImagePosition(viewer, lastMousePos);
         if (!pos) return;
@@ -269,7 +278,7 @@ $(document).ready(function () {
 
     // Fill grid cell (F key)
     window.addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() !== KEYBINDS.FILL_CELL) return;
+        if (e.key.toLowerCase() !== FILL_CELL_KEY) return;
 
         if(gridManager.isVisible()){
             const pos = getMouseImagePosition(viewer, lastMousePos);
@@ -295,7 +304,7 @@ $(document).ready(function () {
 
         annotationMsg.textContent = modeName === "Recalibrate"
             ? "Please create at least 3 polygons to recalibrate, you may still cancel recalibration by selecting any annotation tools. This process is usually done only ONCE"
-            : "Grid Tools";
+            : "Annotations";
 
         recalibrateBtn.hidden = modeName === "Recalibrate";
         cancelBtn.hidden = modeName !== "Recalibrate";
