@@ -6,4 +6,3 @@ requests
 psycopg2
 pillow
 whitenoise
-waitress
