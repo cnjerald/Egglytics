@@ -153,20 +153,16 @@
                 display: flex;
                 flex-wrap: wrap;
                 gap: 1rem;
-                align-items: center;
+                align-items: flex-start;
                 justify-content: center;
                 width: 100%;
                 margin-top: 10px;
-
             }
 
             .half {
                 flex: 1 1 300px;
                 box-sizing: border-box;
-                min-width: 0;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                min-width: 0; /* Prevents flex overflow */
             }
 
             .button-photo {
@@ -177,23 +173,12 @@
                 box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             }
 
-            .image-loader {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 48px;
-                color: #007bff;
-                z-index: 10;
-            }
-
             .popup-photo {
                 max-width: 100%;
                 max-height: 60vh;
                 object-fit: contain;
                 border-radius: 8px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                transition: opacity 0.2s ease;
             }
 
             .text-side {
@@ -367,8 +352,3 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
-.image-details.selected {
-    background-color: #7ac8ff !important; /* Light blue highlight */
-}
-
