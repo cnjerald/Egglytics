@@ -325,6 +325,17 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     image_record.is_processed = True
     image_record.image_version += 1
     image_record.save()
+    
+    # --------------- UPDATE BATCH PROCESSING FLAG ---------------
+    # Update batch processing flag
+    batch = image_record.batch  # get parent batch
+
+    # Check if all images in this batch are processed
+    if not ImageDetails.objects.filter(batch=batch, is_processed=False).exists():
+        batch.has_fail_present = False
+        batch.is_complete = True   # optional: mark batch as complete
+        batch.save()
+        print(f"Batch '{batch.batch_name}' updated: all images processed")
 
     print("Recalibration complete for image:", image_id)
 
