@@ -311,6 +311,7 @@ export class TableHandler {
     createModelCell(index) {
         const modelCell = document.createElement("td");
         const modelSelect = document.createElement("select");
+
         modelSelect.className = "limited-width-select";
         modelSelect.name = `model${index}`;
         modelSelect.setAttribute("data-row-model", "true");
@@ -319,11 +320,6 @@ export class TableHandler {
             const option = document.createElement("option");
             option.value = model.value;
             option.textContent = model.label;
-
-            if (model.value === "polyegg_heatmap") {
-                option.selected = true;
-            }
-
             modelSelect.appendChild(option);
         });
 

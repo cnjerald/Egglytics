@@ -106,33 +106,193 @@ DB_PORT='5432'
 1. On SHELL go to ROOT directory and activate venv
 2. python app.py
 
-### VI. Deploying Your Own Model
-A. Web Application to Compute Server Flow
-1. The web application server sends images to the compute server using a default base URL ("/").
-(To change this, see Notes [A].)
-2. The default URL path is defined in server/urls.py.
-(To change this, see Notes [B].)
-3. In views.py, the function upload(request) receives a list of uploaded image files, encodes them in Base64, and forwards the data to a separate thread. This thread calls the process_images() function, which compiles the data into a JSON payload and sends it to the compute server’s API endpoint. The function then waits for and returns a JSON response from the compute server.
-(See Notes [C].)
-   
-Notes:
+## VI. Deploying Your Own Model
+<h2 align="center">Adding a New Model</h2>
 
-[A] The base URL can be modified in
-server/egglytics/static/js/image_upload_handler.js, inside the
-$("#upload-btn").on("click", function () { ... }) handler.
+```
+static
+└── js
+    ├── image_upload
+    │   ├── ModelConfig.js   [1]
+    │   └── TableHandler.js [2]
+    │   └── UploadHandler.js [3]
+```
 
-[B] In server/urls.py, the default route maps to views.upload (see line 5).
+Edit **ModelConfig.js [1]** and add your model to the `MODELS` array.
 
-[C] By default, the data is sent to:
+```javascript
+// Parameters:
+// value - Used by the back-end
+// label - Displayed to the user in the front-end
 
-http://127.0.0.1:5000/upload_base64
-Format - PROTOCOL://IP_ADDRESS:PORT/ENDPOINT_PATH
+// The default selected label (Front-end) is the first item in the array.
+static MODELS = [
+  { value: "foo", label: "bar" },
+  { value: "foo1", label: "bar1" }
+]
+```
 
-B. Using a different model
-1. To use multiple or alternative models, the same workflow can be followed while changing the endpoint path used by the web application to target the desired model on the compute server.
-2. By default, each model is implemented as its own class in compute/models.py, which was called after the pre-processing steps done in def upload_base64() function in compute/app.py.
-3. You may define custom endpoint paths, preprocessing pipelines, and model inference strategies to suit your deployment needs.
-4. Ensure that, after inference, the model returns the expected output data (such as JSON or arrays) back to the web application.
+<hr>
+<h3 align="center">Files involved in loading these models </h3> 
+<h5 align="center"> <strong> (Skip this if you didn't add additional parameters) <strong> </h5>
+
+<h2> TableHandler.js [2] </h2>
+
+```javascript
+createModelCell(index) {
+    *..
+    this.models.forEach((model) => {
+        const option = document.createElement("option");
+        // Add your new paramaters here
+        option.value = model.value;
+        option.textContent = model.label;
+        // [SAMPLE]
+        //option.mynewparam = model.mynewparam;
+        modelSelect.appendChild(option);
+    });
+    ..*
+}
+```
+<h2> image_upload_handler.js [4] </h2>
+
+```javascript
+function loadModels() {
+    *..
+    models.forEach(model => {
+        $allModel.append(
+            $("<option>", {
+                value: model.value,
+                text: model.label
+                // [SAMPLE]
+                //option.mynewparam = model.mynewparam;
+            })
+        );
+    });
+    ..*
+}
+```
+
+<h2 align="center"> Sending details to server </h2>
+
+```
+├───egglytics
+│   └── static
+│   │   └── js
+│   │       ├── image_upload
+│   │       │   ├── UploadHandler.js [1]
+│   ├───views
+│   │   │   upload.py [2]
+|   ├───urls.py[3]
+```
+
+<h3 align="center">UploadHandler.js[1] sends an upload request to the server</h3>
+
+<h2> UploadHandler.js[1] </h2>
+
+```javascript
+async submitUpload() {
+    ...
+
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            // URL route defined in urls.py [3]
+            url: "/",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            ...
+        });
+    });
+
+    ...
+}
+```
+
+<h3 align="center">urls.py[3] Routes the request to upload.py[2]</h3>
+
+<h2> urls.py[3] </h2>
+
+```python
+from .views import upload
+
+# This is the default route used to handle all uploads. Requests sent to "/" are handled by upload.py [2]
+path("", upload.upload, name="upload"),
+```
+
+<h2> upload.py[2] </h2>
+
+```python
+def process_images(batch, files_data, header):
+    *..
+    for i, file_dict in enumerate(files_data, start=0):
+        try:
+            ...
+            ## Your Model (This is @Param "value" in ModelConfig.js)
+            model = file_dict["model"]
+            ## You might need this if you have micro/macro pipelines.
+            mode = file_dict["mode"]
+
+            ...
+            ## Default payload
+            payload = {'image': encoded,'mode': mode}
+            ...
+
+            match model:
+                case "polyegg_heatmap":
+                    response = requests.post(
+                        "http://127.0.0.1:5000/upload_base64",
+                        json=payload,
+                        timeout=300
+                    )
+                    data = response.json()
+                    status_code = response.status_code
+                case "free_annotate":
+                    data = {
+                        "status": "complete",
+                        "points": [],
+                        "final_image": encoded,
+                        "egg_count": 0
+                    }
+                    status_code = 200
+                case "your model value here @Param value of ModelConfig.js":
+                  response = request.post(
+                    "Your URL pathway [IP_ADDRESS:PORT/PATH]",
+                    json=payload,
+                    timeout=300
+                  )
+                  # this is defined as the response of your model
+                  data = response.json()
+                  status_code = response.status_code
+            ...
+
+            # Sample pipeline for points (POSTGRES)
+            points = data.get("points", [])
+            if points:
+                for p in points:
+                    AnnotationPoints.objects.create(
+                        image=image_record,
+                        x=p[0],
+                        y=p[1],
+                        is_original=True
+                    )
+
+            # Sample pipeline for rects (POSTGRES)
+            rects = data.get("rects",[])
+            if rects:
+              for r in rects:
+                AnnotationRects.objects.create(
+                  image = image_record,
+                  x_init = r[0]
+                  y_init = r[1]
+                  x_end = r[2]
+                  y_end = r[3]
+                  is_original=True
+                )
+  ...
+
+```
+
 
 
 

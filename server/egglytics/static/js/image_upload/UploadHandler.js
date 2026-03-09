@@ -151,6 +151,7 @@ export class UploadHandler {
         const formData = new FormData();
 
         // Append files and their settings
+        // Iterate over each rows
         $("#upload-table tbody tr").each(function(index) {
             const $row = $(this);
             const file = fileArray[index];
@@ -158,8 +159,9 @@ export class UploadHandler {
             if (!file) return;
 
             formData.append("myfiles", file);
-
+            //Get the selected model
             const model = $row.find('select[data-row-model="true"]').val();
+            console.log(model)
             formData.append(`model_${index}`, model);
 
             const isMacro = $row.find('.mode-toggle').is(":checked");
