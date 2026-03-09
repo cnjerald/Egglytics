@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class BatchDetails(models.Model):
     batch_name = models.CharField(max_length=255)
     date_updated = models.DateTimeField(auto_now=True)
-    owner = models.CharField(max_length=150)
+    owner = models.CharField(max_length=150, default="Incognito")
     total_images = models.IntegerField()
     total_eggs = models.IntegerField()
     total_hatched = models.IntegerField()

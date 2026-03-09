@@ -48,6 +48,9 @@ def upload(request):
         # Get the current time now, creating a unique key
         batch_name = request.POST.get("batch_name")
         owner = request.POST.get("user")
+        print("The owner is !", owner)
+        if not owner:
+            owner = "Incognito"
 
         date = timezone.now()
 
@@ -74,6 +77,7 @@ def upload(request):
             encoded = base64.b64encode(file_bytes).decode("utf-8")
 
             # Retrieve per-file metadata
+            # The model defined here is the variable "value" in ModelConfig
             model = request.POST.get(f"model_{i}")
             mode = request.POST.get(f"mode_{i}")          # "micro" or "macro"
             share = request.POST.get(f"share_{i}") == "true"
@@ -415,6 +419,7 @@ def process_images(batch, files_data, header):
                         "egg_count": 0
                     }
                     status_code = 200
+
 
             # Extract result data
             # Just put has fail present if something goes wrong
