@@ -114,6 +114,12 @@ body {
     cursor: not-allowed;
 }
 
+/* Allow grid button to be clickable even when selected */
+#grid-btn.tools-button-selected {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
 .tools-button {
 display: flex;   /* Force horizontal layout */
 flex-direction: row;        /* Side-by-side */

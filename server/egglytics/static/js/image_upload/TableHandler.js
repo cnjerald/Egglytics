@@ -114,7 +114,7 @@ export class TableHandler {
         rows.forEach((row, newIndex) => {
             row.dataset.id = newIndex + 1;
 
-            const editBtn = row.querySelector(".demo-btn.success");
+            const editBtn = row.querySelector(".edit-btn");
             const deleteBtn = row.querySelector(".demo-btn.danger");
 
             if (editBtn) {
@@ -289,7 +289,7 @@ export class TableHandler {
         const editCell = document.createElement("td");
         const editBtn = document.createElement("button");
         editBtn.type = "button";
-        editBtn.className = "demo-btn success";
+        editBtn.className = "edit-btn";
         editBtn.textContent = "Edit";
         
         editBtn.onclick = () => {

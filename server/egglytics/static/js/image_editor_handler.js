@@ -416,7 +416,15 @@ $(document).ready(function () {
 
     $("#grid-btn").on("click", function () {
         const isVisible = gridManager.isVisible();
-        gridManager.setVisible(!isVisible);
+        const newVisibility = !isVisible;
+        gridManager.setVisible(newVisibility);
+        
+        // Update button appearance
+        if (newVisibility) {
+            $(this).addClass("tools-button-selected");
+        } else {
+            $(this).removeClass("tools-button-selected");
+        }
     });
 
     $("#recalibrate-btn").on("click", function () {
