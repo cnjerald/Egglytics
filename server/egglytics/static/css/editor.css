@@ -614,3 +614,116 @@ body {
     padding: 6px 12px;
     cursor: pointer;
 }
+
+/* Recalibration mode modal positioning */
+#instructions-modal.recalibrate-mode .modal-content {
+    margin: 7% auto auto auto; /* Center horizontally */
+    max-width: 400px;
+}
+
+/* Carousel Styles */
+.carousel-container {
+    width: 100%;
+    position: relative;
+    display: none; /* Hidden by default */
+}
+
+#instructions-modal.recalibrate-mode .carousel-container {
+    display: block; /* Show when in recalibration mode */
+}
+
+#instructions-modal.recalibrate-mode .keyboard-panel {
+    display: none; /* Hide regular controls when in recalibration mode */
+}
+
+.carousel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.carousel-slide {
+    display: none;
+    padding: 20px;
+    text-align: center;
+    min-height: 300px;
+}
+
+.carousel-slide.active {
+    display: block;
+}
+
+.slide-content h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.control-gif {
+    width: 100%;
+    max-width: 250px;
+    height: auto;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    margin: 10px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.control-description {
+    margin-top: 15px;
+}
+
+.control-description p {
+    color: #666;
+    font-size: 14px;
+    margin: 10px 0 0 0;
+    line-height: 1.4;
+}
+
+.carousel-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 0 10px;
+}
+
+.carousel-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.carousel-btn:hover {
+    background-color: #45a049;
+}
+
+.carousel-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.carousel-indicators {
+    display: flex;
+    gap: 8px;
+}
+
+.indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ddd;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.indicator.active {
+    background-color: #4CAF50;
+}

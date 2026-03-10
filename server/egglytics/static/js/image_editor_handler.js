@@ -431,7 +431,25 @@ $(document).ready(function () {
     });
 
     $("#open-instructions").on("click", function () {
-        $("#instructions-modal").addClass("is-visible");
+        const modal = $("#instructions-modal");
+        const modalContent = modal.find(".modal-content");
+
+        if (isRecalibrate) {
+            modal.addClass("recalibrate-mode");
+            // Change title for recalibration mode
+            modalContent.find("h3").text("Recalibration Controls");
+            // Show carousel, hide regular controls
+            modalContent.find(".keyboard-panel").hide();
+            modalContent.find(".carousel-container").show();
+        } else {
+            modal.removeClass("recalibrate-mode");
+            // Restore original title
+            modalContent.find("h3").text("Editor Shortcuts & Controls");
+            // Show regular controls, hide carousel
+            modalContent.find(".keyboard-panel").show();
+            modalContent.find(".carousel-container").hide();
+        }
+        modal.addClass("is-visible");
     });
 
     $("#instructions-modal .close-button").on("click", function () {
@@ -445,6 +463,53 @@ $(document).ready(function () {
         }
     });
 
+    // Carousel functionality
+    let currentSlide = 0;
+    const totalSlides = 4;
+
+    function showSlide(slideIndex) {
+        // Hide all slides
+        $(".carousel-slide").removeClass("active");
+        $(".indicator").removeClass("active");
+
+        // Show the selected slide
+        $(".carousel-slide").eq(slideIndex).addClass("active");
+        $(".indicator").eq(slideIndex).addClass("active");
+
+        currentSlide = slideIndex;
+
+        // Update button states
+        $("#prev-slide").prop("disabled", currentSlide === 0);
+        $("#next-slide").prop("disabled", currentSlide === totalSlides - 1);
+    }
+
+    // Previous slide button
+    $("#prev-slide").on("click", function () {
+        if (currentSlide > 0) {
+            showSlide(currentSlide - 1);
+        }
+    });
+
+    // Next slide button
+    $("#next-slide").on("click", function () {
+        if (currentSlide < totalSlides - 1) {
+            showSlide(currentSlide + 1);
+        }
+    });
+
+    // Indicator clicks
+    $(".indicator").on("click", function () {
+        const slideIndex = $(this).data("slide");
+        showSlide(slideIndex);
+    });
+
+    // Initialize carousel when modal opens
+    $("#open-instructions").on("click", function () {
+        // Reset to first slide when modal opens
+        setTimeout(() => {
+            showSlide(0);
+        }, 100);
+    });
 
     function getCSRFToken() {
         const name = 'csrftoken';
