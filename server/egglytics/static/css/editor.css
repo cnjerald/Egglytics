@@ -510,44 +510,7 @@ body {
     border: none;
 }
 
-/* Recalibration Guide Modal Styles */
-
-.guide-content {
-    padding: 10px 0;
-}
-
-.guide-content h4 {
-    margin-top: 15px;
-    margin-bottom: 10px;
-    color: #333;
-    font-size: 16px;
-}
-
-.guide-steps {
-    margin-left: 20px;
-    padding-left: 10px;
-}
-
-.guide-steps li {
-    margin-bottom: 12px;
-    line-height: 1.6;
-}
-
-.guide-steps ul {
-    margin-top: 8px;
-    margin-left: 15px;
-    list-style-type: disc;
-}
-
-.guide-steps ul li {
-    margin-bottom: 5px;
-}
-
-.guide-note {
-    background-color: #fff3cd;
-    border-left: 4px solid #ffc107;
-    padding: 10px 15px;
-    margin: 15px 0;
+/* Carousel Modal Styles */
     border-radius: 4px;
     font-size: 14px;
 }
@@ -589,11 +552,6 @@ body {
 
 .guide-ok-button:hover {
     background-color: #45a049 !important;
-}
-
-/* Make the modal content slightly larger for the guide */
-#recalibrate-guide-modal .modal-content {
-    max-width: 40%;
 }
 
 .osd-overlay {
