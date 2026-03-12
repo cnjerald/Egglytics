@@ -107,18 +107,20 @@ DB_PORT='5432'
 2. python app.py
 
 ## VI. Deploying Your Own Model
-<h2 align="center">Adding a New Model</h2>
+<h2 align="center">1. Adding a New Model on Front-end</h2>
 
 ```
-static
-└── js
-    ├── image_upload
-    │   ├── ModelConfig.js   [1]
-    │   └── TableHandler.js [2]
-    │   └── UploadHandler.js [3]
+server
+└── egglytics
+    └── static
+        └── js
+            ├── image_upload
+            │   ├── ModelConfig.js   [1]
+            │   └── TableHandler.js [2]
+            │   └── UploadHandler.js [3]
 ```
 
-Edit **ModelConfig.js [1]** and add your model to the `MODELS` array.
+You may follow this walkthrough in implementing **"my_model"**, or add your own model in **ModelConfig.js [1]** `MODELS` array.
 
 ```javascript
 // Parameters:
@@ -128,12 +130,13 @@ Edit **ModelConfig.js [1]** and add your model to the `MODELS` array.
 // The default selected label (Front-end) is the first item in the array.
 static MODELS = [
   { value: "foo", label: "bar" },
-  { value: "foo1", label: "bar1" }
+  { value: "foo1", label: "bar1" },
+  { value: "my_model", label: "Sample_model" }
 ]
 ```
 
 <hr>
-<h3 align="center">Files involved in loading these models </h3> 
+<h2 align="center">1.1 Files involved in loading these models </h2> 
 <h5 align="center"> <strong> (Skip this if you didn't add additional parameters) <strong> </h5>
 
 <h2> TableHandler.js [2] </h2>
@@ -172,7 +175,7 @@ function loadModels() {
 }
 ```
 
-<h2 align="center"> Sending details to server </h2>
+<h2 align="center"> 2. Sending details to server </h2>
 
 ```
 ├───egglytics
@@ -185,7 +188,7 @@ function loadModels() {
 |   ├───urls.py[3]
 ```
 
-<h3 align="center">UploadHandler.js[1] sends an upload request to the server</h3>
+<h3 align="center"> UploadHandler.js[1] sends an upload request to the server (JS to Python) </h3>
 
 <h2> UploadHandler.js[1] </h2>
 
@@ -230,6 +233,7 @@ def process_images(batch, files_data, header):
             ...
             ## Your Model (This is @Param "value" in ModelConfig.js)
             model = file_dict["model"]
+        
             ## You might need this if you have micro/macro pipelines.
             mode = file_dict["mode"]
 
@@ -240,58 +244,165 @@ def process_images(batch, files_data, header):
 
             match model:
                 case "polyegg_heatmap":
+                    ...
+                case "free_annotate":
+                    ...
+                # Note here that in the CASE statement "my_model" is the "value" parameter in your MODELS array in ModelConfig.js.
+                # Ensure that the ip address, port, and method name matches on your compute server. 
+                case "my_model":
                     response = requests.post(
-                        "http://127.0.0.1:5000/upload_base64",
+                        "http://127.0.0.1:5000/my_method_name",
                         json=payload,
                         timeout=300
                     )
                     data = response.json()
                     status_code = response.status_code
-                case "free_annotate":
-                    data = {
-                        "status": "complete",
-                        "points": [],
-                        "final_image": encoded,
-                        "egg_count": 0
-                    }
-                    status_code = 200
-                case "your model value here @Param value of ModelConfig.js":
-                  response = request.post(
-                    "Your URL pathway [IP_ADDRESS:PORT/PATH]",
-                    json=payload,
-                    timeout=300
-                  )
-                  # this is defined as the response of your model
-                  data = response.json()
-                  status_code = response.status_code
             ...
-
-            # Sample pipeline for points (POSTGRES)
-            points = data.get("points", [])
-            if points:
-                for p in points:
-                    AnnotationPoints.objects.create(
-                        image=image_record,
-                        x=p[0],
-                        y=p[1],
-                        is_original=True
-                    )
-
-            # Sample pipeline for rects (POSTGRES)
-            rects = data.get("rects",[])
-            if rects:
-              for r in rects:
-                AnnotationRects.objects.create(
-                  image = image_record,
-                  x_init = r[0]
-                  y_init = r[1]
-                  x_end = r[2]
-                  y_end = r[3]
-                  is_original=True
-                )
   ...
+```
+
+<h2 align="center"> 3. Compute Server Processing and Return of Data </h2>
 
 ```
+├───compute
+    └── app.py [1]
+    └── model_weights [2]
+```
+
+<h3 align="center"> 3.1 Adding your own model </h2>
+    Add your model in the model_weights[2] folder, by default ONNX model is used.
+    Then you can pre-load your own model by editing these lines
+
+```
+    # model_path = "model_weights/my_new_model.onnx"
+    # your_model_here = UNetONNXPredictor(model_path)
+```
+
+<h3 align="center"> 3.2 Receiving an image from the webapp </h2>
+
+The demo in app.py[1] "my_new_method" function returns one annotation type at random (Points,rectangles,and polygons), the image returned here is a grayscale image.   
+
+```python
+
+    #syntax: @app.route('@Param method:String',methods=['POST'])
+    # Ensure that @Param method matches the one placed in upload.py
+
+@app.route('/my_method_name', methods=['POST'])
+def my_new_method():
+    data = request.get_json()
+    if not data or 'image' not in data:
+        return {'status': 'failed', 'error': 'No image data provided', 'code': 1001}, 400
+    
+    # @Param image:type(numpyArray)
+    # This is the image loaded in cv2 in BGR format.
+    image = readb64(data['image'])
+
+    # @Param node:type(String)
+    # This is the mode selected (micro/macro) in String
+    mode = data.get("mode") or ""
+
+    # Chapter: Preprocessing
+    # Sample code Grayscale image
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Chapter: Inference (Assuming that image_gray is the required input of the model)
+    # See model.py for more details
+    # @function predict(img, batch_size) returns numpyArray
+    
+    outputs = your_model_here.predict(image_gray,2)
+    
+    # Chapter: Post Processing
+    # Sample code that returns points
+    # Returns: list[tuple[int, int]] 
+    # sample:[(x1,y1),(x2,y2),(x3,y3), ...]
+    def findPoints():
+        return [
+            (1,1),
+            (6,6),
+            (9,9)
+            ]
+        
+    # Sample code that returns rects (Pascal Format)
+    # returns: list[list[int]] 
+    # sample: [[x1, y1, x2, y2], [x1, y1, x2, y2], ...]
+    def findRects():
+        return [
+            [1,1,2,2],
+            [3,3,4,4]
+            ]
+    
+    #Sample code that returns polygons
+    # Returns: list[list[list[int]]] 
+    # sample [[ [x1,y1], [x2,y2], ... ], ...]
+    def findPolygons():
+        return[
+            [[1,1],[2,2],[0,2]],
+            [[8,6],[9,2],[9,5]]
+            ]
+    
+    # This is just an example, what it does is it gets random annotations among the three.
+    # I assumed that each model only returns one type.
+    import random
+    detectors = {
+        "points": findPoints,
+        "rectangles": findRects,
+        "polygons": findPolygons
+    }
+
+    dtype, func = random.choice(list(detectors.items()))
+    detections = func()
+
+    # Chapter: Returning Payload
+    img_to_send = back_to_base64(image_gray)
+    egg_count = len(detections)
+
+
+    # This is where the compute server send back the results to the webapp.
+    # Create payload form
+    # Your payload MUST HAVE 
+    # @Param status: type(BooleanString) <failed,complete> 
+    # @Param final_image: type(base64String) 
+    # @Param egg_count: type(int) 
+    
+    # Your payload SHOULD HAVE AT LEAST ONE 
+
+    # @param points: list[tuple[int, int]] 
+    # individual points [(x1,y1),(x2,y2),(x3,y3), ...] 
+
+    # @param rectangles: list[list[int]] 
+    # [[x1, y1, x2, y2], [x1, y1, x2, y2], ...] 
+
+    # @param polygons: list[list[list[int]]] 
+    # [[ [x1,y1], [x2,y2], ... ], ...]
+
+    payload = {
+        "status": "complete",
+        "final_image": img_to_send,
+        "egg_count": egg_count,
+        # Usually those the selected annotation is placed here.
+        # ex.
+        # "points": detections
+    }
+
+    # Usually this part is already included on the payload above,
+    # But since this is a demo of random annotations, we only select which one we used.
+
+    # Insert the correct detection type
+    if dtype == "points":
+        payload["points"] = [(int(x), int(y)) for x, y in detections]
+
+    elif dtype == "rectangles":
+        payload["rectangles"] = detections
+
+    elif dtype == "polygons":
+        payload["polygons"] = detections
+
+
+    # Actually send the payload pack
+    return payload, 200
+
+```
+
 
 
 
