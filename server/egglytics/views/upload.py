@@ -48,6 +48,9 @@ def upload(request):
         # Get the current time now, creating a unique key
         batch_name = request.POST.get("batch_name")
         owner = request.POST.get("user")
+        print("The owner is !", owner)
+        if not owner:
+            owner = "Incognito"
 
         date = timezone.now()
 
@@ -74,6 +77,7 @@ def upload(request):
             encoded = base64.b64encode(file_bytes).decode("utf-8")
 
             # Retrieve per-file metadata
+            # The model defined here is the variable "value" in ModelConfig
             model = request.POST.get(f"model_{i}")
             mode = request.POST.get(f"mode_{i}")          # "micro" or "macro"
             share = request.POST.get(f"share_{i}") == "true"
@@ -185,7 +189,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
 
     Args:
         image (str): Base64-encoded image string.
-        avg_pixels (float): Average pixel value used for recalibration.
+        avg_pixels (float): Average pixel value used for recalibration (Given by the user).
         model (str): Name of the AI model to use (e.g., "polyegg_heatmap").
         mode (str): Processing mode ("micro" or "macro").
         image_id (int): ID of the image record in the database.
@@ -308,7 +312,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
         image.save(
             file_path,
             format="JPEG",
-            quality=75,       # slightly higher than 65
+            quality=70,       # slightly higher than 65
             optimize=True,
             progressive=True
         )
@@ -321,14 +325,20 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
     image_record.is_processed = True
     image_record.image_version += 1
     image_record.save()
+    
+    # --------------- UPDATE BATCH PROCESSING FLAG ---------------
+    # Update batch processing flag
+    batch = image_record.batch  # get parent batch
+
+    # Check if all images in this batch are processed
+    if not ImageDetails.objects.filter(batch=batch, is_processed=False).exists():
+        batch.has_fail_present = False
+        batch.is_complete = True   # optional: mark batch as complete
+        batch.save()
+        print(f"Batch '{batch.batch_name}' updated: all images processed")
 
     print("Recalibration complete for image:", image_id)
 
-
-
-                
-
-    
 # HELPER FUNCTION TO PROCESS IMAGES
 def process_images(batch, files_data, header):
     """
@@ -420,6 +430,14 @@ def process_images(batch, files_data, header):
                         "egg_count": 0
                     }
                     status_code = 200
+                case "my_model":
+                    response = requests.post(
+                        "http://127.0.0.1:5000/my_method_name",
+                        json=payload,
+                        timeout=300
+                    )
+                    data = response.json()
+                    status_code = response.status_code
 
             # Extract result data
             # Just put has fail present if something goes wrong
@@ -433,6 +451,9 @@ def process_images(batch, files_data, header):
                 }
 
             points = data.get("points", [])
+            rects = data.get("rectangles", [])
+            polygons = data.get("polygons", [])
+
             image_b64 = data.get("final_image")
             temp_eggs = data.get("egg_count", 0)
             
@@ -469,25 +490,13 @@ def process_images(batch, files_data, header):
                 image.save(
                     file_path,
                     format="JPEG",
-                    quality=75,       # sweet spot
+                    quality=70,       # sweet spot
                     optimize=True,
                     progressive=True
                 )
 
                 print("Saved:", file_path)
                 print("New size (KB):", os.path.getsize(file_path) / 1024)
-
-            #  Download processed image from S3
-            #s3_output_path = data.get("s3_output_path")  # processed image path
-            # if s3_output_path:
-            #     local_upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
-            #     os.makedirs(local_upload_dir, exist_ok=True)
-            #     local_file_path = os.path.join(local_upload_dir, image_record.image_name)
-
-            #     with open(local_file_path, "wb") as f_out:
-            #         s3.download_fileobj(bucket_name, s3_output_path, f_out)
-
-            #     print(f" Downloaded processed image to {local_file_path}")
 
             #  Save annotation points to DB
             if points:
@@ -499,6 +508,38 @@ def process_images(batch, files_data, header):
                         y=p[1],
                         is_original=True
                     )
+
+            if rects:
+                for r in rects:
+                    AnnotationRect.objects.create(
+                        image=image_record,
+                        x_init=r[0],
+                        y_init=r[1],
+                        x_end=r[2],
+                        y_end=r[3],
+                        is_original=True
+                    )
+
+            if polygons:
+                for poly in polygons:
+
+                    polygon_record = AnnotationPolygon.objects.create(
+                        image=image_record,
+                        is_original=True
+                    )
+
+                    points_to_create = [
+                        AnnotationPolygonPoint(
+                            polygon=polygon_record,
+                            x=p[0],
+                            y=p[1],
+                            order_index=i
+                        )
+                        for i, p in enumerate(poly)
+                    ]
+
+                    AnnotationPolygonPoint.objects.bulk_create(points_to_create)
+            
 
         except Exception as e:
             batch.has_fail_present = True

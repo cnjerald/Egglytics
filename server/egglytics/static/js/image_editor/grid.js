@@ -6,10 +6,42 @@
 // 
 // 
 
+
 import { saveGridToServer } from './api.js';
 import { addOverlay, addOverlayWithMinimap, removeOverlay, createGridLineOverlay, createGridCellOverlay } from './overlay.js';
 
+/**
+ * GridManager
+ * -----------
+ * Handles grid visualization and interaction for the image viewer.
+ *
+ * Responsibilities:
+ * - Draw grid lines on top of the viewer image
+ * - Manage filled grid cells used for annotation or selection
+ * - Toggle grid cells based on user interaction
+ * - Synchronize grid state with the backend server
+ * - Restore grid state when switching views or reloading overlays
+ *
+ * The grid system divides the image into fixed-size cells and
+ * allows users to activate or deactivate cells as part of the
+ * annotation workflow.
+ *
+ * External Dependencies:
+ * - api.js (server communication for saving grid states)
+ * - overlay.js (overlay creation and management utilities)
+ *
+ * Workflow:
+ * Viewer Loaded → Grid Drawn → User Toggles Cells → Server Sync
+ */
+
 export class GridManager {
+    /**
+     * Creates a GridManager instance.
+     *
+     * @param {Object} viewer - OpenSeadragon viewer instance.
+     * @param {number} [gridSize=512] - Size of each grid cell in pixels.
+     * @param {number|string} img_id - Identifier of the image associated with the grid.
+     */
     constructor(viewer, gridSize = 512,img_id) {
         this.viewer = viewer;
         this.gridSize = gridSize;
@@ -18,7 +50,15 @@ export class GridManager {
         this.visible = false;
         this.img_id = img_id;
     }
-
+    /**
+     * Loads previously saved grid cell states.
+     *
+     * Purpose:
+     * Restores filled grid cells from data retrieved from the server
+     * when an image is opened or annotations are loaded.
+     *
+     * @param {Array<Object>} gridArray - Array of saved grid coordinates.
+     */
     loadGrid(gridArray) {
         
         if (!Array.isArray(gridArray)) return;
@@ -43,7 +83,15 @@ export class GridManager {
 
     }
 
-
+    /**
+     * Draws grid lines over the current image.
+     *
+     * Purpose:
+     * Generates vertical and horizontal grid overlays based on the
+     * configured grid size and the image dimensions.
+     *
+     * This method clears any previously drawn grid before rendering.
+     */
     drawGrid() {
         this.clearGrid();
 
@@ -84,12 +132,36 @@ export class GridManager {
         console.log("Grid drawn");
     }
 
+    /**
+     * Removes all grid overlays from the viewer.
+     *
+     * Purpose:
+     * Clears both grid lines and filled cell overlays from the viewer
+     * to prevent duplicate overlays or visual artifacts.
+     */
     clearGrid() {
         this.gridOverlays.forEach(el => removeOverlay(this.viewer, el));
         this.gridOverlays = [];
         this.filledCells.forEach(el => removeOverlay(this.viewer, el));
     }
 
+    /**
+     * Toggles the state of a grid cell.
+     *
+     * Purpose:
+     * Determines the grid cell corresponding to the clicked image
+     * coordinates and toggles its active state.
+     *
+     * If the cell is already active, it will be removed.
+     * If inactive, a filled overlay will be created.
+     *
+     * The change is also sent to the backend server so that the
+     * grid state can be persisted.
+     *
+     * @param {number} x - Image X coordinate of the click.
+     * @param {number} y - Image Y coordinate of the click.
+     * @returns {boolean} True if the cell was added, false if removed.
+     */
     toggleCell(x, y) {
         const col = Math.floor(x / this.gridSize);
         const row = Math.floor(y / this.gridSize);
@@ -117,10 +189,25 @@ export class GridManager {
         }
     }
 
+    /**
+     * Removes all filled grid cell overlays.
+     *
+     * Purpose:
+     * Clears active grid cell markers while leaving the grid lines intact.
+     */
     clearAllCells() {
         this.filledCells.forEach(el => removeOverlay(this.viewer, el));
     }
 
+    /**
+     * Restores all previously active grid cells.
+     *
+     * Purpose:
+     * Recreates overlays for stored filled cells when the grid
+     * becomes visible again or when overlays are reinitialized.
+     *
+     * This prevents losing visual markers during viewer refreshes.
+     */
     restoreAllCells() {
         const tiledImage = this.viewer.world.getItemAt(0);
 
@@ -143,6 +230,22 @@ export class GridManager {
         console.log("All filled cells restored");
     }
 
+    /**
+     * Sets the visibility state of the grid.
+     *
+     * Purpose:
+     * Controls whether the grid and filled cells are displayed
+     * on the viewer.
+     *
+     * When enabled:
+     * - Grid lines are drawn
+     * - Filled cells are restored
+     *
+     * When disabled:
+     * - All grid overlays are removed
+     *
+     * @param {boolean} visible - Desired visibility state.
+     */
     setVisible(visible) {
         this.visible = visible;
         if (visible) {
@@ -153,7 +256,12 @@ export class GridManager {
             this.clearAllCells();
         }
     }
-
+    
+    /**
+     * Returns the current visibility state of the grid.
+     *
+     * @returns {boolean} True if the grid is visible.
+     */
     isVisible() {
         return this.visible;
     }

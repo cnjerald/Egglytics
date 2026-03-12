@@ -1,18 +1,29 @@
-//
-// 
-// 
-// OPENSEADRAGON INITIALIZATION MANAGEMENT
-// 
-// 
-// 
+/**
+ * -----------------------------------------
+ * OPENSEADRAGON INITIALIZATION & UTILS
+ * -----------------------------------------
+ * Functions to initialize the OpenSeadragon viewer,
+ * set up overlay canvases, handle mouse tracking,
+ * and coordinate conversions between image, viewport,
+ * and pixel coordinates.
+ */
 
-export function initializeViewer(imageUrl) {
+/**
+ * Initializes an OpenSeadragon viewer.
+ *
+ * @param {string} imageUrl - URL of the image to load.
+ * @returns {OpenSeadragon.Viewer} - Initialized viewer instance.
+ */
+export function initializeViewer(imageUrl, previewUrl = null) {
+    const startUrl = previewUrl || imageUrl;
+    let viewerInitialized = false;
+
     const viewer = OpenSeadragon({
         id: "viewer",
         prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
         tileSources: {
             type: "image",
-            url: imageUrl
+            url: startUrl
         },
         backgroundColor: "black",
         gestureSettingsMouse: {
@@ -21,7 +32,6 @@ export function initializeViewer(imageUrl) {
         keyboardEnabled: false,
         maxZoomPixelRatio: 20,
 
-        // MINIMAP stuff
         showNavigator: true,
         navigatorPosition: "BOTTOM_RIGHT",
         navigatorSizeRatio: 0.2,
@@ -31,16 +41,48 @@ export function initializeViewer(imageUrl) {
         navigatorOpacity: 1,
     });
 
-    // Disable default OpenSeadragon keys
     viewer.addHandler('canvas-key', event => {
         if (['q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'R'].includes(event.originalEvent.key)) {
             event.preventDefaultAction = true;
         }
     });
-    
+
+    if (previewUrl) {
+        viewer.addHandler("open", function () {
+            if (!viewerInitialized) {
+                viewerInitialized = true;
+
+                const fullImage = new Image();
+                fullImage.src = imageUrl;
+                fullImage.onload = () => {
+                    setTimeout(() => {
+                        const zoom = viewer.viewport ? viewer.viewport.getZoom() : null;
+                        const center = viewer.viewport ? viewer.viewport.getCenter() : null;
+
+                        viewer.open({ type: "image", url: imageUrl });
+
+                        viewer.addHandler("open", function restoreViewport() {
+                            if (zoom !== null && center !== null) {
+                                viewer.viewport.zoomTo(zoom, null, true);
+                                viewer.viewport.panTo(center, true);
+                            }
+                            viewer.removeHandler("open", restoreViewport);
+                        });
+                    }, 100);
+                };
+            }
+        });
+    }
+
     return viewer;
 }
 
+/**let viewerInitialized = false;
+ * Creates an overlay canvas over the viewer for annotations.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The OpenSeadragon viewer.
+ * @returns {HTMLCanvasElement} - Canvas element attached to the viewer.
+ */
 export function setupCanvas(viewer) {
     const canvas = document.createElement("canvas");
     canvas.style.position = "absolute";
@@ -55,6 +97,14 @@ export function setupCanvas(viewer) {
     return canvas;
 }
 
+/**
+ * Sets up automatic canvas resizing and redraw callbacks.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {HTMLCanvasElement} canvas - The overlay canvas.
+ * @param {Function} redrawCallback - Function to redraw annotations on resize/zoom/pan.
+ * @returns {Function} - The resize handler.
+ */
 export function setupCanvasResize(viewer, canvas, redrawCallback) {
 
     function resizeCanvas() {
@@ -79,10 +129,13 @@ export function setupCanvasResize(viewer, canvas, redrawCallback) {
     return resizeCanvas;
 }
 
-
-
-
-
+/**
+ * Sets up a mouse tracker for the viewer.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {Function} onMoveHandler - Handler for mouse move events.
+ * @returns {OpenSeadragon.MouseTracker} - Mouse tracker instance.
+ */
 export function setupMouseTracker(viewer, onMoveHandler) {
     const tracker = new OpenSeadragon.MouseTracker({
         element: viewer.canvas,
@@ -92,6 +145,13 @@ export function setupMouseTracker(viewer, onMoveHandler) {
     return tracker;
 }
 
+/**
+ * Converts the last tracked mouse position to image coordinates.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {Object|null} lastMousePos - Last mouse pixel coordinates {x, y}.
+ * @returns {Object|null} - Image coordinates {x, y} or null if no position.
+ */
 export function getMouseImagePosition(viewer, lastMousePos) {
     if (!lastMousePos) {
         console.log("No mouse position tracked yet");
@@ -107,21 +167,49 @@ export function getMouseImagePosition(viewer, lastMousePos) {
     };
 }
 
+/**
+ * Converts image coordinates to viewport coordinates.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {number} x - X in image coordinates.
+ * @param {number} y - Y in image coordinates.
+ * @returns {OpenSeadragon.Point} - Corresponding viewport coordinates.
+ */
 export function imageToViewportCoordinates(viewer, x, y) {
     const tiledImage = viewer.world.getItemAt(0);
     return tiledImage.imageToViewportCoordinates(x, y);
 }
 
+/**
+ * Converts viewport coordinates to pixel coordinates on the screen.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {OpenSeadragon.Point} vp - Viewport point.
+ * @returns {Object} - Pixel coordinates {x, y}.
+ */
 export function viewportToPixelCoordinates(viewer, vp) {
     return viewer.viewport.pixelFromPoint(vp, true);
 }
 
+/**
+ * Pans the viewport to a specific image coordinate.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @param {number} x - Image X coordinate.
+ * @param {number} y - Image Y coordinate.
+ */
 export function panToImageCoordinates(viewer, x, y) {
     const tiledImage = viewer.world.getItemAt(0);
     const vp = tiledImage.imageToViewportCoordinates(x, y);
     viewer.viewport.panTo(vp);
 }
 
+/**
+ * Returns the full image size.
+ *
+ * @param {OpenSeadragon.Viewer} viewer - The viewer instance.
+ * @returns {Object} - Image size {x: width, y: height}.
+ */
 export function getImageSize(viewer) {
     return viewer.world.getItemAt(0).getContentSize();
 }

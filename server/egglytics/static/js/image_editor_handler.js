@@ -22,10 +22,11 @@ $(document).ready(function () {
     const eggCountEl = document.getElementById("egg_count");
     const imageUrl = document.getElementById("viewer").dataset.imageUrl;
     const imageId = window.image_id;
-    const savedGrids = window.grids
+    const savedGrids = window.grids;
+    const previewUrl = window.image_preview_url || null;
 
     // Initialize managers
-    const viewer = initializeViewer(imageUrl);
+    const viewer = initializeViewer(imageUrl, previewUrl);
     const canvas = setupCanvas(viewer);
     const pointManager = new PointAnnotationManager(viewer, canvas);
     const rectManager = new RectAnnotationManager(viewer);
@@ -65,7 +66,7 @@ $(document).ready(function () {
     // Viewer open handler
     viewer.addHandler("open", function () {
         console.log("Viewer opened and ready!");
-        viewerReady = true;
+        if (viewerReady) return; // skip on full-res swap
 
         if (Array.isArray(window.points)) {
             pointManager.loadPoints(window.points);
@@ -349,35 +350,41 @@ $(document).ready(function () {
     $("#recalibrate-yes").on("click", () => {
         // Check if user has chosen to not show the guide again
         const dontShowGuide = localStorage.getItem('hideRecalibrateGuide') === 'true';
-        
+
         if (!dontShowGuide) {
-            // Show the guide modal
-            $("#recalibrate-guide-modal").addClass("is-visible");
+            // Show the carousel modal instead of guide modal
+            const modal = $("#instructions-modal");
+            const modalContent = modal.find(".modal-content");
+
+            modal.addClass("recalibrate-mode");
+            modalContent.find("h3").text("Recalibration Controls");
+            modalContent.find(".keyboard-panel").hide();
+            modalContent.find(".carousel-container").show();
+            modal.addClass("is-visible");
+
+            // Reset carousel to first slide
+            setTimeout(() => {
+                showSlide(0);
+            }, 100);
         } else {
             // Directly enter recalibration mode
             setAnnotationMode({ modeName: "Recalibrate" });
         }
     });
 
-    // Handle "Got it!" button in guide modal
+    // Handle "Got it!" button in carousel modal (when used as guide)
     $("#recalibrate-guide-ok").on("click", function () {
         // Check if "don't show again" is checked
         const dontShowAgain = $("#dont-show-recalibrate-guide").is(":checked");
-        
+
         if (dontShowAgain) {
             localStorage.setItem('hideRecalibrateGuide', 'true');
         }
-        
-        // Hide the guide modal
-        $("#recalibrate-guide-modal").removeClass("is-visible");
-        
-        // Enter recalibration mode
-        setAnnotationMode({ modeName: "Recalibrate" });
-    });
 
-    // Handle close button on guide modal
-    $("#recalibrate-guide-modal .close-button").on("click", function () {
-        $("#recalibrate-guide-modal").removeClass("is-visible");
+        // Hide the modal and enter recalibration mode
+        $("#instructions-modal").removeClass("is-visible");
+        $("#instructions-modal").removeClass("recalibrate-mode");
+        setAnnotationMode({ modeName: "Recalibrate" });
     });
 
     // Cancel recalibration
@@ -410,7 +417,15 @@ $(document).ready(function () {
 
     $("#grid-btn").on("click", function () {
         const isVisible = gridManager.isVisible();
-        gridManager.setVisible(!isVisible);
+        const newVisibility = !isVisible;
+        gridManager.setVisible(newVisibility);
+        
+        // Update button appearance
+        if (newVisibility) {
+            $(this).addClass("tools-button-selected");
+        } else {
+            $(this).removeClass("tools-button-selected");
+        }
     });
 
     $("#recalibrate-btn").on("click", function () {
@@ -431,20 +446,96 @@ $(document).ready(function () {
     });
 
     $("#open-instructions").on("click", function () {
-        $("#instructions-modal").addClass("is-visible");
+        const modal = $("#instructions-modal");
+        const modalContent = modal.find(".modal-content");
+
+        if (isRecalibrate) {
+            modal.addClass("recalibrate-mode");
+            // Change title for recalibration mode
+            modalContent.find("h3").text("Recalibration Controls");
+            // Show carousel, hide regular controls
+            modalContent.find(".keyboard-panel").hide();
+            modalContent.find(".carousel-container").show();
+        } else {
+            modal.removeClass("recalibrate-mode");
+            // Restore original title
+            modalContent.find("h3").text("Editor Shortcuts & Controls");
+            // Show regular controls, hide carousel
+            modalContent.find(".keyboard-panel").show();
+            modalContent.find(".carousel-container").hide();
+        }
+        modal.addClass("is-visible");
     });
 
+    // Handle close button on instructions modal (when used as guide)
     $("#instructions-modal .close-button").on("click", function () {
         $("#instructions-modal").removeClass("is-visible");
-    });
-
-    // Click outside to close
-    $(window).on("click", function (e) {
-        if (e.target.id === "instructions-modal") {
-            $("#instructions-modal").removeClass("is-visible");
+        // If this was shown as the recalibration guide, enter recalibration mode
+        if ($("#instructions-modal").hasClass("recalibrate-mode")) {
+            setAnnotationMode({ modeName: "Recalibrate" });
+            $("#instructions-modal").removeClass("recalibrate-mode");
         }
     });
 
+    // Click outside to close instructions modal
+    $(window).on("click", function (e) {
+        if (e.target.id === "instructions-modal") {
+            $("#instructions-modal").removeClass("is-visible");
+            // If this was shown as the recalibration guide, enter recalibration mode
+            if ($("#instructions-modal").hasClass("recalibrate-mode")) {
+                setAnnotationMode({ modeName: "Recalibrate" });
+                $("#instructions-modal").removeClass("recalibrate-mode");
+            }
+        }
+    });
+
+    // Carousel functionality
+    let currentSlide = 0;
+    const totalSlides = 4;
+
+    function showSlide(slideIndex) {
+        // Hide all slides
+        $(".carousel-slide").removeClass("active");
+        $(".indicator").removeClass("active");
+
+        // Show the selected slide
+        $(".carousel-slide").eq(slideIndex).addClass("active");
+        $(".indicator").eq(slideIndex).addClass("active");
+
+        currentSlide = slideIndex;
+
+        // Update button states
+        $("#prev-slide").prop("disabled", currentSlide === 0);
+        $("#next-slide").prop("disabled", currentSlide === totalSlides - 1);
+    }
+
+    // Previous slide button
+    $("#prev-slide").on("click", function () {
+        if (currentSlide > 0) {
+            showSlide(currentSlide - 1);
+        }
+    });
+
+    // Next slide button
+    $("#next-slide").on("click", function () {
+        if (currentSlide < totalSlides - 1) {
+            showSlide(currentSlide + 1);
+        }
+    });
+
+    // Indicator clicks
+    $(".indicator").on("click", function () {
+        const slideIndex = $(this).data("slide");
+        showSlide(slideIndex);
+    });
+
+    // Initialize carousel when modal opens
+    $("#open-instructions").on("click", function () {
+        // Reset to first slide when modal opens
+        setTimeout(() => {
+            showSlide(0);
+        }, 100);
+    });
 
     function getCSRFToken() {
         const name = 'csrftoken';

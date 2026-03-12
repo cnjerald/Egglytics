@@ -1,7 +1,10 @@
+{% load static %}
 <div id="instructions-modal" class="modal">
     <div class="modal-content">
-        <span class="close-button">&times;</span> 
+        <span class="close-button">&times;</span>
         <h3>Editor Shortcuts & Controls</h3>
+
+        <!-- Regular controls (shown when NOT in recalibration mode) -->
         <div class="keyboard-panel">
             <div class="instruction-line">
                 <span class="key-hint">Q</span> - DEBUG PIXEL LOCATION
@@ -15,10 +18,90 @@
             <div class="instruction-line">
                 <span class="key-hint">R</span> - REMOVE DOT
             </div>
-            
+
             <div class="instruction-line pan-line">
                 <span class="key-hint">RMB</span> + DRAG - PAN IMAGE
             </div>
+        </div>
+
+        <!-- Recalibration carousel (shown when in recalibration mode) -->
+        <div class="carousel-container recalibration-controls" style="display: none;">
+            <div class="carousel">
+                <!-- Slide 1: Sample Polygon -->
+                <div class="carousel-slide active">
+                    <div class="slide-content">
+                        <h4>Create Polygon</h4>
+                        <img src="{% static 'img/Sample_polygon.gif' %}" alt="Sample polygon creation" class="control-gif">
+                        <div class="control-description">
+                            <div class="instruction-line">
+                                <span class="key-hint">E</span> - ADD VERTEX
+                            </div>
+                            <p>Click to add points and create a polygon shape</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 2: Cancel Polygon -->
+                <div class="carousel-slide">
+                    <div class="slide-content">
+                        <h4>Cancel Polygon</h4>
+                        <img src="{% static 'img/Cancel_polygon.gif' %}" alt="Cancel polygon" class="control-gif">
+                        <div class="control-description">
+                            <div class="instruction-line">
+                                <span class="key-hint">Esc</span> - CANCEL CURRENT POLYGON
+                            </div>
+                            <p>Cancel the polygon you're currently drawing</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 3: Remove Vertex -->
+                <div class="carousel-slide">
+                    <div class="slide-content">
+                        <h4>Remove Vertex</h4>
+                        <img src="{% static 'img/Remove_vertex.gif' %}" alt="Remove vertex" class="control-gif">
+                        <div class="control-description">
+                            <div class="instruction-line">
+                                <span class="key-hint">Backspace</span> - REMOVE LAST VERTEX
+                            </div>
+                            <p>Remove the last point you added to the polygon</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slide 4: Remove Polygon -->
+                <div class="carousel-slide">
+                    <div class="slide-content">
+                        <h4>Remove Polygon</h4>
+                        <img src="{% static 'img/Remove_polygon.gif' %}" alt="Remove polygon" class="control-gif">
+                        <div class="control-description">
+                            <div class="instruction-line">
+                                <span class="key-hint">B</span> - DELETE LAST POLYGON
+                            </div>
+                            <p>Delete the most recently completed polygon</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="carousel-nav">
+                <button class="carousel-btn prev-btn" id="prev-slide">&larr; Previous</button>
+                <div class="carousel-indicators">
+                    <span class="indicator active" data-slide="0"></span>
+                    <span class="indicator" data-slide="1"></span>
+                    <span class="indicator" data-slide="2"></span>
+                    <span class="indicator" data-slide="3"></span>
+                </div>
+                <button class="carousel-btn next-btn" id="next-slide">Next &rarr;</button>
+            </div>
+
+            <div class="dont-show-container">
+                <input type="checkbox" id="dont-show-recalibrate-guide">
+                <label for="dont-show-recalibrate-guide">Don't show this again</label>
+            </div>
+
+            <button id="recalibrate-guide-ok" class="tools-button guide-ok-button">Got it!</button>
         </div>
     </div>
 </div>

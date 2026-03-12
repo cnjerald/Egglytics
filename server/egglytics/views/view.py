@@ -12,6 +12,21 @@ from ._imports import *
 
 # This is where user can see what was uploaded..
 def view(request):
+    """
+    Render the main batch overview page.
+
+    Displays all batches sorted by most recently updated, along with
+    aggregate totals across all batches.
+
+    Args:
+        request: GET request
+
+    Returns:
+        Rendered response with template "view.html" and context:
+            - batches (QuerySet): All BatchDetails with prefetched images, newest first
+            - total_images (int): Sum of total_images across all batches
+            - total_eggs (int): Sum of total_eggs across all batches
+    """
     # Get batches, sorted by date_updated descending
     batches = (
         BatchDetails.objects
@@ -38,6 +53,18 @@ def view(request):
     )
 
 def batch_images(request, batch_id):
+    """
+    Return all images belonging to a batch as JSON.
+
+    Args:
+        request: GET request
+        batch_id (int): PK of the target BatchDetails record
+
+    Returns:
+        JsonResponse: List of image dicts, each containing:
+            - image_id, image_name, image_path, image_url,
+              total_eggs, img_type, total_hatched, is_processed
+    """
     images = ImageDetails.objects.filter(batch_id=batch_id)
 
     data = []
@@ -64,13 +91,33 @@ def batch_images(request, batch_id):
     return JsonResponse(data, safe=False)
 
 def batch_status(request):
+    """
+    Return status fields for all batches as JSON.
+
+    Args:
+        request: GET request
+
+    Returns:
+        JsonResponse: List of dicts with fields:
+            id, total_eggs, total_images, is_complete, has_fail_present
+    """
     batches = BatchDetails.objects.values(
         "id", "total_eggs", "total_images", "is_complete","has_fail_present"
     )
     return JsonResponse(list(batches), safe=False)
 
 def batch_status_latest(request):
-    # Get the latest batch by id (or by a timestamp if you have one)
+    """
+    Return status fields for the most recently created batch.
+
+    Args:
+        request: GET request
+
+    Returns:
+        JsonResponse: Single dict with fields:
+            id, total_eggs, total_images, is_complete, has_fail_present
+        JsonResponse: Empty dict {} if no batches exist
+    """
     latest_batch = BatchDetails.objects.order_by('-id').values(
         "id", "total_eggs", "total_images", "is_complete", "has_fail_present"
     ).first()  # returns a dict or None
@@ -83,37 +130,39 @@ def batch_status_latest(request):
 # This is the server side for the scripts
 # Sends it to the editor HTML.
 def edit(request, image_id):
-    # Get image entry
     image = get_object_or_404(ImageDetails, image_id=image_id)
 
     if not image.is_validated:
         image.is_validated = True
         image.save()
-    
-    # Get related annotation points
-    annotations = AnnotationPoints.objects.filter(image=image, is_deleted = False).values(
+
+    annotations = AnnotationPoints.objects.filter(image=image, is_deleted=False).values(
         "point_id", "x", "y"
     )
-
-    rectangles = AnnotationRect.objects.filter(image=image, is_deleted = False).values(
-        "rect_id","x_init","y_init","x_end","y_end"
+    rectangles = AnnotationRect.objects.filter(image=image, is_deleted=False).values(
+        "rect_id", "x_init", "y_init", "x_end", "y_end"
     )
-
     grids = VerifiedGrids.objects.filter(image=image).values(
         "x", "y"
     )
+
+    generate_preview_image(os.path.join(settings.MEDIA_ROOT, 'uploads', image.file_path))
+
+    base, ext = os.path.splitext(image.file_path)
+    preview_relative = f"uploads/{base}_preview{ext}"
 
     return render(
         request,
         "base.html",
         {
             "included_template": "editor.html",
-            "image_name": image.file_path,
+            "image_name": image.file_path,  # full res
+            "image_preview": preview_relative,   # compressed preview
             "image_version": image.image_version,
             "points_json": json.dumps(list(annotations)),
             "rects_json": json.dumps(list(rectangles)),
             "total_eggs": json.dumps(image.total_eggs),
-            "grids_json" : json.dumps(list(grids)),
+            "grids_json": json.dumps(list(grids)),
             "img_id": json.dumps(image_id),
             "MEDIA_URL": settings.MEDIA_URL,
         }
@@ -121,6 +170,18 @@ def edit(request, image_id):
 
 
 def edit_batch_name(request, batch_id):
+    """
+    Update the display name of a batch.
+
+    Args:
+        request: POST request with JSON body containing:
+            - batch_name (str): New name (must be non-empty)
+        batch_id (int): PK of the target BatchDetails record
+
+    Returns:
+        JsonResponse: {"success": True} on success
+        JsonResponse: {"success": False, "message": str} on validation error or not found
+    """
     if request.method == "POST":
         import json
         data = json.loads(request.body)
@@ -139,6 +200,24 @@ def edit_batch_name(request, batch_id):
 # This deletes the batch and everything associated with it (Image details and Points)
 # It does not delete the image saved on local disk as of now.
 def delete_batch(request, batch_id):
+    """
+    Permanently delete a batch, all its images, annotations, and image files on disk.
+
+    Deletes in order: image files → AnnotationPoints → ImageDetails → BatchDetails.
+
+    Args:
+        request: POST request
+        batch_id (int): PK of the target BatchDetails record
+
+    Returns:
+        JsonResponse: {"success": True} on success
+        JsonResponse: {"error": "Batch not found"} with status 404
+        JsonResponse: {"error": str} with status 500 on exception
+        JsonResponse: {"error": "Invalid method"} with status 405 for non-POST
+
+    Notes:
+        - Missing image files on disk are silently skipped
+    """
     if request.method == "POST":
         try:
             batch = BatchDetails.objects.get(id=batch_id)
@@ -170,6 +249,25 @@ def delete_batch(request, batch_id):
     return JsonResponse({"error": "Invalid method"}, status=405)
 
 def delete_image(request, image_id):
+    """
+    Permanently delete a single image, its annotations, and its file on disk.
+
+    Subtracts the image's egg count from the parent batch. If this was the
+    last image in the batch, the batch itself is also deleted.
+
+    Args:
+        request: POST request
+        image_id (int): PK of the target ImageDetails record
+
+    Returns:
+        JsonResponse: {
+            "success": True,
+            "batch_deleted": bool,
+            "new_total_images": int,  # omitted if batch deleted
+            "new_total_eggs": int     # omitted if batch deleted
+        }
+        JsonResponse: {"success": False, "message": str} with status 404 or 400
+    """
     if request.method == "POST":
         try:
             # Get the image
@@ -218,6 +316,19 @@ def delete_image(request, image_id):
         return JsonResponse({"success": False, "message": "Invalid request method."}, status=400)
     
 def update_hatched(request, image_id):
+    """
+    Update the total_hatched count for an image.
+
+    Args:
+        request: POST request with JSON body containing:
+            - total_hatched (int): New hatched count
+        image_id (int): PK of the target ImageDetails record
+
+    Returns:
+        JsonResponse: {"success": True} on success
+        JsonResponse: {"success": False, "error": str} with status 400 on exception
+        JsonResponse: {"success": False} with status 405 for non-POST
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -234,6 +345,20 @@ def update_hatched(request, image_id):
     return JsonResponse({"success": False}, status=405)
 
 def update_image_name(request, image_id):
+    """
+    Update the display name of an image.
+
+    Args:
+        request: POST request with JSON body containing:
+            - image_name (str): New name (must be non-empty)
+        image_id (int): PK of the target ImageDetails record
+
+    Returns:
+        JsonResponse: {"success": True} on success
+        JsonResponse: {"success": False, "message": str} for empty name
+        JsonResponse: {"success": False, "error": str} with status 400 on exception
+        JsonResponse: {"success": False} with status 405 for non-POST
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -253,12 +378,24 @@ def update_image_name(request, image_id):
     return JsonResponse({"success": False}, status=405)
 
 
-from PIL import Image
-from django.http import HttpResponse
-from io import BytesIO
-import os
-
 def serve_thumbnail(request, image_path):
+    """
+    Serve a resized thumbnail of an uploaded image.
+
+    Resizes the image to fit within the requested dimensions while
+    preserving aspect ratio (LANCZOS resampling). Always returns JPEG.
+
+    Args:
+        request: GET request with optional query params:
+            - w (int): Max width in pixels (default: 800)
+            - h (int): Max height in pixels (default: 600)
+        image_path (str): Relative path within MEDIA_ROOT/uploads/
+
+    Returns:
+        HttpResponse: JPEG image at quality=80
+        HttpResponse: status 404 if file not found
+        HttpResponse: status 500 on any other error
+    """
     width = int(request.GET.get('w', 800))
     height = int(request.GET.get('h', 600))
     
@@ -279,3 +416,27 @@ def serve_thumbnail(request, image_path):
     except Exception as e:
         print(f"Error serving thumbnail: {e}")  # Debug
         return HttpResponse(status=500)
+
+def generate_preview_image(original_path, quality=20):
+    """
+    Create a compressed preview image for fast loading.
+
+    Args:
+        original_path (str): Full path to the original image
+        quality (int): JPEG quality for compression (1-95)
+
+    Returns:
+        str: Path to the compressed preview image
+    """
+    base, ext = os.path.splitext(original_path)
+    preview_path = f"{base}_preview{ext}"
+
+    if os.path.exists(preview_path):
+        print("This image exist!")
+        return preview_path
+
+    with Image.open(original_path) as img:
+        img.save(preview_path, optimize=True, quality=quality)
+
+    print(preview_path)
+    return preview_path

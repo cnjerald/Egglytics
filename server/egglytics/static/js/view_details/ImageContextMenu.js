@@ -1,8 +1,22 @@
 import { ContextMenu } from "./ContextMenu.js";
 import { Utils } from "./Utils.js";
 
+/**
+ * -----------------------------------------
+ * IMAGE CONTEXT MENU
+ * -----------------------------------------
+ * Extends ContextMenu to provide right-click options
+ * for images inside a batch popup. Supports:
+ *  - Rename image
+ *  - Update hatched count
+ *  - Delete image
+ */
 
 export class ImageContextMenu extends ContextMenu {
+
+    /**
+     * @param {BatchPopup} popupInstance - The BatchPopup instance to update totals and UI after changes.
+     */
     constructor(popupInstance) {
         super("image-context-menu", "#popup-details tr");
         this.popup = popupInstance;
@@ -11,8 +25,16 @@ export class ImageContextMenu extends ContextMenu {
         this._bindDelete();
     }
 
+    /**
+     * Resolves the target image ID from a table row.
+     * @param {HTMLElement} row - Table row element
+     * @returns {string} - Image ID
+     */
     _resolveId(row) { return $(row).attr("data-image-id"); }
 
+    /**
+     * Bind the "Rename" menu option to allow inline editing of image names.
+     */
     _bindRename() {
         $("#image-menu-rename").on("click", () => {
             if (!this.targetRow) return;
@@ -59,6 +81,10 @@ export class ImageContextMenu extends ContextMenu {
         });
     }
 
+    /**
+     * Bind the "Change Hatched" menu option to allow inline editing
+     * of the number of hatched eggs for the image.
+     */
     _bindChangeHatched() {
         $("#image-menu-change-hatched").on("click", () => {
             if (!this.targetRow) return;
@@ -110,6 +136,10 @@ export class ImageContextMenu extends ContextMenu {
         });
     }
 
+    /**
+     * Bind the "Delete" menu option to remove an image from the batch.
+     * Updates popup totals, batch table, and preview image accordingly.
+     */
     _bindDelete() {
         $("#image-menu-delete").on("click", () => {
             if (!this.targetRow || !this.targetId) return;

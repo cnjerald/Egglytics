@@ -32,4 +32,4 @@ import requests
 from PIL import Image, ImageFile
 
 # Local Models
-from .models import BatchDetails, ImageDetails, AnnotationPoints,AnnotationRect, VerifiedGrids
+from .models import BatchDetails, ImageDetails, AnnotationPoints,AnnotationRect, AnnotationPolygon, AnnotationPolygonPoint, VerifiedGrids

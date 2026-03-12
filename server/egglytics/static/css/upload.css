@@ -30,6 +30,31 @@
   margin: 1%;
 }
 
+#select-file-btn {
+  background-color: #1849d6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin-top: 15px;
+  box-shadow: 0 2px 4px rgba(24, 73, 214, 0.2);
+}
+
+#select-file-btn:hover {
+  background-color: #2e5cb8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(24, 73, 214, 0.3);
+}
+
+#select-file-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(24, 73, 214, 0.2);
+}
+
 #drop-area.highlight {
   border-color: #1849d6;
   background-color: rgb(139, 193, 255);
@@ -616,8 +641,52 @@ DELETE MODAL
 
 .userDetails{
   display: flex;
-  height: auto;
-  padding: auto;
-  margin: auto;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.userDetails label {
+  font-weight: 500;
+  color: #333;
+  margin-right: 8px;
+  font-size: 1em;
+}
+
+.userDetails input {
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 1em;
+  transition: border-color 0.2s ease;
+  min-width: 200px;
+}
+
+.userDetails input:focus {
+  outline: none;
+  border-color: #1849d6;
+  box-shadow: 0 0 0 2px rgba(24, 73, 214, 0.1);
+}
+
+.edit-btn {
+  background-color: #1849d6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.edit-btn:hover {
+  background-color: #0d3a9e;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
