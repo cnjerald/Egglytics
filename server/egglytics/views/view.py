@@ -130,58 +130,39 @@ def batch_status_latest(request):
 # This is the server side for the scripts
 # Sends it to the editor HTML.
 def edit(request, image_id):
-    """
-    Render the annotation editor for a single image.
-
-    Marks the image as validated on first visit if not already. Passes
-    all non-deleted annotation points, rectangles, and verified grid
-    cells to the editor template as JSON.
-
-    Args:
-        request: GET request
-        image_id (int): PK of the target ImageDetails record
-
-    Returns:
-        Rendered response with template "editor.html" and context:
-            - image_name (str): File path of the image
-            - image_version (str): Version identifier
-            - points_json (str): JSON array of {point_id, x, y}
-            - rects_json (str): JSON array of {rect_id, x_init, y_init, x_end, y_end}
-            - grids_json (str): JSON array of {x, y}
-            - total_eggs (int): Current egg count for the image
-            - img_id (int): The image PK
-    """
-    # Get image entry
     image = get_object_or_404(ImageDetails, image_id=image_id)
 
     if not image.is_validated:
         image.is_validated = True
         image.save()
-    
-    # Get related annotation points
-    annotations = AnnotationPoints.objects.filter(image=image, is_deleted = False).values(
+
+    annotations = AnnotationPoints.objects.filter(image=image, is_deleted=False).values(
         "point_id", "x", "y"
     )
-
-    rectangles = AnnotationRect.objects.filter(image=image, is_deleted = False).values(
-        "rect_id","x_init","y_init","x_end","y_end"
+    rectangles = AnnotationRect.objects.filter(image=image, is_deleted=False).values(
+        "rect_id", "x_init", "y_init", "x_end", "y_end"
     )
-
     grids = VerifiedGrids.objects.filter(image=image).values(
         "x", "y"
     )
+
+    generate_preview_image(os.path.join(settings.MEDIA_ROOT, 'uploads', image.file_path))
+
+    base, ext = os.path.splitext(image.file_path)
+    preview_relative = f"uploads/{base}_preview{ext}"
 
     return render(
         request,
         "base.html",
         {
             "included_template": "editor.html",
-            "image_name": image.file_path,
+            "image_name": image.file_path,  # full res
+            "image_preview": preview_relative,   # compressed preview
             "image_version": image.image_version,
             "points_json": json.dumps(list(annotations)),
             "rects_json": json.dumps(list(rectangles)),
             "total_eggs": json.dumps(image.total_eggs),
-            "grids_json" : json.dumps(list(grids)),
+            "grids_json": json.dumps(list(grids)),
             "img_id": json.dumps(image_id),
             "MEDIA_URL": settings.MEDIA_URL,
         }
@@ -435,3 +416,27 @@ def serve_thumbnail(request, image_path):
     except Exception as e:
         print(f"Error serving thumbnail: {e}")  # Debug
         return HttpResponse(status=500)
+
+def generate_preview_image(original_path, quality=20):
+    """
+    Create a compressed preview image for fast loading.
+
+    Args:
+        original_path (str): Full path to the original image
+        quality (int): JPEG quality for compression (1-95)
+
+    Returns:
+        str: Path to the compressed preview image
+    """
+    base, ext = os.path.splitext(original_path)
+    preview_path = f"{base}_preview{ext}"
+
+    if os.path.exists(preview_path):
+        print("This image exist!")
+        return preview_path
+
+    with Image.open(original_path) as img:
+        img.save(preview_path, optimize=True, quality=quality)
+
+    print(preview_path)
+    return preview_path

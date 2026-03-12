@@ -14,14 +14,16 @@
  * @param {string} imageUrl - URL of the image to load.
  * @returns {OpenSeadragon.Viewer} - Initialized viewer instance.
  */
+export function initializeViewer(imageUrl, previewUrl = null) {
+    const startUrl = previewUrl || imageUrl;
+    let viewerInitialized = false;
 
-export function initializeViewer(imageUrl) {
     const viewer = OpenSeadragon({
         id: "viewer",
         prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
         tileSources: {
             type: "image",
-            url: imageUrl
+            url: startUrl
         },
         backgroundColor: "black",
         gestureSettingsMouse: {
@@ -30,7 +32,6 @@ export function initializeViewer(imageUrl) {
         keyboardEnabled: false,
         maxZoomPixelRatio: 20,
 
-        // MINIMAP stuff
         showNavigator: true,
         navigatorPosition: "BOTTOM_RIGHT",
         navigatorSizeRatio: 0.2,
@@ -40,17 +41,43 @@ export function initializeViewer(imageUrl) {
         navigatorOpacity: 1,
     });
 
-    // Disable default OpenSeadragon keys
     viewer.addHandler('canvas-key', event => {
         if (['q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'R'].includes(event.originalEvent.key)) {
             event.preventDefaultAction = true;
         }
     });
-    
+
+    if (previewUrl) {
+        viewer.addHandler("open", function () {
+            if (!viewerInitialized) {
+                viewerInitialized = true;
+
+                const fullImage = new Image();
+                fullImage.src = imageUrl;
+                fullImage.onload = () => {
+                    setTimeout(() => {
+                        const zoom = viewer.viewport ? viewer.viewport.getZoom() : null;
+                        const center = viewer.viewport ? viewer.viewport.getCenter() : null;
+
+                        viewer.open({ type: "image", url: imageUrl });
+
+                        viewer.addHandler("open", function restoreViewport() {
+                            if (zoom !== null && center !== null) {
+                                viewer.viewport.zoomTo(zoom, null, true);
+                                viewer.viewport.panTo(center, true);
+                            }
+                            viewer.removeHandler("open", restoreViewport);
+                        });
+                    }, 100);
+                };
+            }
+        });
+    }
+
     return viewer;
 }
 
-/**
+/**let viewerInitialized = false;
  * Creates an overlay canvas over the viewer for annotations.
  *
  * @param {OpenSeadragon.Viewer} viewer - The OpenSeadragon viewer.

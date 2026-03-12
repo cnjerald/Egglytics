@@ -33,7 +33,7 @@ export class ModelConfig {
   static MODELS = [
     { value: "polyegg_heatmap",  label: "Points" },
     { value: "free_annotate",    label: "Do not annotate (Free Annotate)" },
-    { value: "reserved",         label: "RESERVED SLOT FOR DEVS" }
+    { value: "my_model",         label: "Sample_model" }
   ];
 
   /**

@@ -33,6 +33,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://desktop-2f5aep1.tail4f3e1e.ts.net",
+]
 
 # Application definition
 

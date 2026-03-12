@@ -140,34 +140,7 @@ def export_dataset(request):
     """
     Export a filtered image dataset as a ZIP file in one of three annotation formats.
 
-    Images are written to an `images/` folder in the ZIP. Annotations are written
-    alongside them in a format-specific structure. The ZIP is saved to
-    `MEDIA_ROOT/exports/` and a download URL is returned.
-
-    Args:
-        request: GET request with query params:
-            - model (str): Model name to filter by (required)
-            - format (str): One of "custom", "yolo", or "coco" (default: "custom")
-            - verified (str): "1" to include only validated images
-            - date_from (str, optional): Start date (YYYY-MM-DD)
-            - date_to (str, optional): End date (YYYY-MM-DD)
-
-    Formats:
-        custom: Per-image JSON files in `annotations/<name>.json`.
-                Points exported as center (x, y); rects as (x, y, width, height).
-        yolo:   Per-image .txt files in `labels/<name>.txt`.
-                All coordinates normalized to [0, 1]. Points get a fixed 10px box.
-        coco:   Single `annotations/instances.json` in COCO format.
-                Rects in top-left bbox format; points converted from center to top-left.
-
-    Returns:
-        JsonResponse: {"success": True, "filename": str, "download_url": str}
-        JsonResponse: {"error": "Model required"} with status 400
-        JsonResponse: {"error": "No data to export"} with status 404
-
-    Notes:
-        - Images missing from disk are silently skipped
-        - Point annotations use a fixed bounding box size of 10px for YOLO and COCO
+    Handles points and rectangles correctly based on your models.
     """
     model = request.GET.get("model")
     format_type = request.GET.get("format", "custom")
@@ -178,75 +151,68 @@ def export_dataset(request):
     if not model:
         return JsonResponse({"error": "Model required"}, status=400)
 
-    # -------------------------
-    # Filter Images
-    # -------------------------
+    # Filter images
     qs = ImageDetails.objects.filter(model_used=model)
-
     if verified:
         qs = qs.filter(is_validated=True)
-
     if date_from:
         qs = qs.filter(date_uploaded__date__gte=parse_date(date_from))
-
     if date_to:
         qs = qs.filter(date_uploaded__date__lte=parse_date(date_to))
 
     if not qs.exists():
         return JsonResponse({"error": "No data to export"}, status=404)
 
-    # -------------------------
-    # Create ZIP
-    # -------------------------
+    # Create ZIP in memory
     buffer = BytesIO()
     zip_file = zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED)
 
-    #  COCO containers (IMPORTANT — MUST BE BEFORE LOOP)
+    # COCO containers
     coco_images = []
     coco_annotations = []
     annotation_id = 1
 
     for image in qs:
-        
         image_path = os.path.join(settings.MEDIA_ROOT, "uploads", image.file_path)
-
         if not os.path.exists(image_path):
             continue
 
-        zip_file.write(
-            image_path,
-            arcname=f"images/{image.image_name}.jpg"
-        )
+        zip_file.write(image_path, arcname=f"images/{image.image_name}.jpg")
 
-        # Get image size
         with Image.open(image_path) as img:
             width, height = img.size
 
-        points = AnnotationPoints.objects.filter(image_id=image)
-        rects = AnnotationRect.objects.filter(image_id=image)
+        points = AnnotationPoints.objects.filter(image=image, is_deleted=False)
+        rects = AnnotationRect.objects.filter(image=image, is_deleted=False)
 
-        # =========================
+        # ----------------------------
         # CUSTOM FORMAT
-        # =========================
+        # ----------------------------
         if format_type == "custom":
             annotation_data = []
 
+            # Only include points in custom format
             for p in points:
                 annotation_data.append({
                     "label": "Egg",
                     "type": "point",
-                    "x": p.x,  # Just the center coordinates
-                    "y": p.y,  # No conversion needed
+                    "x": p.x,
+                    "y": p.y
                 })
 
+            # Rectangles for all formats
             for r in rects:
+                x = r.x_init
+                y = r.y_init
+                w = r.x_end - r.x_init
+                h = r.y_end - r.y_init
                 annotation_data.append({
                     "label": "Egg",
                     "type": "rectangle",
-                    "x": r.x,
-                    "y": r.y,
-                    "width": r.width,
-                    "height": r.height,
+                    "x": x,
+                    "y": y,
+                    "width": w,
+                    "height": h
                 })
 
             zip_file.writestr(
@@ -254,42 +220,33 @@ def export_dataset(request):
                 json.dumps(annotation_data, indent=2)
             )
 
-        # =========================
+        # ----------------------------
         # YOLO FORMAT
-        # =========================
+        # ----------------------------
         elif format_type == "yolo":
-
             yolo_lines = []
 
             for r in rects:
-                x_center = (r.x + r.width / 2) / width
-                y_center = (r.y + r.height / 2) / height
-                w = r.width / width
-                h = r.height / height
-                yolo_lines.append(f"0 {x_center} {y_center} {w} {h}")
+                x = r.x_init
+                y = r.y_init
+                w = r.x_end - r.x_init
+                h = r.y_end - r.y_init
+                x_center = (x + w / 2) / width
+                y_center = (y + h / 2) / height
+                w_norm = w / width
+                h_norm = h / height
+                yolo_lines.append(f"0 {x_center} {y_center} {w_norm} {h_norm}")
 
-            for p in points:
-                box_size = 10
-                x_center = p.x / width  # Already center ✓
-                y_center = p.y / height  # Already center ✓
-                w = box_size / width
-                h = box_size / height
-                yolo_lines.append(f"0 {x_center} {y_center} {w} {h}")
+            # Points are **skipped** in YOLO now
 
-            # Write YOLO label file
             label_name = os.path.splitext(image.image_name)[0] + ".txt"
-            zip_file.writestr(
-                f"labels/{label_name}",
-                "\n".join(yolo_lines)
-            )
+            zip_file.writestr(f"labels/{label_name}", "\n".join(yolo_lines))
 
-        # =========================
+        # ----------------------------
         # COCO FORMAT
-        # =========================
+        # ----------------------------
         elif format_type == "coco":
-
             image_id = image.image_id
-
             coco_images.append({
                 "id": image_id,
                 "file_name": image.image_name,
@@ -298,72 +255,42 @@ def export_dataset(request):
             })
 
             for r in rects:
-                # Rects are already in top-left format
+                x = r.x_init
+                y = r.y_init
+                w = r.x_end - r.x_init
+                h = r.y_end - r.y_init
                 coco_annotations.append({
                     "id": annotation_id,
                     "image_id": image_id,
                     "category_id": 1,
-                    "bbox": [r.x, r.y, r.width, r.height],
-                    "area": r.width * r.height,
+                    "bbox": [x, y, w, h],
+                    "area": w * h,
                     "iscrowd": 0
                 })
                 annotation_id += 1
 
-            for p in points:
-                box_size = 10
-                # Convert center point to top-left corner for COCO bbox format
-                x_top_left = p.x - (box_size / 2)
-                y_top_left = p.y - (box_size / 2)
-                
-                coco_annotations.append({
-                    "id": annotation_id,
-                    "image_id": image_id,
-                    "category_id": 1,
-                    "bbox": [x_top_left, y_top_left, box_size, box_size],
-                    "area": box_size * box_size,
-                    "iscrowd": 0
-                })
-                annotation_id += 1
+            # Points are **skipped** in COCO now
 
-    # WRITE COCO FILE AFTER LOOP
+    # Write COCO JSON after loop
     if format_type == "coco":
-
         coco_output = {
             "images": coco_images,
             "annotations": coco_annotations,
-            "categories": [
-                {
-                    "id": 1,
-                    "name": "Egg",
-                    "supercategory": "object"
-                }
-            ]
+            "categories": [{"id": 1, "name": "Egg", "supercategory": "object"}]
         }
+        zip_file.writestr("annotations/instances.json", json.dumps(coco_output, indent=2))
 
-        zip_file.writestr(
-            "annotations/instances.json",
-            json.dumps(coco_output, indent=2)
-        )
-
-    # -------------------------
     # Save ZIP to media folder
-    # -------------------------
     zip_file.close()
     buffer.seek(0)
-
     filename = f"export_{model}_{now().strftime('%Y%m%d_%H%M%S')}.zip"
-    
-    # Save to media/exports directory
     export_dir = os.path.join(settings.MEDIA_ROOT, "exports")
     os.makedirs(export_dir, exist_ok=True)
-    
     file_path = os.path.join(export_dir, filename)
-    with open(file_path, 'wb') as f:
+    with open(file_path, "wb") as f:
         f.write(buffer.getvalue())
-    
-    # Return JSON with download URL
+
     download_url = f"{settings.MEDIA_URL}exports/{filename}"
-    
     return JsonResponse({
         "success": True,
         "filename": filename,

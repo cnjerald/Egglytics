@@ -94,5 +94,42 @@ class AnnotationRect(models.Model):
     class Meta:
         db_table = "annotation_rects"
 
+# -------------------------------
+# POLYGON SUPPORT (NEW)
+# -------------------------------
 
+class AnnotationPolygon(models.Model):
+    polygon_id = models.AutoField(primary_key=True)
+
+    image = models.ForeignKey(
+        ImageDetails,
+        on_delete=models.CASCADE,
+        db_column="image_id"
+    )
+
+    is_original = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "annotation_polygons"
+
+
+class AnnotationPolygonPoint(models.Model):
+    point_id = models.AutoField(primary_key=True)
+
+    polygon = models.ForeignKey(
+        AnnotationPolygon,
+        on_delete=models.CASCADE,
+        db_column="polygon_id",
+        related_name="points"
+    )
+
+    x = models.IntegerField()
+    y = models.IntegerField()
+
+    order_index = models.IntegerField()  # keeps vertex order
+
+    class Meta:
+        db_table = "annotation_polygon_points"
+        ordering = ["order_index"]
 

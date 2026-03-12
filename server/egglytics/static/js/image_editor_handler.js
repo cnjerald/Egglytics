@@ -22,10 +22,11 @@ $(document).ready(function () {
     const eggCountEl = document.getElementById("egg_count");
     const imageUrl = document.getElementById("viewer").dataset.imageUrl;
     const imageId = window.image_id;
-    const savedGrids = window.grids
+    const savedGrids = window.grids;
+    const previewUrl = window.image_preview_url || null;
 
     // Initialize managers
-    const viewer = initializeViewer(imageUrl);
+    const viewer = initializeViewer(imageUrl, previewUrl);
     const canvas = setupCanvas(viewer);
     const pointManager = new PointAnnotationManager(viewer, canvas);
     const rectManager = new RectAnnotationManager(viewer);
@@ -65,7 +66,7 @@ $(document).ready(function () {
     // Viewer open handler
     viewer.addHandler("open", function () {
         console.log("Viewer opened and ready!");
-        viewerReady = true;
+        if (viewerReady) return; // skip on full-res swap
 
         if (Array.isArray(window.points)) {
             pointManager.loadPoints(window.points);

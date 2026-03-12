@@ -312,7 +312,7 @@ def recalibrate_image(image, avg_pixels, model, mode, image_id):
         image.save(
             file_path,
             format="JPEG",
-            quality=75,       # slightly higher than 65
+            quality=70,       # slightly higher than 65
             optimize=True,
             progressive=True
         )
@@ -430,7 +430,14 @@ def process_images(batch, files_data, header):
                         "egg_count": 0
                     }
                     status_code = 200
-
+                case "my_model":
+                    response = requests.post(
+                        "http://127.0.0.1:5000/my_method_name",
+                        json=payload,
+                        timeout=300
+                    )
+                    data = response.json()
+                    status_code = response.status_code
 
             # Extract result data
             # Just put has fail present if something goes wrong
@@ -444,6 +451,9 @@ def process_images(batch, files_data, header):
                 }
 
             points = data.get("points", [])
+            rects = data.get("rectangles", [])
+            polygons = data.get("polygons", [])
+
             image_b64 = data.get("final_image")
             temp_eggs = data.get("egg_count", 0)
             
@@ -480,25 +490,13 @@ def process_images(batch, files_data, header):
                 image.save(
                     file_path,
                     format="JPEG",
-                    quality=75,       # sweet spot
+                    quality=70,       # sweet spot
                     optimize=True,
                     progressive=True
                 )
 
                 print("Saved:", file_path)
                 print("New size (KB):", os.path.getsize(file_path) / 1024)
-
-            #  Download processed image from S3
-            #s3_output_path = data.get("s3_output_path")  # processed image path
-            # if s3_output_path:
-            #     local_upload_dir = os.path.join(settings.BASE_DIR, "egglytics", "static", "uploads")
-            #     os.makedirs(local_upload_dir, exist_ok=True)
-            #     local_file_path = os.path.join(local_upload_dir, image_record.image_name)
-
-            #     with open(local_file_path, "wb") as f_out:
-            #         s3.download_fileobj(bucket_name, s3_output_path, f_out)
-
-            #     print(f" Downloaded processed image to {local_file_path}")
 
             #  Save annotation points to DB
             if points:
@@ -510,6 +508,38 @@ def process_images(batch, files_data, header):
                         y=p[1],
                         is_original=True
                     )
+
+            if rects:
+                for r in rects:
+                    AnnotationRect.objects.create(
+                        image=image_record,
+                        x_init=r[0],
+                        y_init=r[1],
+                        x_end=r[2],
+                        y_end=r[3],
+                        is_original=True
+                    )
+
+            if polygons:
+                for poly in polygons:
+
+                    polygon_record = AnnotationPolygon.objects.create(
+                        image=image_record,
+                        is_original=True
+                    )
+
+                    points_to_create = [
+                        AnnotationPolygonPoint(
+                            polygon=polygon_record,
+                            x=p[0],
+                            y=p[1],
+                            order_index=i
+                        )
+                        for i, p in enumerate(poly)
+                    ]
+
+                    AnnotationPolygonPoint.objects.bulk_create(points_to_create)
+            
 
         except Exception as e:
             batch.has_fail_present = True
