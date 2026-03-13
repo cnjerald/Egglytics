@@ -63,7 +63,7 @@
 #view-area {
   background-color: #eeeeee;
   width: 70vw;
-  height: 50vh;
+  height: 45vh;
   overflow-y: auto; /* scroll when content exceeds */
   overflow-x: hidden;
   box-sizing: border-box;
@@ -645,22 +645,22 @@ DELETE MODAL
   gap: 20px;
   justify-content: center;
   align-items: center;
-  margin: 20px 0;
-  padding: 15px;
+  margin:1%;
+  padding:1%;
   background-color: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .userDetails label {
-  font-weight: 500;
+  font-weight: 400;
   color: #333;
-  margin-right: 8px;
+  margin-right: 5px;
   font-size: 1em;
 }
 
 .userDetails input {
-  padding: 8px 12px;
+  padding: 5px 7px;
   border: 2px solid #ddd;
   border-radius: 4px;
   font-size: 1em;
@@ -685,6 +685,7 @@ DELETE MODAL
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 .edit-btn:hover {
   background-color: #0d3a9e;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);

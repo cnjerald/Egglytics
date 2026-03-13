@@ -414,13 +414,21 @@ def process_images(batch, files_data, header):
 
             match model:
                 case "polyegg_heatmap":
-                    response = requests.post(
-                        "http://127.0.0.1:5000/upload_base64",
-                        json=payload,
-                        timeout=300
-                    )
-                    data = response.json()
-                    status_code = response.status_code
+                    try:
+                        response = requests.post(
+                            "http://127.0.0.1:5000/upload_base64",
+                            json=payload,
+                            timeout=300
+                        )
+
+                        data = response.json()
+                        status_code = response.status_code
+
+                    except requests.exceptions.RequestException as e:
+                        print("Error while processing image:", e)
+
+                        status_code = 500
+                        data = {"status": "error"}
 
                 case "free_annotate":
                     data = {
@@ -431,17 +439,24 @@ def process_images(batch, files_data, header):
                     }
                     status_code = 200
                 case "my_model":
-                    response = requests.post(
-                        "http://127.0.0.1:5000/my_method_name",
-                        json=payload,
-                        timeout=300
-                    )
-                    data = response.json()
-                    status_code = response.status_code
+                    try:
+                        response = requests.post(
+                            "http://127.0.0.1:5000/my_method_name",
+                            json=payload,
+                            timeout=300
+                        )
+                        data = response.json()
+                        status_code = response.status_code
+                    except requests.exceptions.RequestException as e:
+                        print("Error while processing image:", e)
+
+                        status_code = 500
+                        data = {"status": "error"}
 
             # Extract result data
-            # Just put has fail present if something goes wrong
+            # Just put has fail present if something goes wrong (Ex server is closed when user uploads)
             if status_code != 200 or data.get("status") != "complete":
+                print("CASE1")
                 batch.has_fail_present = True
                 data = {
                     "status": "complete",

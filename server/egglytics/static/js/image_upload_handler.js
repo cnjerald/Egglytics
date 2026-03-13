@@ -261,5 +261,8 @@ function setupUploadButton() {
     $("#upload-btn").on("click", function (e) {
         e.preventDefault();
         uploadHandler.submitUpload();
+        
+        const btn = $(this);
+        btn.prop("disabled", true); // disable button
     });
 }
