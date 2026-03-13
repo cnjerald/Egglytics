@@ -247,16 +247,22 @@ def process_images(batch, files_data, header):
                     ...
                 case "free_annotate":
                     ...
-                # Note here that in the CASE statement "my_model" is the "value" parameter in your MODELS array in ModelConfig.js.
+                # Note here that in the CASE statement "my_model" is the "value" 
+                # parameter in your MODELS array in ModelConfig.js.
                 # Ensure that the ip address, port, and method name matches on your compute server. 
+                # Try block is used here since if the server is closed, 
+                # the an error will occur even before reaching the status_code.
                 case "my_model":
-                    response = requests.post(
-                        "http://127.0.0.1:5000/my_method_name",
-                        json=payload,
-                        timeout=300
-                    )
-                    data = response.json()
-                    status_code = response.status_code
+                    try:
+                        response = requests.post(
+                            "http://127.0.0.1:5000/my_method_name",
+                            json=payload,
+                            timeout=300
+                        )
+                        data = response.json()
+                        status_code = response.status_code
+                    except requests.exceptions.RequestException as e:
+                        ...
             ...
   ...
 ```
