@@ -28,6 +28,7 @@ export class BatchContextMenu extends ContextMenu {
         this.recalcTotals = recalcTotals;
         this._bindRename();
         this._bindDelete();
+        this._bindDownload();
     }
 
     /**
@@ -112,4 +113,46 @@ export class BatchContextMenu extends ContextMenu {
             }
         });
     }
-}
+
+    _bindDownload() {
+        $("#menu-download").on("click", () => {
+            if (!this.targetId || !this.targetRow) return;
+
+            fetch(`/download-batch/${this.targetId}/`, {
+                method: "GET",
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "X-CSRFToken": Utils.getCSRFToken() 
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to download batch.");
+                }
+                return response.json(); // IMPORTANT
+            })
+            .then(data => {
+                if (data.success) {
+                    // Trigger download
+                    const link = document.createElement("a");
+                    link.href = data.download_url;
+                    link.download = data.filename; // optional but nice
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    alert(data.error || "Download failed.");
+                }
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                alert("Something went wrong.");
+            });
+        });
+    }
+
+};
+    
+
+
+           

@@ -13,6 +13,7 @@ urlpatterns = [
     path("batch/<int:batch_id>/images/", view.batch_images, name="batch_images"),
     path('batch/status/latest/', view.batch_status_latest, name='batch_status_latest'),
     path("delete-batch/<int:batch_id>/", view.delete_batch, name="delete_batch"),
+    path("download-batch/<int:batch_id>/", view.download_batch, name="download_batch"),
     path('delete-image/<int:image_id>/', view.delete_image, name='delete_image'),
     path('edit-batch-name/<int:batch_id>/', view.edit_batch_name, name='edit_batch_name'),
     path("update-hatched/<int:image_id>/", view.update_hatched, name="update_hatched"),

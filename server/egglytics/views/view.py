@@ -440,3 +440,44 @@ def generate_preview_image(original_path, quality=20):
 
     print(preview_path)
     return preview_path
+
+def download_batch(request, batch_id):
+    """
+    Export a CSV for a specific batch.
+    """
+
+    images = ImageDetails.objects.filter(batch_id=batch_id)
+
+    if not images.exists():
+        return JsonResponse({"error": "No images found in batch"}, status=404)
+
+    filename = f"batch_{batch_id}_{now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+    export_dir = os.path.join(settings.MEDIA_ROOT, "exports")
+    os.makedirs(export_dir, exist_ok=True)
+
+    file_path = os.path.join(export_dir, filename)
+
+    with open(file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        # header
+        writer.writerow(["ImageName", "DATE", "total_Eggs", "Total_HATCHED"])
+
+        for image in images:
+            total_eggs = AnnotationPoints.objects.filter(image_id=image).count()
+
+            writer.writerow([
+                image.image_name,
+                image.date_uploaded.strftime("%Y-%m-%d"),
+                total_eggs,
+                image.total_hatched
+            ])
+
+    download_url = f"{settings.MEDIA_URL}exports/{filename}"
+
+    return JsonResponse({
+        "success": True,
+        "filename": filename,
+        "download_url": download_url
+    })
