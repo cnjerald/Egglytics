@@ -8,6 +8,228 @@
 ## What is Egglytics?
 Egglytics is a web application for counting mosquito eggs. Its core feature lets users review and modify annotation results produced by a UNet model from the PolyEgg study for automated detection. This ability to edit annotations creates a feedback loop that extends the study, by generating corrected data for retraining and improving the model.
 
+## Project Structure
+Egglytics is composed of two main systems: the Django web application and a separate compute server for model inference.
+
+```text
+Egglytics/
+├── README.md                          # Main project documentation
+├── requirements.txt                   # Python dependencies
+├── assets/                            # Project assets (images, demos)
+│   ├── demo.jpg
+│   ├── upload.jpg
+│   ├── view.jpg
+│   ├── view_specific.jpg
+│   └── annotate.jpg
+│
+├── server/                            # Django Web Application
+│   ├── manage.py                      # Django entry point
+│   ├── run_waitress.py               # Production server runner
+│   ├── stash_diff.patch              # Git patch file
+│
+│   ├── server/                        # Django project configuration
+│   │   ├── settings.py               # Settings (DB, middleware, apps)
+│   │   ├── urls.py                   # Root URL routing
+│   │   ├── wsgi.py                   # WSGI config
+│   │   └── asgi.py                   # ASGI config
+│
+│   ├── egglytics/                     # Main Django application
+│   │   ├── views/                    # Backend logic (upload, editor, view, metrics)
+│   │   ├── templates/                # HTML templates (UI pages)
+│   │   ├── static/                   # Frontend assets (JS, CSS, images)
+│   │   ├── migrations/               # Database migrations
+│   │   ├── models.py                 # Database models
+│   │   └── urls.py                   # App routes
+│   │
+│   └── media/                        # Uploaded files and outputs
+│
+└── compute/                          # ML Model Server (separate service)
+    ├── app.py                        # Flask API for inference
+    └── model_weights/               # Trained models (U-Net, etc.)
+```
+
+## Dependencies
+
+This project uses a combination of backend (Python), frontend (CDN-based JS libraries), and external services.
+
+---
+
+## Backend Dependencies (Python)
+
+| Library | Purpose |
+|----------|--------|
+| Django | Web framework and ORM for the application |
+| python-decouple | Environment variable management (.env handling) |
+| psycopg2 | PostgreSQL database connector |
+| opencv-python | Image processing and computer vision tasks |
+| numpy | Numerical computations for ML processing |
+| pillow | Image manipulation and processing |
+| requests | HTTP communication with compute server |
+| whitenoise | Static file serving in production |
+| waitress | Production WSGI server |
+
+---
+
+## Frontend Dependencies (CDN Libraries)
+
+| Library | Purpose |
+|----------|--------|
+| jQuery 3.6.0 | DOM manipulation and AJAX requests |
+| OpenSeadragon 4.1.0 | High-resolution image viewer |
+| CropperJS 1.5.13 | Image cropping functionality |
+| Font Awesome 6.4.0 | UI icons |
+
+---
+
+## External System
+
+**Compute Server (Flask/Python)**  
+- URL: http://127.0.0.1:5000  
+- Handles ML inference using U-Net models  
+- Returns:
+  - annotations (points / rectangles / polygons)  
+  - egg count  
+  - processed image  
+
+---
+
+## System Requirements
+
+- Python 3.8+
+- PostgreSQL 12+
+- Django 4.x compatible environment
+
+## System Architecture Overview
+
+Egglytics follows a **client–server–compute architecture** designed to separate the web interface, backend logic, and machine learning inference system.
+
+The system is divided into three main components:
+
+---
+
+### 1. Frontend (Client Side)
+The frontend is built using **HTML, CSS, and Vanilla JavaScript** inside Django templates.
+
+It handles:
+- Image upload interface
+- Annotation editor (points, rectangles, polygons)
+- Batch viewing and filtering
+- User interactions (click, drag, draw, edit)
+
+Key modules:
+- `image_upload_handler.js` → handles file uploads and model selection
+- `image_editor_handler.js` → manages annotation tools and viewer interactions
+- `view_functions_handler.js` → handles batch viewing, sorting, and filtering
+
+The frontend communicates with the backend using **AJAX (jQuery)** requests.
+
+---
+
+### 2. Backend (Django Server)
+The backend is responsible for:
+- Request handling and routing
+- Database operations (PostgreSQL via Django ORM)
+- Managing batches, images, and annotations
+- Coordinating communication with the compute server
+
+Key components:
+- `upload.py` → handles image upload and batch creation
+- `editor.py` → saves and updates annotations
+- `view.py` → retrieves batch/image data
+- `metrics.py` → computes and displays model performance
+- `export.py` → handles data export functionality
+
+The backend acts as the **central controller** between the frontend and compute server.
+
+---
+
+### 3. Compute Server (ML Inference System)
+The compute server is a separate **Flask-based service** responsible for running the U-Net model inference.
+
+It handles:
+- Receiving encoded images from Django backend
+- Running ML model prediction (U-Net or custom models)
+- Generating annotations (points, rectangles, polygons)
+- Returning processed results
+
+Example endpoint:
+```
+POST http://127.0.0.1:5000/my_method_name
+```
+
+Response includes:
+- `final_image` (processed image)
+- `egg_count` (detected eggs)
+- `annotations` (points / rectangles / polygons)
+
+---
+
+## System Data Flow
+
+### 1. Upload Workflow
+```
+User Uploads Image
+    ↓
+Frontend (UploadHandler.js)
+    ↓
+Django Backend (upload.py)
+    ↓
+Compute Server (ML Inference)
+    ↓
+Returns Predictions
+    ↓
+Stored in PostgreSQL Database
+    ↓
+Displayed in View Interface
+```
+
+---
+
+### 2. Annotation Workflow
+```
+User Opens Editor
+    ↓
+Frontend loads image (OpenSeadragon)
+    ↓
+User adds/modifies annotations
+    ↓
+AJAX request sent to Django backend
+    ↓
+editor.py updates database
+    ↓
+PostgreSQL stores annotations
+```
+
+---
+
+### 3. Viewing & Filtering Workflow
+```
+User opens View Page
+    ↓
+Frontend requests batch data
+    ↓
+view.py queries database
+    ↓
+Backend returns filtered results
+    ↓
+Frontend renders table + UI updates
+```
+
+---
+
+## Key Design Principle
+
+Egglytics is designed with **separation of concerns**:
+
+- **Frontend** → User interaction and visualization  
+- **Backend (Django)** → Data management and API logic  
+- **Compute Server** → Machine learning inference  
+
+This separation allows:
+- Easier model upgrades without touching UI
+- Independent scaling of ML processing
+- Cleaner and modular codebase structure
+
 ## Interfaces of the application
 
 <p align="center">
