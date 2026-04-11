@@ -6,7 +6,7 @@
 <br>
 
 ## What is Egglytics?
-Egglytics is a web application for counting mosquito eggs. Its core feature lets users review and modify annotation results produced by a UNet model from the PolyEgg study for automated detection. This ability to edit annotations creates a feedback loop that extends the study, by generating corrected data for retraining and improving the model.
+Egglytics is a web application developed under the Center for Computer Vision Laboratory of De Lasalle University, which is partnered with the Biological Control Department to assist in counting mosquito eggs. Its core feature lets users review and modify annotation results produced by a UNet model from the PolyEgg study for automated detection. This ability to edit annotations creates a feedback loop that extends the study, by generating corrected data for retraining and improving the model. 
 
 ## Project Structure
 Egglytics is composed of two main systems: the Django web application and a separate compute server for model inference.
@@ -263,11 +263,18 @@ This separation allows:
 
 
 
-## Summary Table Of Results
-To Follow
+| Evaluator   | Macro Sample Size | Macro MAPE (%) ↓        | Macro Speed (Egg/s) ↑        | Micro Sample Size | Micro MAPE (%) ↓        | Micro Speed (Egg/s) ↑        |
+|------------|------------------|--------------------------|-------------------------------|-------------------|--------------------------|-------------------------------|
+| 30 Humans  | 12               | 30.87                    | 1.67                          | 6                 | 4.09¹                    | 2.14                          |
+| EggCountAI | 12               | 64.8                     | 3.39                          | 6                 | 9.51                     | 11.93                         |
+| MecVision  | 12               | 81.18                    | 88.45                         | 6                 | 38.04                    | 41.73                         |
+| Egglytics  | 12               | 5.25¹                    | 315.42²                       | 6                 | 5.23                     | 573.25²                       |
+
+¹ Lowest MAPE (best accuracy)  
+² Highest speed (best performance)
 
 ## Links to trained weights
-Redacted
+Current Model Weights is not yet publicly available.
 
 ## Comparison Table Against Other Applications
 
@@ -289,7 +296,7 @@ Redacted
 2. Create a Virtual Environment (VENV) on a folder (Root) using "python -m venv ENV_NAME_HERE"
 3. Activate VENV "ENV_NAME_HERE\Scripts\activate.bat"
 4. On folder (Root) clone repository 
-2. Activate Venv and install requirements using "pip install -r requirements.txt" for both web application and compute
+2. Activate Venv and install requirements using "pip install -r requirements.txt" for both web application and compute server
 
 ## II. Initial Database Setup
 1. Login to postres using Shell "psql -U posgres"
@@ -318,17 +325,30 @@ DB_PORT='5432'
 6. To test for creation success in the Postgres shell connect to the database "\c egglytics"
 7. Check if the tables are there using "\d"
    
-### IV. Running the Web Application
+### IV. Running the Web Application (First time Startup)
 1. On SHELL go to ROOT directory and activate venv
 2. Change directory to server "cd server"
-3. Run the server using "python manage.py runserver"
-4. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
+3. Initialize the tables in the database using "python manage.py makemigrations" and "python manage.py migrate"
 
-### V. Running the Compute server
+### IV. Running the Web Application Test Server
+1. Run the server using "python manage.py runserver"
+2. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
+
+### IV. Running the Web Application Deployment (Waitress)
+0. To configure Waitress settings (Threads & Port) see [server/run_waitress.py]
+1. Run the server using "waitress-serve --port=8000 server.wsgi:application"
+2. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
+
+### V. Running the Compute Test Server
 1. On SHELL go to ROOT directory and activate venv
 2. python app.py
 
-## VI. Deploying Your Own Model
+### VI. Running the Compute Deployment Server
+0. To configure docker settings (Threads, Timeout, Port) see \Dockerfile.
+1. Build docker container using "docker build -t egglytics-app ."
+2. Run built container using "docker run -p 8080:8080 egglytics-app"
+
+## VII. Deploying Your Own Model
 <h2 align="center">1. Adding a New Model on Front-end</h2>
 
 ```
@@ -631,20 +651,7 @@ def my_new_method():
 
 ```
 
+### VIII. For other concerns
+Please Contact me at cnjerald@gmail.com for related concerns/bugs. 
+Thank You.
 
-
-
-
-
-### VII. Important Notes
-1. Check gitIgnore before pushing
-2. HTML Files on Egglytics/Templates
-3. JS Scripts on Egglytics/static/js
-4. URLS on Egglytics/urls.py
-5. Views on Egglytics/views.py
-
-## For Users
-The application is currently in its early development phase and is not yet ready for use.
-
-## To Do List:
-1. Frontend fixes
