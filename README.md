@@ -261,7 +261,7 @@ This separation allows:
 <img src="assets/annotate.jpg" alt="Banner" width = "100%">
 </p>
 
-
+## Summary Table Of Results
 
 | Evaluator   | Macro Sample Size | Macro MAPE (%) ↓        | Macro Speed (Egg/s) ↑        | Micro Sample Size | Micro MAPE (%) ↓        | Micro Speed (Egg/s) ↑        |
 |------------|------------------|--------------------------|-------------------------------|-------------------|--------------------------|-------------------------------|
