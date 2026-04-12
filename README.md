@@ -1,3 +1,37 @@
+<div align="center">
+
+**De La Salle University**  
+Center for Computational Imaging and Visual Innovations  
+
+<br>
+
+Mark Christian Musngi¹  
+Jose Miguel Pilea²  
+Joaquin Miguel Sinjian³  
+Jerald Tabuzo⁴  
+
+<br>
+
+¹ mcmusngi@gmail.com  
+² pileajm@gmail.com  
+³ jmsinjian@gmail.com  
+⁴ cnjerald@gmail.com  
+
+<br>
+
+Adviser: Dr. John Jetro Virtusio  
+john.jetro.virtusio@dlsu.edu.ph  
+
+</div>
+
+
+---
+
+# Egglytics
+<p align="center">
+<img src="assets/demo.jpg" alt="Banner" width="100%" style="max-height: 200px">
+</p>
+
 # Egglytics
 <p align="center">
 <img src="assets/demo.jpg" alt="Banner" width = "100%" style="max-height: 200px">
