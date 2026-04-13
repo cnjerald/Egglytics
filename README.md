@@ -358,25 +358,25 @@ DB_PORT='5432'
 2. Change directory to server "cd server"
 3. Initialize the tables in the database using "python manage.py makemigrations" and "python manage.py migrate"
 
-### IV. Running the Web Application Test Server
+### V. Running the Web Application Test Server
 1. Run the server using "python manage.py runserver"
 2. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
 
-### IV. Running the Web Application Deployment (Waitress)
+### VI. Running the Web Application Deployment (Waitress)
 0. To configure Waitress settings (Threads & Port) see [server/run_waitress.py]
 1. Run the server using "waitress-serve --port=8000 server.wsgi:application"
 2. Access website on Localhost port 8000 (http://127.0.0.1:8000/)
 
-### V. Running the Compute Test Server
+### VII. Running the Compute Test Server
 1. On SHELL go to ROOT directory and activate venv
 2. python app.py
 
-### VI. Running the Compute Deployment Server
+### VIII. Running the Compute Deployment Server
 0. To configure docker settings (Threads, Timeout, Port) see \Dockerfile.
 1. Build docker container using "docker build -t egglytics-app ."
 2. Run built container using "docker run -p 8080:8080 egglytics-app"
 
-## VII. Deploying Your Own Model
+## IX. Deploying Your Own Model
 <h2 align="center">1. Adding a New Model on Front-end</h2>
 
 ```
@@ -679,7 +679,7 @@ def my_new_method():
 
 ```
 
-### VIII. For other concerns
-Please Contact me at cnjerald@gmail.com for related concerns/bugs. 
+### X. For other concerns
+Please Contact cnjerald@gmail.com for related concerns/bugs. 
 Thank You.
 
