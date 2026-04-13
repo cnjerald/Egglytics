@@ -19,7 +19,7 @@ Jerald Tabuzo⁴
 
 <br>
 
-Adviser: Dr. John Jetro Virtusio  
+Adviser: Dr. John Jethro Virtusio  
 john.jetro.virtusio@dlsu.edu.ph  
 
 </div>
