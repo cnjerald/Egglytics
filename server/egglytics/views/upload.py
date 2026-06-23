@@ -55,7 +55,6 @@ def upload(request):
 
         if insert_into_batch_id:
             try:
-                print("HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
                 batch = BatchDetails.objects.get(id=insert_into_batch_id)
                 batch.total_images += total_images
                 batch.is_complete = False
@@ -560,7 +559,8 @@ def process_images(batch, files_data, header):
             print("Error while processing image:", e)
 
     # Update batch summary
-    batch.total_eggs = total_eggs
-    batch.total_hatched = total_hatched
+    batch.refresh_from_db()
+    batch.total_eggs += total_eggs
+    batch.total_hatched += total_hatched
     batch.is_complete = True
     batch.save()
