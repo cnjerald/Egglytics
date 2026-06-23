@@ -232,6 +232,10 @@ def delete_batch(request, batch_id):
 
             # Delete annotations
             AnnotationPoints.objects.filter(image__in=images).delete()
+            AnnotationRect.objects.filter(image__in=images).delete()
+
+            # Delete polygons (points cascade from polygon, so just delete the parent)
+            AnnotationPolygon.objects.filter(image__in=images).delete()
 
             # Delete image records
             images.delete()
@@ -276,6 +280,8 @@ def delete_image(request, image_id):
 
             # Delete related annotations
             AnnotationPoints.objects.filter(image=image).delete()
+            AnnotationRect.objects.filter(image=image).delete()
+            AnnotationPolygon.objects.filter(image=image).delete()
 
             # Subtract the image's eggs from batch total
             batch.total_eggs -= image.total_eggs

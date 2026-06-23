@@ -186,6 +186,16 @@
                 justify-content: center;
                 align-items: center;
             }
+            .half.text-side {
+                display: flex;
+                flex-direction: column !important;
+            }
+
+            #insert-image-btn {
+                order: -1; /* forces button to top */
+                align-self: flex-start; /* optional: prevents button from stretching full width */
+                margin-bottom: 10px;
+            }
 
             .button-photo {
                 max-width: 100%;

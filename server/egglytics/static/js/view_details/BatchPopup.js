@@ -37,6 +37,7 @@ export class BatchPopup {
         this._bindPopupClose();
         this._bindDeleteInPopup();
         this._bindEditBatchName();
+        this._bindPopupUpload();
 
     }
 
@@ -247,6 +248,13 @@ export class BatchPopup {
                 $nameEl.text(currentName);
                 $editBtn.show();
             });
+        });
+    }
+
+    _bindPopupUpload() {
+        $("#insert-image-btn").on("click", (e) => {
+            const batchId = $("#popup").data("batchId");
+            window.location.href = `/?insert_into_batch_id=${batchId}`;
         });
     }
 

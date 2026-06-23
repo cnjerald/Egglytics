@@ -172,11 +172,15 @@ export class UploadHandler {
         // Append metadata
         const user = $("#user_name").val().trim().toLowerCase();
         const name = $("#batch_name").val().trim().toLowerCase();
-        
+        const params = new URLSearchParams(window.location.search);
+        const insertIntoBatchId = params.get("insert_into_batch_id");
+
         formData.append("username", user);
         formData.append("user", user);
         formData.append("batch_name", name);
         formData.append("file_count", fileArray.length);
+        formData.append("insert_into_batch_id", insertIntoBatchId ?? "");
+
 
         // Save username for next time
         localStorage.setItem("username", user);

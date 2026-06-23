@@ -17,7 +17,6 @@ Image.MAX_IMAGE_PIXELS = None
 # Suppress the warning if it still appears in certain contexts
 warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
-
 def upload(request):
     """
     Handles file upload, stores metadata in the database, and launches background processing.
@@ -45,43 +44,47 @@ def upload(request):
         HttpResponse: If not a POST or no files, renders the upload page.
     """
     if request.method == 'POST' and request.FILES.getlist('myfiles'):
-        # Get the current time now, creating a unique key
-        batch_name = request.POST.get("batch_name")
-        owner = request.POST.get("user")
-        print("The owner is !", owner)
-        if not owner:
-            owner = "Incognito"
-
+        owner = request.POST.get("user") or "Incognito"
         date = timezone.now()
-
-        # This is the total images
         total_images = len(request.FILES.getlist('myfiles'))
 
-        # Create a batch entry on the DB
-        batch = BatchDetails.objects.create(
-            batch_name=batch_name,
-            owner=owner,
-            total_images=total_images,
-            total_eggs=0,
-            total_hatched=0,
-            date_updated=date,
-            is_complete=False,
-            has_fail_present=False,
-        )
+        # Django - simplify, just check if batch_id was sent
+        insert_into_batch_id = request.POST.get("insert_into_batch_id") or None
 
-        # Read files into memory BEFORE starting thread (No images are saved at this point, only on memory)
+        print("insert_into_batch_id:", repr(insert_into_batch_id))
+
+        if insert_into_batch_id:
+            try:
+                print("HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+                batch = BatchDetails.objects.get(id=insert_into_batch_id)
+                batch.total_images += total_images
+                batch.is_complete = False
+                batch.date_updated = date
+                batch.save()
+            except BatchDetails.DoesNotExist:
+                return JsonResponse({'error': 'Batch not found.'}, status=404)
+        else:
+            batch_name = request.POST.get("batch_name")
+            batch = BatchDetails.objects.create(
+                batch_name=batch_name,
+                owner=owner,
+                total_images=total_images,
+                total_eggs=0,
+                total_hatched=0,
+                date_updated=date,
+                is_complete=False,
+                has_fail_present=False,
+            )
+
+        # Rest stays the same...
         files = request.FILES.getlist("myfiles")
-        files_data = [] # Store as Array of JSON
+        files_data = []
         for i, f in enumerate(files):
             file_bytes = f.read()
             encoded = base64.b64encode(file_bytes).decode("utf-8")
-
-            # Retrieve per-file metadata
-            # The model defined here is the variable "value" in ModelConfig
             model = request.POST.get(f"model_{i}")
-            mode = request.POST.get(f"mode_{i}")          # "micro" or "macro"
+            mode = request.POST.get(f"mode_{i}")
             share = request.POST.get(f"share_{i}") == "true"
-
             files_data.append({
                 "name": f.name,
                 "data": encoded,
@@ -90,13 +93,9 @@ def upload(request):
                 "share": share,
             })
 
-        # Throw to thread and forget
-        t = threading.Thread(
-                target=process_images,
-                args=(batch, files_data, batch_name)
-            )
+        t = threading.Thread(target=process_images, args=(batch, files_data, batch.batch_name))
         t.start()
-        # Send that upload was completed to the user, while thread is running.
+
         return JsonResponse({'message': "Upload received! Processing in background.", 'batch_id': batch.id})
 
     return render(request, "base.html", {'included_template': 'upload.html'})

@@ -11,6 +11,9 @@ id = myfile
 -->
 
 <div id="parent-container">
+  <div id="insert-batch-banner" style="display:none; background:#fff3cd; border:1px solid #ffc107; padding:10px 16px; border-radius:6px; margin-bottom:12px; font-weight:600; color:#856404;">
+    Currently inserting into batch: <span id="insert-batch-label"></span>
+  </div>
   <!-- Modal -->
   <div id="cropModal" class="modal">
     <div class="modal-content">
@@ -106,8 +109,10 @@ id = myfile
   </div>
 
   <div class="userDetails">
-      <label for="batch_name">Batch:</label>
-      <input type="text" id="batch_name">
+      <div id="batch-name-field">
+          <label for="batch_name">Batch:</label>
+          <input type="text" id="batch_name">
+      </div>
       <label for="user_name">User:</label>
       <input type="text" id="user_name">
   </div>

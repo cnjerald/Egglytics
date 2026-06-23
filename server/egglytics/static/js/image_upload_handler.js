@@ -85,6 +85,7 @@ function initializeUI() {
     setDefaultBatchName();
     loadOwner();
     tableHandler.updateSubmitButtonVisibility();
+    insertIntoHandler();
 }
 
 /**
@@ -105,6 +106,22 @@ function loadModels() {
             })
         );
     });
+}
+
+
+
+function insertIntoHandler(){
+    const params = new URLSearchParams(window.location.search);
+    const insertIntoBatchId = params.get("insert_into_batch_id");
+
+    if (insertIntoBatchId) {
+        // Show banner
+        document.getElementById("insert-batch-label").textContent = `#${insertIntoBatchId}`;
+        document.getElementById("insert-batch-banner").style.display = "block";
+
+        // Hide batch name field
+        document.getElementById("batch-name-field").style.display = "none";
+    }
 }
 
 /**
@@ -248,7 +265,8 @@ function setupGlobalControls() {
             $('input[type="radio"][value="macro"]').not("#all_macro").prop("checked", true);
         }
     });
- 
+
+
 }
 
 /**
